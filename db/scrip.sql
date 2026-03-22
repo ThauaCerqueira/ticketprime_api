@@ -54,3 +54,6 @@ ALTER TABLE Reservas
 ADD CONSTRAINT FK_Reservas_Usuarios 
 FOREIGN KEY (UsuarioCpf) REFERENCES Usuarios(Cpf);
 GO
+
+-- Adiciona a coluna Senha na tabela Usuarios
+ALTER TABLE Usuarios ADD Senha VARCHAR(100);
