@@ -1,21 +1,29 @@
 using src.Infrastructure;
+using src.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+                        ?? "Server=localhost;Database=TicketPrime;Integrated Security=True;TrustServerCertificate=True;";
 
-builder.Services.AddScoped<DbConnectionFactory>(sp =>
-{
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    return new DbConnectionFactory(connectionString!);
-});
-
+builder.Services.AddSingleton(new DbConnectionFactory(connectionString));
 builder.Services.AddScoped<UsuarioRepository>();
+builder.Services.AddScoped<CupomRepository>();
 
 var app = builder.Build();
 
-app.MapControllers();
+// CADASTRO DE USUÁRIOS 
+app.MapPost("/api/usuarios", async (Usuario usuario, UsuarioRepository repository) =>
+{
+    var usuarioExistente = await repository.ObterPorCpf(usuario.Cpf);
 
-app.MapGet("/", () => "Hello World!");
+    if (usuarioExistente != null)
+    { 
+        return Results.BadRequest("Erro: O CPF informado já está cadastrado.");
+    }
+
+    await repository.CriarUsuario(usuario);
+    return Results.Created($"/api/usuarios/{usuario.Cpf}", usuario);
+});
 
 app.Run();

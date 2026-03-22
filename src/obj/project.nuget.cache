@@ -26,5 +26,15 @@
     "C:\\Users\\Felipe\\.nuget\\packages\\system.security.cryptography.pkcs\\9.0.11\\system.security.cryptography.pkcs.9.0.11.nupkg.sha512",
     "C:\\Users\\Felipe\\.nuget\\packages\\system.security.cryptography.protecteddata\\9.0.11\\system.security.cryptography.protecteddata.9.0.11.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "Undefined",
+      "level": "Warning",
+      "message": "Problem reading the cache file C:\\Users\\Felipe\\Music\\ticketprime_api\\src\\obj\\project.nuget.cache : '<' is an invalid start of a property name. Expected a '\"'. Path: $ | LineNumber: 2 | BytePositionInLine: 0.",
+      "projectPath": "C:\\Users\\Felipe\\Music\\ticketprime_api\\src\\src.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\Felipe\\Music\\ticketprime_api\\src\\src.csproj",
+      "targetGraphs": []
+    }
+  ]
 }
