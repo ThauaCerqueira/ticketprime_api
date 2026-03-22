@@ -18,6 +18,7 @@ public class UsuariosController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CriarUsuario([FromBody] Usuario usuario)
     {
+        
         Console.WriteLine("Chegou aqui!"); // debug rápido
         await _repository.CriarUsuario(usuario);
 
