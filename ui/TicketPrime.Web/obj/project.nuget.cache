@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "RkIA1D3L5Ms=",
+  "dgSpecHash": "JqHAn8Xt5CQ=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Felipe\\Music\\ticketprime_api\\ui\\TicketPrime.web\\TicketPrime.Web.csproj",
+  "projectFilePath": "C:\\Users\\Felipe\\Music\\ticketprime_api\\ui\\TicketPrime.Web\\TicketPrime.Web.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Felipe\\.nuget\\packages\\azure.core\\1.50.0\\azure.core.1.50.0.nupkg.sha512",
     "C:\\Users\\Felipe\\.nuget\\packages\\azure.identity\\1.17.1\\azure.identity.1.17.1.nupkg.sha512",
