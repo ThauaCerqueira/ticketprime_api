@@ -12,13 +12,33 @@ public class UsuarioRepository
         _connectionFactory = connectionFactory;
     }
 
-    public async Task CriarUsuario(Usuario usuario)
+    // NOVO MÉTODO: Essencial para a validação do Erro 400
+    public async Task<Usuario?> ObterPorCpf(string cpf)
     {
         using var connection = _connectionFactory.CreateConnection();
+        var sql = "SELECT * FROM Usuarios WHERE Cpf = @cpf";
+        
+        // Retorna o usuário se encontrar, ou null se não existir
+        return await connection.QueryFirstOrDefaultAsync<Usuario>(sql, new { cpf });
+    }
 
-        var sql = @"INSERT INTO Usuarios (Cpf, Nome, Email)
-                    VALUES (@Cpf, @Nome, @Email)";
+    public async Task CriarUsuario(Usuario usuario)
+{
+    // Verifique se o nome é _connectionFactory ou _factory conforme seu construtor
+    using var connection = _connectionFactory.CreateConnection();
 
-        await connection.ExecuteAsync(sql, usuario);
+    // Organizado para bater com a estrutura da sua imagem
+    var sql = @"INSERT INTO Usuarios (Cpf, Nome, Email, Senha)
+                VALUES (@Cpf, @Nome, @Email, @Senha)";
+
+    await connection.ExecuteAsync(sql, usuario);
+}
+
+    public async Task<IEnumerable<Usuario>> ListarUsuarios()
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var sql = "SELECT * FROM Usuarios";
+
+        return await connection.QueryAsync<Usuario>(sql);
     }
 }

@@ -65,3 +65,4 @@ C:\Users\Thauã\Videos\TicketPrime\src\bin\Debug\net10.0\runtimes\win-x64\native
 C:\Users\Thauã\Videos\TicketPrime\src\bin\Debug\net10.0\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
 C:\Users\Thauã\Videos\TicketPrime\src\obj\Debug\net10.0\src.csproj.AssemblyReference.cache
 C:\Users\Thauã\Videos\TicketPrime\src\obj\Debug\net10.0\src.csproj.Up2Date
+C:\Users\Thauã\Videos\TicketPrime\src\obj\Debug\net10.0\src.sourcelink.json
