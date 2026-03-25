@@ -1,15 +1,28 @@
 using src.Infrastructure;
+using src.Infrastructure.IRepository;
+using src.Infrastructure.Repository;
+using src.Service;
 using src.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
 
                         ?? "Server=localhost;Database=TicketPrime;Integrated Security=True;TrustServerCertificate=True;";
 
+
+builder.Services.AddControllers(); 
+builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSingleton(new DbConnectionFactory(connectionString));
+
 builder.Services.AddScoped<UsuarioRepository>();
 builder.Services.AddScoped<CupomRepository>();
+builder.Services.AddScoped<IEventoRepository, EventoRepository>();
+
+
+builder.Services.AddScoped<EventoService>();
 
 var app = builder.Build();
 

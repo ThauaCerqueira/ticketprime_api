@@ -1,0 +1,82 @@
+﻿@page "/eventos/novo"
+@using src.DTOs
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Cadastrar Evento - TicketPrime</PageTitle>
+
+<div class="container">
+    <h3>Cadastrar Novo Evento</h3>
+
+    <EditForm Model="@eventoDto" OnValidSubmit="HandleSubmit" FormName="FormCriarEvento">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label>Nome do Evento:</label>
+            <InputText @bind-Value="eventoDto.Nome" class="form-control" />
+        </div>
+
+        <div class="form-group">
+            <label>Capacidade Total:</label>
+            <InputNumber @bind-Value="eventoDto.CapacidadeTotal" class="form-control" />
+            <ValidationMessage For="@(() => eventoDto.CapacidadeTotal)" class="text-danger" />
+        </div>
+
+        <div class="form-group">
+            <label>Data do Evento:</label>
+            <InputDate @bind-Value="dataSelecionada" class="form-control" />
+        </div>
+
+        <div class="form-group">
+            <label>Preço Padrão (R$):</label>
+            <InputNumber @bind-Value="eventoDto.PrecoPadrao" class="form-control" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Salvar Evento</button>
+
+            @if (!string.IsNullOrEmpty(mensagemSucesso))
+            {
+                <div class="alert alert-success mt-3">@mensagemSucesso</div>
+            }
+
+            @if (!string.IsNullOrEmpty(mensagemErro))
+            {
+                <div class="alert alert-danger mt-3">@mensagemErro</div>
+            }
+                </EditForm>
+        </div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CriarEventoDTO eventoDto { get; set; } = new();    private DateTime dataSelecionada = DateTime.Today.AddDays(1);
+    private string? mensagemErro;
+    private string mensagemSucesso = "";
+
+    private async Task HandleSubmit()
+    {
+        try 
+        {
+            mensagemErro = null;
+            
+           
+            var dtoParaEnviar = eventoDto with { DataEvento = dataSelecionada };
+
+            var response = await Http.PostAsJsonAsync("api/eventos", dtoParaEnviar);
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensagemSucesso = "Evento criado com sucesso!";
+                eventoDto = new(); 
+            }
+            else
+            {
+                mensagemErro = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagemErro = "Erro de conexão: " + ex.Message;
+        }
+    }
+}
