@@ -24,9 +24,11 @@ public class EventosController : ControllerBase
             {
                 return BadRequest("Não foi possível criar o evento.");
             }
-            return CreatedAtAction(nameof(CriarEvento), new { id = novoEvento.Id}, novoEvento);
+            return CreatedAtAction(nameof(CriarEvento), 
+            new { id = novoEvento.Id }, 
+            new { Mensagem = "Evento criado com sucesso!", Dados = novoEvento });
         }
-        catch (ArgumentException ex)
+        catch (Exception ex)
         {
             return BadRequest(ex.Message);
         }
