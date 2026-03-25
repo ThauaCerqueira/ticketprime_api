@@ -56,11 +56,11 @@
             if (response.IsSuccessStatusCode)
             {
                 mensagem = "Usuário cadastrado com sucesso!";
-                novoUsuario = new Usuario(); // Reseta o objeto para limpar os campos
+                novoUsuario = new Usuario(); 
             }
             else
             {
-                // Tenta ler o erro detalhado da API se houver
+                
                 var erroDetalhado = await response.Content.ReadAsStringAsync();
                 mensagem = $"Erro ao cadastrar: {erroDetalhado}";
             }

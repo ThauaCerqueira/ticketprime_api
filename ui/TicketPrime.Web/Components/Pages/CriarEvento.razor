@@ -59,7 +59,7 @@
         {
             mensagemErro = null;
             
-            // Sincroniza a data do seletor com o DTO (record)
+           
             var dtoParaEnviar = eventoDto with { DataEvento = dataSelecionada };
 
             var response = await Http.PostAsJsonAsync("api/eventos", dtoParaEnviar);
@@ -67,7 +67,7 @@
             if (response.IsSuccessStatusCode)
             {
                 mensagemSucesso = "Evento criado com sucesso!";
-                eventoDto = new(); // Limpa o formulário
+                eventoDto = new(); 
             }
             else
             {

@@ -1,4 +1,4 @@
--- 1. Criação do Banco de Dados
+
 IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'TicketPrimeDB')
 BEGIN
     CREATE DATABASE TicketPrimeDB;
@@ -8,7 +8,7 @@ GO
 USE TicketPrimeDB;
 GO
 
--- 2. Tabela de Usuários (Deve vir antes pois outras podem depender dela)
+
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Usuarios]') AND type in (N'U'))
 BEGIN
     CREATE TABLE [dbo].[Usuarios] (
@@ -21,7 +21,7 @@ BEGIN
 END
 GO
 
--- 3. Tabela de Eventos
+
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Eventos]') AND type in (N'U'))
 BEGIN
     CREATE TABLE [dbo].[Eventos] (
@@ -36,7 +36,7 @@ BEGIN
 END
 GO
 
--- 4. Exemplo de Tabela de Reservas (Onde a Foreign Key faria sentido)
+
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND type in (N'U'))
 BEGIN
     CREATE TABLE [dbo].[Reservas] (
