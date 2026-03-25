@@ -2,54 +2,40 @@ using src.Infrastructure;
 using src.Infrastructure.IRepository;
 using src.Infrastructure.Repository;
 using src.Service;
-{
-    
-}
+using src.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Adiciona suporte aos Controllers
-builder.Services.AddControllers();
 
-// 2. Registro da Factory (Mudado para Singleton para melhor performance)
-builder.Services.AddSingleton<DbConnectionFactory>(sp =>
-{
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        throw new Exception("String de conexão 'DefaultConnection' não encontrada no appsettings.json");
-    }
-    return new DbConnectionFactory(connectionString);
-});
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? "Server=localhost;Database=TicketPrime;Integrated Security=True;TrustServerCertificate=True;";
 
-// 3. Registro dos Repositories e Services
+
+builder.Services.AddControllers(); 
+builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddSingleton(new DbConnectionFactory(connectionString));
+
 builder.Services.AddScoped<UsuarioRepository>();
+builder.Services.AddScoped<CupomRepository>();
 builder.Services.AddScoped<IEventoRepository, EventoRepository>();
-builder.Services.AddScoped<EventoService>();
 
+
+builder.Services.AddScoped<EventoService>();
 
 var app = builder.Build();
 
 
 app.UseHttpsRedirection();
+app.UseAuthorization();
+
+
+app.MapGet("/", () => "TicketPrime API está rodando!");
+
 
 app.MapControllers();
 
-app.MapGet("/", () => "TicketPrime API está rodando!");
-using src.Models;
 
-var builder = WebApplication.CreateBuilder(args);
-
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-                        ?? "Server=localhost;Database=TicketPrime;Integrated Security=True;TrustServerCertificate=True;";
-
-builder.Services.AddSingleton(new DbConnectionFactory(connectionString));
-builder.Services.AddScoped<UsuarioRepository>();
-builder.Services.AddScoped<CupomRepository>();
-
-var app = builder.Build();
-
-// CADASTRO DE USUÁRIOS 
 app.MapPost("/api/usuarios", async (Usuario usuario, UsuarioRepository repository) =>
 {
     var usuarioExistente = await repository.ObterPorCpf(usuario.Cpf);
