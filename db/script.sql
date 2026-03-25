@@ -18,5 +18,13 @@ BEGIN
         
         CONSTRAINT [PK_Eventos] PRIMARY KEY CLUSTERED ([Id] ASC)
     );
+
+
+CREATE TABLE Usuarios (
+    Cpf CHAR(11) PRIMARY KEY,
+    Nome VARCHAR(100),
+    Email VARCHAR(100)
+);
 END
 GO
+    FOREIGN KEY (UsuarioCpf) REFERENCES Usuarios(Cpf),
