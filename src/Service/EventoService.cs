@@ -29,4 +29,9 @@ public class EventoService
     {
         return await _Repository.ObterTodosAsync();
     }
+
+    public async Task<IEnumerable<Evento>> ListarEventosDisponiveis()
+    {
+    return await _Repository.ObterDisponiveisAsync();
+    }
 }
