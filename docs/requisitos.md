@@ -19,7 +19,7 @@
 > Cenário: Cadastro de evento pela empresa
 
 Dado que a empresa está autenticada no sistema
-quando a empresa preencher os dados do evento (nome, data, local, capacidade e preço)
+quando a empresa preencher os dados do evento (nome, data, capacidade e preço)
 e confirmar o cadastro
 então o sistema deve registrar o evento no banco de dados
 e o evento deve aparecer na lista de eventos disponíveis.
