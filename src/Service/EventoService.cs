@@ -14,6 +14,7 @@ public class EventoService
     }
     public async Task<Evento?> CriarNovoEvento(CriarEventoDTO dto)
     {
+
         var novoEvento = new Evento(
             dto.Nome,
             dto.CapacidadeTotal,
@@ -23,5 +24,9 @@ public class EventoService
         await _Repository.AdicionarAsync(novoEvento);
 
         return novoEvento;
+    }
+    public async Task<IEnumerable<Evento>> ListarEventos()
+    {
+        return await _Repository.ObterTodosAsync();
     }
 }

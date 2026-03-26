@@ -2,12 +2,13 @@ namespace src.Models;
 
 public class Evento
 {
-    public int Id { get; private set; }
-    public string Nome { get; private set; } = string.Empty;
-    public int CapacidadeTotal { get; private set; }
-    public DateTime DataEvento { get; private set; }
-    public decimal PrecoPadrao { get; private set; }
+    public int Id { get; set; } // Permitir set para o banco carregar
+    public string Nome { get; set; } = string.Empty;
+    public int CapacidadeTotal { get; set; }
+    public DateTime DataEvento { get; set; }
+    public decimal PrecoPadrao { get; set; }
 
+    // Construtor para CADASTRO (Com validações)
     public Evento(string nome, int capacidadeTotal, DateTime dataEvento, decimal precoPadrao)
     {
         if (string.IsNullOrWhiteSpace(nome)) throw new Exception("O nome do evento é obrigatório.");
@@ -21,5 +22,6 @@ public class Evento
         PrecoPadrao = precoPadrao;
     }
 
-    protected Evento() { }
+    // Construtor Vazio para o BANCO DE DADOS (Sem validações)
+    public Evento() { } 
 }
