@@ -1,0 +1,42 @@
+@page "/vitrine"
+@inject HttpClient Http
+
+<div class="container">
+    <h2 class="mb-4">Próximos Eventos Disponíveis</h2>
+
+    <div class="row">
+        @if (eventosDisponiveis == null)
+        {
+            <p>Carregando eventos...</p>
+        }
+        else
+        {
+            @foreach (var evento in eventosDisponiveis)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title text-primary">@evento.Nome</h5>
+                            <p class="card-text">
+                                <strong>Data:</strong> @evento.DataEvento.ToString("dd/MM/yyyy HH:mm")<br />
+                                <strong>Vagas:</strong> @evento.CapacidadeTotal <br />
+                                <strong>Preço:</strong> @evento.PrecoPadrao.ToString("C")
+                            </p>
+                            <button class="btn btn-primary w-100">Comprar Ingresso</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<Evento>? eventosDisponiveis;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Chama o novo endpoint que criamos
+        eventosDisponiveis = await Http.GetFromJsonAsync<List<Evento>>("api/eventos/disponiveis");
+    }
+}
