@@ -25,6 +25,7 @@ builder.Services.AddScoped<IEventoRepository, EventoRepository>();
 builder.Services.AddScoped<EventoService>();
 
 var app = builder.Build();
+app.MapControllers();
 
 app.MapPost("/api/usuarios", async (Usuario usuario, UsuarioRepository repository) =>
 
