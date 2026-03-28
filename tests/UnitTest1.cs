@@ -1,5 +1,4 @@
-﻿using Xunit;
-using src.Models;
+﻿using src.Models;
 
 namespace tests;
 
