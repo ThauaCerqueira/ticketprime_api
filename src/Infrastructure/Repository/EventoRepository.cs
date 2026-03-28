@@ -27,4 +27,21 @@ public class EventoRepository : IEventoRepository
         
         await connection.ExecuteAsync(sql, evento);
     }
+    public async Task<IEnumerable<Evento>> ObterTodosAsync()
+    {
+        using var conn = _connectionFactory.CreateConnection();
+        string sql = "SELECT * FROM Eventos ORDER BY DataEvento ASC";
+        return await conn.QueryAsync<Evento>(sql);
+    }
+
+     public async Task<IEnumerable<Evento>> ObterDisponiveisAsync()
+    {
+    using var conn = _connectionFactory.CreateConnection();
+    string sql = @"SELECT * FROM Eventos 
+                   WHERE DataEvento > GETDATE() 
+                   AND CapacidadeTotal > 0 
+                   ORDER BY DataEvento ASC";
+    
+    return await conn.QueryAsync<Evento>(sql);
+    }
 }

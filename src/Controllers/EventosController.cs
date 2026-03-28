@@ -33,4 +33,18 @@ public class EventosController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
+    [HttpGet]
+    public async Task<IActionResult> Get()
+    {
+        var eventos = await _eventoService.ListarEventos();
+        return Ok(eventos);
+    }
+
+    [HttpGet("disponiveis")]
+    public async Task<IActionResult> GetDisponiveis()
+    {
+        var eventos = await _eventoService.ListarEventosDisponiveis();
+        return Ok(eventos);
+    }
 }
