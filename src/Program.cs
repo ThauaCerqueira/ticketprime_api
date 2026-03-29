@@ -3,14 +3,13 @@ using src.Infrastructure.IRepository;
 using src.Infrastructure.Repository;
 using src.Service;
 using src.Models;
+using src.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. CONFIGURAÇÃO DE CONEXÃO ---
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? "Server=localhost;Database=TicketPrime;Integrated Security=True;TrustServerCertificate=True;";
 
-// --- 2. CONFIGURAÇÃO DO CORS (Obrigatório para Blazor) ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -21,32 +20,34 @@ builder.Services.AddCors(options =>
     });
 });
 
-// --- 3. REGISTRO DE SERVIÇOS ---
 builder.Services.AddControllers(); 
 builder.Services.AddEndpointsApiExplorer();
-
-// Configura o HttpClient para a própria API conseguir se chamar (importante no SSR)
-builder.Services.AddScoped(sp => new HttpClient { 
-    BaseAddress = new Uri("https://localhost:5194") // Verifique se sua porta é a 7000 ou 5000
-});
+builder.Services.AddSwaggerGen(); 
 
 builder.Services.AddSingleton(new DbConnectionFactory(connectionString));
 builder.Services.AddScoped<UsuarioRepository>();
-builder.Services.AddScoped<CupomRepository>();
+builder.Services.AddScoped<ICupomRepository, CupomRepository>();
+builder.Services.AddScoped<CupomService>();
 builder.Services.AddScoped<IEventoRepository, EventoRepository>();
 builder.Services.AddScoped<EventoService>();
 
 var app = builder.Build();
 
-// --- 4. MIDDLEWARES ---
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
 app.UseHttpsRedirection();
 
-// ATIVE O CORS AQUI
 app.UseCors("AllowAll"); 
+
+app.UseAuthorization();
 
 app.MapControllers();
 
-// Rota de Usuários
 app.MapPost("/api/usuarios", async (Usuario usuario, UsuarioRepository repository) =>
 {
     var usuarioExistente = await repository.ObterPorCpf(usuario.Cpf);
