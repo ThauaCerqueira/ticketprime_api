@@ -1802,23 +1802,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Thauã\\.nuget\\packages\\": {},
+    "C:\\Users\\Felipe\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Thauã\\Videos\\TicketPrime\\ui\\TicketPrime.Web\\TicketPrime.Web.csproj",
+      "projectUniqueName": "C:\\Users\\Felipe\\Music\\ticketprime_api\\ui\\TicketPrime.Web\\TicketPrime.Web.csproj",
       "projectName": "TicketPrime.Web",
-      "projectPath": "C:\\Users\\Thauã\\Videos\\TicketPrime\\ui\\TicketPrime.Web\\TicketPrime.Web.csproj",
-      "packagesPath": "C:\\Users\\Thauã\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Thauã\\Videos\\TicketPrime\\ui\\TicketPrime.Web\\obj\\",
+      "projectPath": "C:\\Users\\Felipe\\Music\\ticketprime_api\\ui\\TicketPrime.Web\\TicketPrime.Web.csproj",
+      "packagesPath": "C:\\Users\\Felipe\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Felipe\\Music\\ticketprime_api\\ui\\TicketPrime.Web\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Thauã\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Felipe\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -1827,15 +1827,14 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "C:\\Users\\Thauã\\Videos\\TicketPrime\\src\\src.csproj": {
-              "projectPath": "C:\\Users\\Thauã\\Videos\\TicketPrime\\src\\src.csproj"
+            "C:\\Users\\Felipe\\Music\\ticketprime_api\\src\\src.csproj": {
+              "projectPath": "C:\\Users\\Felipe\\Music\\ticketprime_api\\src\\src.csproj"
             }
           }
         }

@@ -1751,23 +1751,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Thauã\\.nuget\\packages\\": {},
+    "C:\\Users\\Felipe\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Thauã\\Videos\\TicketPrime\\src\\src.csproj",
+      "projectUniqueName": "C:\\Users\\Felipe\\Music\\ticketprime_api\\src\\src.csproj",
       "projectName": "src",
-      "projectPath": "C:\\Users\\Thauã\\Videos\\TicketPrime\\src\\src.csproj",
-      "packagesPath": "C:\\Users\\Thauã\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Thauã\\Videos\\TicketPrime\\src\\obj\\",
+      "projectPath": "C:\\Users\\Felipe\\Music\\ticketprime_api\\src\\src.csproj",
+      "packagesPath": "C:\\Users\\Felipe\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Felipe\\Music\\ticketprime_api\\src\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Thauã\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Felipe\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -1776,7 +1776,6 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
