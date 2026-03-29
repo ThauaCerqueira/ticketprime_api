@@ -26,6 +26,10 @@ build_property.EnableCodeStyleSeverity =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/Thauã/Videos/TicketPrime/ui/TicketPrime.Web/Components/Pages/CadastrodeCupom.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDYWRhc3Ryb2RlQ3Vwb20ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/Thauã/Videos/TicketPrime/ui/TicketPrime.Web/Components/Pages/CadastroUser.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDYWRhc3Ryb1VzZXIucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
@@ -44,6 +48,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Users/Thauã/Videos/TicketPrime/ui/TicketPrime.Web/Components/Pages/Home.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xIb21lLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Thauã/Videos/TicketPrime/ui/TicketPrime.Web/Components/Pages/ListarCupom.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMaXN0YXJDdXBvbS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/Thauã/Videos/TicketPrime/ui/TicketPrime.Web/Components/Pages/ListarEventos.razor]
