@@ -51,3 +51,22 @@ BEGIN
     );
 END
 GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Cupons]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[Cupons] (
+        -- O Código costuma ser a chave primária pois é único (ex: TICKET10)
+        [Codigo]             NVARCHAR(20)    NOT NULL,
+        [PorcentagemDesconto] DECIMAL(5, 2)   NOT NULL,
+        [ValorMinimoRegra]    DECIMAL(18, 2)  NOT NULL,
+
+        CONSTRAINT [PK_Cupons] PRIMARY KEY CLUSTERED ([Codigo] ASC),
+        
+        -- Garante que o desconto seja entre 0 e 100%
+        CONSTRAINT [CK_Cupons_Desconto] CHECK ([PorcentagemDesconto] >= 0 AND [PorcentagemDesconto] <= 100),
+        
+        -- Garante que o valor mínimo não seja negativo
+        CONSTRAINT [CK_Cupons_ValorMinimo] CHECK ([ValorMinimoRegra] >= 0)
+    );
+END
+GO

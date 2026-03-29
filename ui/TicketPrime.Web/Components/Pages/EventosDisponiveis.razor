@@ -36,7 +36,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Chama o novo endpoint que criamos
         eventosDisponiveis = await Http.GetFromJsonAsync<List<Evento>>("api/eventos/disponiveis");
     }
 }
