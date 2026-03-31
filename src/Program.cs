@@ -24,6 +24,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(); 
 
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddSingleton(new DbConnectionFactory(connectionString));
 builder.Services.AddScoped<UsuarioRepository>();
 builder.Services.AddScoped<ICupomRepository, CupomRepository>();
@@ -48,15 +50,17 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapPost("/api/usuarios", async (Usuario usuario, UsuarioRepository repository) =>
+app.MapPost("/api/usuarios", async (Usuario usuario, UsuarioService service) =>
 {
-    var usuarioExistente = await repository.ObterPorCpf(usuario.Cpf);
-    if (usuarioExistente != null)
+    try 
     {
-        return Results.BadRequest("Erro: O CPF informado já está cadastrado.");
+        var resultado = await service.CadastrarUsuario(usuario);
+        return Results.Created($"/api/usuarios/{resultado.Cpf}", resultado);
     }
-    await repository.CriarUsuario(usuario);
-    return Results.Created($"/api/usuarios/{usuario.Cpf}", usuario);
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
 });
 
 app.Run();

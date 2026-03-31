@@ -1,25 +1,38 @@
 using Microsoft.AspNetCore.Mvc;
-using src.Infrastructure;
 using src.Models;
+using src.Service;
+
 
 namespace src.Controllers;
+
 
 [ApiController]
 [Route("api/[controller]")]
 public class UsuariosController : ControllerBase
 {
-    private readonly UsuarioRepository _repository;
+    private readonly UsuarioService _usuarioService;
 
-    public UsuariosController(UsuarioRepository repository)
+    public UsuariosController(UsuarioService usuarioService)
     {
-        _repository = repository;
+        _usuarioService = usuarioService;
     }
 
     [HttpPost]
     public async Task<IActionResult> CriarUsuario([FromBody] Usuario usuario)
     {
-        await _repository.CriarUsuario(usuario);
-
-        return Ok("Usuário criado com sucesso");
+        try 
+        {
+            var novoUsuario = await _usuarioService.CadastrarUsuario(usuario);
+            
+            return Created($"/api/usuarios/{novoUsuario.Cpf}", new { message = "Usuário criado com sucesso" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno: {ex.Message}");
+        }
     }
 }
