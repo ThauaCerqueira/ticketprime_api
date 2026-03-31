@@ -17,7 +17,6 @@ public class UsuarioService
         
         if (usuarioExistente != null)
         {
-            // Lançamos uma exceção que o teste vai capturar
             throw new InvalidOperationException("Erro: O CPF informado já está cadastrado.");
         }
 
