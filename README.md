@@ -5,3 +5,38 @@
 | Maiores Riscos Identificados | Processo judicial, superlotação, vazamento de dados, descontos inexistentes para determinado evento |
 | Modelo de Ciclo Recomendado | Interativo e Incremental                                               |
 | Justificativa Técnica     | Escolhido por permitir testes frequentes das funcionalidades e entregas contínuas ao cliente, sendo mais flexível que o modelo cascata e espiral |
+
+
+<h2>🚀 Rodando a API</h2>
+
+<pre><code id="api-commands">dotnet restore
+dotnet build
+dotnet run</code></pre>
+
+
+
+<hr/>
+
+<h2>💻 Rodando o Frontend</h2>
+
+<pre><code id="frontend-commands">cd src/ui/TicketPrime.Web
+dotnet restore
+dotnet build
+dotnet run</code></pre>
+
+
+
+<hr/>
+
+<h2>🧪 Rodando os Testes</h2>
+
+<pre><code id="test-commands">cd tests
+dotnet restore
+dotnet build
+dotnet test</code></pre>
+
+
+
+
+
+
