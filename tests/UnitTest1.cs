@@ -27,7 +27,6 @@ public class UnitTest1
     [Fact]
     public async Task CadastrarUsuario_DeveRetornarErro_QuandoCpfJaCadastrado()
     {
-        // Arrange
         var repoMock = new Mock<IUsuarioRepository>();
         var service = new UsuarioService(repoMock.Object);
         
