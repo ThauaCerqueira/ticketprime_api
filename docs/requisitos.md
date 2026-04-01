@@ -14,7 +14,7 @@
 
 > Como administrador, quero validar os dados enviados na requisição de cadastro de evento antes de salvar o evento no sistema.
 
-## Histórias no formato BDD
+## História no formato BDD
 
 > Cenário: Cadastro de evento pela empresa
 
