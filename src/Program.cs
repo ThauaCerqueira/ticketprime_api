@@ -57,7 +57,7 @@ app.MapPost("/api/eventos", async (CriarEventoDTO dto, EventoService service) =>
     return Results.Created($"/api/eventos/{resultado.Id}", resultado);
 });
 
-app.MapGet("/api/eventos", async (EventoService service) =>
+app.MapGet("/minimal/eventos", async (EventoService service) =>
 {
     var eventos = await service.ListarEventos();
     return Results.Ok(eventos);

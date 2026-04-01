@@ -15,6 +15,7 @@ BEGIN
         [Cpf]   CHAR(11)      NOT NULL,
         [Nome]  VARCHAR(100)  NOT NULL,
         [Email] VARCHAR(100)  NOT NULL,
+        [Senha] VARCHAR(25)   NOT NULL,
         
         CONSTRAINT [PK_Usuarios] PRIMARY KEY CLUSTERED ([Cpf] ASC)
     );

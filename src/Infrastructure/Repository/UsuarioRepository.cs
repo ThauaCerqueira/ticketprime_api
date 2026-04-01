@@ -25,8 +25,8 @@ public class UsuarioRepository : IUsuarioRepository
     {
         using var connection = _connectionFactory.CreateConnection();
 
-        var sql = @"INSERT INTO Usuarios (Cpf, Nome, Email)
-                    VALUES (@Cpf, @Nome, @Email)";
+        var sql = @"INSERT INTO Usuarios (Cpf, Nome, Email, Senha)
+                    VALUES (@Cpf, @Nome, @Email, @Senha)";
 
         await connection.ExecuteAsync(sql, usuario);
     }
