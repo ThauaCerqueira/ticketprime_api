@@ -10,7 +10,6 @@
 
     <EditForm Model="@eventoDto" OnValidSubmit="HandleSubmit" FormName="FormCriarEvento">
         <DataAnnotationsValidator />
-        <ValidationSummary />
 
         <div class="form-group">
             <label>Nome do Evento:</label>
@@ -49,7 +48,8 @@
 
 @code {
     [SupplyParameterFromForm]
-    private CriarEventoDTO eventoDto { get; set; } = new();    private DateTime dataSelecionada = DateTime.Today.AddDays(1);
+    private CriarEventoDTO eventoDto { get; set; } = new();    
+    private DateTime dataSelecionada = DateTime.Today.AddDays(1);
     private string? mensagemErro;
     private string mensagemSucesso = "";
 

@@ -28,9 +28,9 @@ public class EventosController : ControllerBase
             new { id = novoEvento.Id }, 
             new { Mensagem = "Evento criado com sucesso!", Dados = novoEvento });
         }
-        catch (Exception ex)
-        {
-            return BadRequest(ex.Message);
+        catch (Exception ex) 
+        {      
+            return BadRequest(new { erro = ex.Message });    
         }
     }
 
