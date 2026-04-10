@@ -1,0 +1,6 @@
+# Ignora pastas bin e obj em qualquer subpasta
+**/bin/
+**/obj/
+
+# Ignora configurações do VS Code
+.vscode/

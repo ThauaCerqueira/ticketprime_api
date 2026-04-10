@@ -1,0 +1,76 @@
+﻿@page "/"
+
+<div class="container mt-4">
+
+    
+    <div class="text-center mb-5">
+        <h1 class="display-4">🎫 Ticket Prime</h1>
+        <p class="lead">Sistema de gerenciamento de chamados</p>
+    </div>
+
+    
+    <div class="row">
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center">
+                    <h5 class="card-title">📨 Tickets Abertos</h5>
+                    <h2 class="text-primary">@ticketsAbertos</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center">
+                    <h5 class="card-title">⏳ Em Andamento</h5>
+                    <h2 class="text-warning">@ticketsAndamento</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center">
+                    <h5 class="card-title">✅ Finalizados</h5>
+                    <h2 class="text-success">@ticketsFinalizados</h2>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    
+    <div class="row mt-5">
+
+        <div class="col-md-6 mb-3">
+            <button class="btn btn-primary w-100" @onclick="CriarTicket">
+                ➕ Criar Novo Ticket
+            </button>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <button class="btn btn-outline-secondary w-100" @onclick="VerTickets">
+                📋 Ver Todos os Tickets
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+@code {
+    int ticketsAbertos = 12;
+    int ticketsAndamento = 5;
+    int ticketsFinalizados = 30;
+
+    void CriarTicket()
+    {
+        Console.WriteLine("Abrir tela de criação");
+    }
+
+    void VerTickets()
+    {
+        Console.WriteLine("Ir para lista de tickets");
+    }
+}
