@@ -30,6 +30,16 @@ public class UsuarioRepository : IUsuarioRepository
 
         await connection.ExecuteAsync(sql, usuario);
     }
+    public async virtual Task<Usuario?> ObterPorLogin(string email, string senha)
+{
+    using var connection = _connectionFactory.CreateConnection();
+    
+    // SQL manual conforme critério do professor
+    var sql = "SELECT * FROM Usuarios WHERE Email = @Email AND Senha = @Senha";
+
+    // Passagem de parâmetros com @ para segurança
+    return await connection.QueryFirstOrDefaultAsync<Usuario>(sql, new { Email = email, Senha = senha });
+}
 
     public async virtual Task<IEnumerable<Usuario>> ListarUsuarios()
     {

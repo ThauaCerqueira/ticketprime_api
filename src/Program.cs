@@ -103,6 +103,19 @@ namespace TicketPrime.Api
                 }
             });
 
+            app.MapPost("/api/usuarios/login", async (src.DTOs.LoginRequestDTO login, UsuarioService service) =>
+{
+    // Chama o serviço que você criou para validar no banco via Dapper
+    var usuario = await service.ValidarLogin(login.Email, login.Senha);
+
+    if (usuario == null)
+    {
+        return Results.Unauthorized(); // Retorna 401 se não encontrar
+    }
+
+    return Results.Ok(usuario); // Retorna 200 se os dados estiverem certos
+});
+
             app.Run();
         }
     }
