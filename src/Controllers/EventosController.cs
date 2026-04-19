@@ -49,4 +49,12 @@ public class EventosController : ControllerBase
         var eventos = await _eventoService.ListarEventosDisponiveis();
         return Ok(eventos);
     }
+
+    [HttpGet("meus")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> GetMeusEventos()
+    {
+        var eventos = await _eventoService.ListarEventos();
+        return Ok(eventos);
+    }
 }

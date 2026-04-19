@@ -73,7 +73,6 @@ namespace TicketPrime.Api
             app.UseAuthentication();
             app.UseAuthorization();
  
-            // POST /api/eventos — Cadastra um novo evento (somente ADMIN)
             app.MapPost("/api/eventos", async (CriarEventoDTO dto, EventoService service) =>
             {
                 try
@@ -90,14 +89,18 @@ namespace TicketPrime.Api
                 }
             }).RequireAuthorization(policy => policy.RequireRole("ADMIN"));
  
-            // GET /api/eventos — Lista os eventos
             app.MapGet("/api/eventos", async (EventoService service) =>
             {
                 var eventos = await service.ListarEventos();
                 return Results.Ok(eventos);
             });
+
+            app.MapGet("/api/eventos/meus", async (EventoService service) =>
+            {
+                var eventos = await service.ListarEventos();
+                return Results.Ok(eventos);
+            }).RequireAuthorization(policy => policy.RequireRole("ADMIN"));
  
-            // POST /api/cupons — Cadastra um novo cupom (somente ADMIN)
             app.MapPost("/api/cupons", async (CriarCupomDTO dto, CupomService service) =>
             {
                 try
@@ -118,7 +121,6 @@ namespace TicketPrime.Api
                 }
             }).RequireAuthorization(policy => policy.RequireRole("ADMIN"));
  
-            // POST /api/usuarios — Cadastra um novo usuário
             app.MapPost("/api/usuarios", async (Usuario usuario, UsuarioService service) =>
             {
                 try
@@ -132,7 +134,6 @@ namespace TicketPrime.Api
                 }
             });
  
-            // POST /api/auth/login — Login
             app.MapPost("/api/auth/login", async (LoginDTO dto, AuthService service) =>
             {
                 var resultado = await service.LoginAsync(dto);
@@ -142,7 +143,6 @@ namespace TicketPrime.Api
                 return Results.Ok(resultado);
             });
  
-            // POST /api/reservas — Comprar ingresso
             app.MapPost("/api/reservas", async (ComprarIngressoDTO dto, ReservaService service, HttpContext context) =>
             {
                 try
@@ -166,7 +166,6 @@ namespace TicketPrime.Api
                 }
             }).RequireAuthorization();
  
-            // GET /api/reservas/minhas — Lista ingressos do usuário logado
             app.MapGet("/api/reservas/minhas", async (ReservaService service, HttpContext context) =>
             {
                 var cpf = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -178,7 +177,6 @@ namespace TicketPrime.Api
                 return Results.Ok(reservas);
             }).RequireAuthorization();
  
-            // DELETE /api/reservas/{id} — Cancelar ingresso
             app.MapDelete("/api/reservas/{id}", async (int id, ReservaService service, HttpContext context) =>
             {
                 try
@@ -197,7 +195,6 @@ namespace TicketPrime.Api
                 }
             }).RequireAuthorization();
  
-            // GET /api/perfil — Dados do usuário logado
             app.MapGet("/api/perfil", async (UsuarioService service, HttpContext context) =>
             {
                 var cpf = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -223,4 +220,3 @@ namespace TicketPrime.Api
         }
     }
 }
- 
