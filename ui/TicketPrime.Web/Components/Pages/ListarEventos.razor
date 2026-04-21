@@ -9,86 +9,319 @@
 
 <PageTitle>Eventos - TicketPrime</PageTitle>
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3>Lista de Eventos</h3>
+<style>
+    .ev-wrapper {
+        min-height: 100vh;
+        background: #F8FAFC;
+        padding: 2rem;
+    }
+
+    .ev-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .ev-header-left h2 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 0.2rem 0;
+    }
+
+    .ev-header-left p {
+        font-size: 0.875rem;
+        color: #6B7280;
+        margin: 0;
+    }
+
+    .ev-btn-new {
+        padding: 0.65rem 1.4rem;
+        background: #5B5BD6;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: background 0.2s, transform 0.15s;
+    }
+
+    .ev-btn-new:hover { background: #4949c4; transform: translateY(-1px); color: white; }
+
+    .ev-alert {
+        padding: 0.9rem 1.2rem;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .ev-alert-success { background: #D1FAE5; color: #065F46; }
+    .ev-alert-error { background: #FEE2E2; color: #991B1B; }
+
+    .ev-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.2rem;
+    }
+
+    .ev-card {
+        background: white;
+        border-radius: 18px;
+        padding: 1.5rem;
+        border: 1.5px solid #F1F5F9;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .ev-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(91,91,214,0.10);
+    }
+
+    .ev-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .ev-card-name {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.3;
+    }
+
+    .ev-badge {
+        padding: 0.25rem 0.7rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .ev-badge-available { background: #D1FAE5; color: #065F46; }
+    .ev-badge-sold { background: #FEE2E2; color: #991B1B; }
+
+    .ev-card-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .ev-card-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        color: #6B7280;
+    }
+
+    .ev-card-row svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    .ev-card-price {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #5B5BD6;
+    }
+
+    .ev-card-footer {
+        margin-top: auto;
+    }
+
+    .ev-btn-buy {
+        width: 100%;
+        padding: 0.7rem;
+        background: #5B5BD6;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+
+    .ev-btn-buy:hover { background: #4949c4; transform: translateY(-1px); }
+    .ev-btn-buy:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .ev-btn-login {
+        width: 100%;
+        padding: 0.7rem;
+        background: transparent;
+        color: #5B5BD6;
+        border: 2px solid #5B5BD6;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        text-decoration: none;
+        display: block;
+        text-align: center;
+    }
+
+    .ev-btn-login:hover { background: #F0F0FF; color: #5B5BD6; }
+
+    .ev-btn-sold {
+        width: 100%;
+        padding: 0.7rem;
+        background: #F1F5F9;
+        color: #9CA3AF;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: not-allowed;
+    }
+
+    .ev-empty {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #9CA3AF;
+    }
+
+    .ev-empty svg { width: 48px; height: 48px; margin-bottom: 1rem; }
+    .ev-empty h3 { font-size: 1.1rem; font-weight: 600; color: #374151; margin-bottom: 0.4rem; }
+
+    .ev-loading {
+        text-align: center;
+        padding: 4rem;
+        color: #6B7280;
+    }
+
+    .ev-spinner {
+        width: 36px; height: 36px;
+        border: 3px solid #E5E7EB;
+        border-top-color: #5B5BD6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<div class="ev-wrapper">
+    <div class="ev-header">
+        <div class="ev-header-left">
+            <h2>Eventos disponíveis</h2>
+            <p>Encontre e compre ingressos para os melhores eventos</p>
+        </div>
         @if (Session.EhAdmin)
         {
-            <a href="/eventos/novo" class="btn btn-success">Novo Evento</a>
+            <a href="/eventos/novo" class="ev-btn-new">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Novo Evento
+            </a>
         }
     </div>
 
     @if (!string.IsNullOrEmpty(mensagem))
     {
-        <div class="alert @(mensagem.Contains("sucesso") ? "alert-success" : "alert-danger")">
+        <div class="ev-alert @(mensagem.Contains("sucesso") ? "ev-alert-success" : "ev-alert-error")">
             @mensagem
         </div>
     }
 
     @if (eventos == null)
     {
-        <div class="text-center">
-            <div class="spinner-border text-primary" role="status"></div>
+        <div class="ev-loading">
+            <div class="ev-spinner"></div>
             <p>Carregando eventos...</p>
         </div>
     }
     else if (!eventos.Any())
     {
-        <div class="alert alert-warning">Nenhum evento cadastrado no momento.</div>
+        <div class="ev-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <h3>Nenhum evento disponível</h3>
+            <p>Novos eventos serão adicionados em breve.</p>
+        </div>
     }
     else
     {
-        <table class="table table-hover shadow-sm">
-            <thead class="table-dark">
-                <tr>
-                    <th>Nome</th>
-                    <th>Data</th>
-                    <th>Vagas</th>
-                    <th>Preço</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var evento in eventos)
-                {
-                    <tr>
-                        <td>@evento.Nome</td>
-                        <td>@evento.DataEvento.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>
-                            <span class="badge @(evento.CapacidadeTotal > 0 ? "bg-success" : "bg-danger")">
-                                @evento.CapacidadeTotal vagas
-                            </span>
-                        </td>
-                        <td>@evento.PrecoPadrao.ToString("C")</td>
-                        <td>
-                            @if (!Session.EhAdmin && Session.EstaLogado && evento.CapacidadeTotal > 0)
-                            {
-                                <button class="btn btn-sm btn-primary"
-                                        @onclick="() => Comprar(evento.Id)"
-                                        disabled="@comprando">
-                                    @if (comprando && eventoSelecionado == evento.Id)
-                                    {
-                                        <span class="spinner-border spinner-border-sm"></span>
-                                    }
-                                    else
-                                    {
-                                        <span>Comprar</span>
-                                    }
-                                </button>
-                            }
-                            else if (evento.CapacidadeTotal <= 0)
-                            {
-                                <span class="badge bg-secondary">Esgotado</span>
-                            }
-                            else if (!Session.EstaLogado)
-                            {
-                                <a href="/login" class="btn btn-sm btn-outline-primary">Login para comprar</a>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <div class="ev-grid">
+            @foreach (var evento in eventos)
+            {
+                <div class="ev-card">
+                    <div class="ev-card-top">
+                        <div class="ev-card-name">@evento.Nome</div>
+                        <span class="ev-badge @(evento.CapacidadeTotal > 0 ? "ev-badge-available" : "ev-badge-sold")">
+                            @(evento.CapacidadeTotal > 0 ? $"{evento.CapacidadeTotal} vagas" : "Esgotado")
+                        </span>
+                    </div>
+
+                    <div class="ev-card-info">
+                        <div class="ev-card-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            @evento.DataEvento.ToString("dd/MM/yyyy 'às' HH:mm")
+                        </div>
+                        <div class="ev-card-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                            </svg>
+                            @evento.CapacidadeTotal vagas no total
+                        </div>
+                        <div class="ev-card-price">@evento.PrecoPadrao.ToString("C")</div>
+                    </div>
+
+                    <div class="ev-card-footer">
+                        @if (evento.CapacidadeTotal <= 0)
+                        {
+                            <button class="ev-btn-sold" disabled>Esgotado</button>
+                        }
+                        else if (!Session.EstaLogado)
+                        {
+                            <a href="/login" class="ev-btn-login">Entrar para comprar</a>
+                        }
+                        else if (!Session.EhAdmin)
+                        {
+                            <button class="ev-btn-buy" @onclick="() => Comprar(evento.Id)" disabled="@(comprando && eventoSelecionado == evento.Id)">
+                                @if (comprando && eventoSelecionado == evento.Id)
+                                {
+                                    <div style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                                    <span>Comprando...</span>
+                                }
+                                else
+                                {
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
+                                    </svg>
+                                    <span>Comprar ingresso</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
     }
 </div>
 
@@ -98,58 +331,29 @@
     private bool comprando = false;
     private int eventoSelecionado = 0;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CarregarEventos();
-    }
+    protected override async Task OnInitializedAsync() => await CarregarEventos();
 
     private async Task CarregarEventos()
     {
-        try
-        {
-            eventos = await Http.GetFromJsonAsync<List<Evento>>("api/eventos");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Erro ao carregar eventos: {ex.Message}");
-        }
+        try { eventos = await Http.GetFromJsonAsync<List<Evento>>("api/eventos"); }
+        catch (Exception ex) { Console.Error.WriteLine($"Erro: {ex.Message}"); }
     }
 
     private async Task Comprar(int eventoId)
     {
-        if (!Session.EstaLogado)
-        {
-            Navigation.NavigateTo("/login");
-            return;
-        }
-
-        comprando = true;
-        eventoSelecionado = eventoId;
-        mensagem = "";
-
+        if (!Session.EstaLogado) { Navigation.NavigateTo("/login"); return; }
+        comprando = true; eventoSelecionado = eventoId; mensagem = "";
         try
         {
             var response = await Http.PostAsJsonAsync("api/reservas", new { EventoId = eventoId });
-
             if (response.IsSuccessStatusCode)
             {
                 mensagem = "✅ Ingresso comprado com sucesso!";
-                await CarregarEventos(); // Atualiza a lista para mostrar nova capacidade
+                await CarregarEventos();
             }
-            else
-            {
-                var erro = await response.Content.ReadAsStringAsync();
-                mensagem = $"❌ Erro: {erro}";
-            }
+            else { mensagem = "❌ Erro ao comprar ingresso. Tente novamente."; }
         }
-        catch (Exception ex)
-        {
-            mensagem = $"❌ Erro de conexão: {ex.Message}";
-        }
-        finally
-        {
-            comprando = false;
-            eventoSelecionado = 0;
-        }
+        catch { mensagem = "❌ Erro de conexão."; }
+        finally { comprando = false; eventoSelecionado = 0; }
     }
 }

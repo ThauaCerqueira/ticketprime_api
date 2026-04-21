@@ -1,71 +1,258 @@
 @page "/cupons"
 @using src.Models
 @using TicketPrime.Web.Services
-@rendermode InteractiveServer
 @using src.Service
+@rendermode InteractiveServer
 @inject CupomService CupomService
 @inject SessionService Session
 @inject IJSRuntime JS
 
-<PageTitle>Gerenciar Cupons</PageTitle>
+<PageTitle>Cupons - TicketPrime</PageTitle>
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Cupons Cadastrados</h2>
+<style>
+    .cp-wrapper {
+        min-height: 100vh;
+        background: #F8FAFC;
+        padding: 2rem;
+    }
+
+    .cp-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .cp-header-left h2 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 0.2rem 0;
+    }
+
+    .cp-header-left p {
+        font-size: 0.875rem;
+        color: #6B7280;
+        margin: 0;
+    }
+
+    .cp-btn-new {
+        padding: 0.65rem 1.4rem;
+        background: #5B5BD6;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: background 0.2s, transform 0.15s;
+    }
+
+    .cp-btn-new:hover { background: #4949c4; transform: translateY(-1px); color: white; }
+
+    .cp-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.2rem;
+    }
+
+    .cp-card {
+        background: white;
+        border-radius: 18px;
+        padding: 1.5rem;
+        border: 1.5px solid #F1F5F9;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        transition: transform 0.2s, box-shadow 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .cp-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #5B5BD6, #7C7CE8);
+        border-radius: 18px 18px 0 0;
+    }
+
+    .cp-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(91,91,214,0.10);
+    }
+
+    .cp-card-code {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #5B5BD6;
+        letter-spacing: 1px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .cp-card-code-icon {
+        width: 36px; height: 36px;
+        background: #F0F0FF;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cp-card-code-icon svg { width: 18px; height: 18px; stroke: #5B5BD6; }
+
+    .cp-card-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        margin-bottom: 1.2rem;
+    }
+
+    .cp-card-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.875rem;
+    }
+
+    .cp-card-row-label { color: #6B7280; }
+
+    .cp-card-row-value {
+        font-weight: 600;
+        color: #1a1a2e;
+    }
+
+    .cp-discount-big {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #10B981;
+    }
+
+    .cp-btn-delete {
+        width: 100%;
+        padding: 0.6rem;
+        background: #FEE2E2;
+        color: #DC2626;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+
+    .cp-btn-delete:hover { background: #FECACA; }
+
+    .cp-empty {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #9CA3AF;
+    }
+
+    .cp-empty svg { width: 48px; height: 48px; margin-bottom: 1rem; }
+    .cp-empty h3 { font-size: 1.1rem; font-weight: 600; color: #374151; margin-bottom: 0.4rem; }
+
+    .cp-loading {
+        text-align: center;
+        padding: 4rem;
+        color: #6B7280;
+    }
+
+    .cp-spinner {
+        width: 36px; height: 36px;
+        border: 3px solid #E5E7EB;
+        border-top-color: #5B5BD6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<div class="cp-wrapper">
+    <div class="cp-header">
+        <div class="cp-header-left">
+            <h2>Cupons de desconto</h2>
+            <p>Gerencie os cupons disponíveis na plataforma</p>
+        </div>
         @if (Session.EhAdmin)
         {
-            <a href="/cupons/cadastrar" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Novo Cupom
+            <a href="/cupons/cadastrar" class="cp-btn-new">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Novo Cupom
             </a>
         }
     </div>
 
     @if (cupons == null)
     {
-        <div class="text-center">
-            <div class="spinner-border text-primary" role="status"></div>
+        <div class="cp-loading">
+            <div class="cp-spinner"></div>
             <p>Carregando cupons...</p>
         </div>
     }
     else if (!cupons.Any())
     {
-        <div class="alert alert-info">Nenhum cupom encontrado.</div>
+        <div class="cp-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
+                <path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/>
+            </svg>
+            <h3>Nenhum cupom disponível</h3>
+            <p>Os cupons cadastrados aparecerão aqui.</p>
+        </div>
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-hover shadow-sm">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Código</th>
-                        <th>Desconto</th>
-                        <th>Valor Mínimo</th>
-                        @if (Session.EhAdmin)
-                        {
-                            <th class="text-center">Ações</th>
-                        }
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var cupom in cupons)
+        <div class="cp-grid">
+            @foreach (var cupom in cupons)
+            {
+                <div class="cp-card">
+                    <div class="cp-card-code">
+                        <div class="cp-card-code-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/>
+                            </svg>
+                        </div>
+                        @cupom.Codigo
+                    </div>
+
+                    <div class="cp-card-rows">
+                        <div class="cp-card-row">
+                            <span class="cp-card-row-label">Desconto</span>
+                            <span class="cp-discount-big">@cupom.PorcentagemDesconto%</span>
+                        </div>
+                        <div class="cp-card-row">
+                            <span class="cp-card-row-label">Valor mínimo</span>
+                            <span class="cp-card-row-value">R$ @cupom.valorMinimoregra</span>
+                        </div>
+                    </div>
+
+                    @if (Session.EhAdmin)
                     {
-                        <tr>
-                            <td class="align-middle fw-bold">@cupom.Codigo</td>
-                            <td class="align-middle">@cupom.PorcentagemDesconto%</td>
-                            <td class="align-middle">R$ @cupom.valorMinimoregra</td>
-                            @if (Session.EhAdmin)
-                            {
-                                <td class="text-center">
-                                    <button class="btn btn-danger btn-sm"
-                                            @onclick="() => ConfirmarExclusao(cupom.Codigo)">
-                                        <i class="bi bi-trash"></i> Excluir
-                                    </button>
-                                </td>
-                            }
-                        </tr>
+                        <button class="cp-btn-delete" @onclick="() => ConfirmarExclusao(cupom.Codigo)">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                            </svg>
+                            Excluir cupom
+                        </button>
                     }
-                </tbody>
-            </table>
+                </div>
+            }
         </div>
     }
 </div>
@@ -73,29 +260,18 @@
 @code {
     private List<Cupom>? cupons;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CarregarCupons();
-    }
+    protected override async Task OnInitializedAsync() => await CarregarCupons();
 
     private async Task CarregarCupons()
     {
-        try
-        {
-            var lista = await CupomService.ListarAsync();
-            cupons = lista.ToList();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar: {ex.Message}");
-        }
+        try { cupons = (await CupomService.ListarAsync()).ToList(); }
+        catch (Exception ex) { Console.WriteLine($"Erro: {ex.Message}"); }
     }
 
     private async Task ConfirmarExclusao(string codigo)
     {
-        var confirmado = await JS.InvokeAsync<bool>("confirm", $"Tem certeza que deseja excluir o cupom {codigo}?");
-        if (confirmado)
-            await Deletar(codigo);
+        var confirmado = await JS.InvokeAsync<bool>("confirm", $"Excluir o cupom {codigo}?");
+        if (confirmado) await Deletar(codigo);
     }
 
     private async Task Deletar(string codigo)
@@ -103,19 +279,9 @@
         try
         {
             var removido = await CupomService.DeletarAsync(codigo);
-            if (removido)
-            {
-                cupons?.RemoveAll(c => c.Codigo == codigo);
-                StateHasChanged();
-            }
-            else
-            {
-                await JS.InvokeVoidAsync("alert", "Cupom não encontrado no banco de dados.");
-            }
+            if (removido) { cupons?.RemoveAll(c => c.Codigo == codigo); StateHasChanged(); }
+            else await JS.InvokeVoidAsync("alert", "Cupom não encontrado.");
         }
-        catch (Exception ex)
-        {
-            await JS.InvokeVoidAsync("alert", $"Erro ao deletar: {ex.Message}");
-        }
+        catch (Exception ex) { await JS.InvokeVoidAsync("alert", $"Erro: {ex.Message}"); }
     }
 }

@@ -1,5 +1,6 @@
 @page "/perfil"
 @using System.Net.Http.Json
+@using src.Models
 @using TicketPrime.Web.Services
 @rendermode InteractiveServer
 @inject HttpClient Http
@@ -14,164 +15,338 @@
     return;
 }
 
-<div class="container mt-4">
+<style>
+    .pf-wrapper {
+        min-height: 100vh;
+        background: #F8FAFC;
+        padding: 2rem;
+    }
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">👤 Meus Dados</h5>
-        </div>
-        <div class="card-body">
-            @if (perfil == null)
-            {
-                <div class="text-center">
-                    <div class="spinner-border text-primary" role="status"></div>
-                </div>
-            }
-            else
-            {
-                <div class="row">
-                    <div class="col-md-4">
-                        <strong>Nome:</strong>
-                        <p>@perfil.Nome</p>
-                    </div>
-                    <div class="col-md-4">
-                        <strong>CPF:</strong>
-                        <p>@perfil.Cpf</p>
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Email:</strong>
-                        <p>@perfil.Email</p>
-                    </div>
-                </div>
-            }
-        </div>
+    .pf-header { margin-bottom: 2rem; }
+    .pf-header h2 { font-size: 1.6rem; font-weight: 700; color: #1a1a2e; margin: 0 0 0.2rem 0; }
+    .pf-header p { font-size: 0.875rem; color: #6B7280; margin: 0; }
+
+    .pf-profile-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1.5px solid #F1F5F9;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .pf-avatar {
+        width: 72px; height: 72px;
+        background: linear-gradient(135deg, #5B5BD6, #7C7CE8);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: white;
+    }
+
+    .pf-profile-info { flex: 1; }
+    .pf-profile-name { font-size: 1.3rem; font-weight: 700; color: #1a1a2e; margin-bottom: 0.3rem; }
+
+    .pf-profile-details { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+
+    .pf-profile-detail {
+        display: flex; align-items: center; gap: 0.4rem;
+        font-size: 0.875rem; color: #6B7280;
+    }
+
+    .pf-profile-detail svg { width: 15px; height: 15px; }
+
+    .pf-badge-role { padding: 0.35rem 1rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+    .pf-badge-admin { background: #EDE9FE; color: #7C3AED; }
+    .pf-badge-cliente { background: #D1FAE5; color: #065F46; }
+
+    .pf-section-title {
+        font-size: 1.1rem; font-weight: 700; color: #1a1a2e;
+        margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .pf-section-title svg { width: 20px; height: 20px; stroke: #5B5BD6; }
+
+    .pf-alert { padding: 0.9rem 1.2rem; border-radius: 12px; font-size: 0.9rem; font-weight: 500; margin-bottom: 1.5rem; }
+    .pf-alert-success { background: #D1FAE5; color: #065F46; }
+    .pf-alert-error { background: #FEE2E2; color: #991B1B; }
+
+    /* Tickets grid */
+    .pf-ticket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.2rem; }
+
+    .pf-ticket-card {
+        background: white; border-radius: 18px;
+        border: 1.5px solid #F1F5F9;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .pf-ticket-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(91,91,214,0.10); }
+
+    .pf-ticket-top {
+        background: linear-gradient(135deg, #5B5BD6, #7C7CE8);
+        padding: 1.2rem 1.5rem; color: white;
+    }
+    .pf-ticket-top h4 { font-size: 1rem; font-weight: 700; margin: 0 0 0.3rem 0; }
+    .pf-ticket-top p { font-size: 0.8rem; opacity: 0.85; margin: 0; display: flex; align-items: center; gap: 0.4rem; }
+
+    .pf-ticket-body { padding: 1.2rem 1.5rem; }
+    .pf-ticket-price { font-size: 1.3rem; font-weight: 800; color: #5B5BD6; margin-bottom: 1rem; }
+
+    .pf-ticket-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.5rem; }
+    .pf-ticket-row-label { color: #6B7280; }
+    .pf-ticket-row-value { font-weight: 600; color: #1a1a2e; }
+
+    .pf-ticket-divider { height: 1px; background: #F1F5F9; margin: 0.8rem 0; }
+
+    .pf-btn-cancel {
+        width: 100%; padding: 0.65rem; background: #FEE2E2; color: #DC2626;
+        border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600;
+        cursor: pointer; transition: background 0.2s;
+        display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+    }
+    .pf-btn-cancel:hover { background: #FECACA; }
+    .pf-btn-cancel:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Admin eventos grid */
+    .pf-evento-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+
+    .pf-evento-card {
+        background: white; border-radius: 18px; padding: 1.5rem;
+        border: 1.5px solid #F1F5F9; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden;
+    }
+    .pf-evento-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+        background: linear-gradient(90deg, #5B5BD6, #7C7CE8);
+    }
+    .pf-evento-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(91,91,214,0.10); }
+
+    .pf-evento-name { font-size: 1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 0.8rem; }
+    .pf-evento-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #6B7280; margin-bottom: 0.4rem; }
+    .pf-evento-row svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .pf-evento-price { font-size: 1.2rem; font-weight: 800; color: #5B5BD6; margin-top: 0.8rem; }
+
+    .pf-badge-vagas { padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .pf-badge-vagas-ok { background: #D1FAE5; color: #065F46; }
+    .pf-badge-vagas-zero { background: #FEE2E2; color: #991B1B; }
+
+    .pf-empty {
+        text-align: center; padding: 3rem; background: white;
+        border-radius: 18px; border: 1.5px solid #F1F5F9; color: #9CA3AF;
+    }
+    .pf-empty svg { width: 48px; height: 48px; margin-bottom: 1rem; }
+    .pf-empty h3 { font-size: 1rem; font-weight: 600; color: #374151; margin-bottom: 0.4rem; }
+
+    .pf-btn-explore {
+        display: inline-block; margin-top: 1rem; padding: 0.65rem 1.4rem;
+        background: #5B5BD6; color: white; border: none; border-radius: 10px;
+        font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none;
+        transition: background 0.2s;
+    }
+    .pf-btn-explore:hover { background: #4949c4; color: white; }
+
+    .pf-loading { text-align: center; padding: 3rem; color: #6B7280; }
+    .pf-spinner {
+        width: 36px; height: 36px; border: 3px solid #E5E7EB;
+        border-top-color: #5B5BD6; border-radius: 50%;
+        animation: spin 0.8s linear infinite; margin: 0 auto 1rem;
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<div class="pf-wrapper">
+
+    <div class="pf-header">
+        <h2>Meu Perfil</h2>
+        <p>@(Session.EhAdmin ? "Seus dados e eventos cadastrados" : "Seus dados e histórico de ingressos")</p>
     </div>
 
-    @if (Session.EhAdmin)
+    <!-- Card de perfil -->
+    @if (perfil == null)
     {
-        <div class="card shadow-sm">
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">📅 Eventos Cadastrados</h5>
-                <a href="/eventos/novo" class="btn btn-sm btn-success">+ Novo Evento</a>
+        <div class="pf-loading"><div class="pf-spinner"></div><p>Carregando perfil...</p></div>
+    }
+    else
+    {
+        <div class="pf-profile-card">
+            <div class="pf-avatar">@perfil.Nome[0].ToString().ToUpper()</div>
+            <div class="pf-profile-info">
+                <div class="pf-profile-name">@perfil.Nome</div>
+                <div class="pf-profile-details">
+                    <span class="pf-profile-detail">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        @perfil.Email
+                    </span>
+                    <span class="pf-profile-detail">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        CPF: @perfil.Cpf
+                    </span>
+                </div>
             </div>
-            <div class="card-body">
-                @if (eventos == null)
-                {
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p>Carregando eventos...</p>
-                    </div>
-                }
-                else if (!eventos.Any())
-                {
-                    <div class="alert alert-info">Nenhum evento cadastrado ainda.</div>
-                }
-                else
-                {
-                    <table class="table table-hover">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Nome</th>
-                                <th>Data</th>
-                                <th>Vagas</th>
-                                <th>Preço</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var evento in eventos)
-                            {
-                                <tr>
-                                    <td>@evento.Nome</td>
-                                    <td>@evento.DataEvento.ToString("dd/MM/yyyy HH:mm")</td>
-                                    <td>
-                                        <span class="badge @(evento.CapacidadeTotal > 0 ? "bg-success" : "bg-danger")">
-                                            @evento.CapacidadeTotal vagas
-                                        </span>
-                                    </td>
-                                    <td>@evento.PrecoPadrao.ToString("C")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
-            </div>
+            <span class="pf-badge-role @(perfil.Perfil == "ADMIN" ? "pf-badge-admin" : "pf-badge-cliente")">
+                @perfil.Perfil
+            </span>
         </div>
     }
 
-    @if (!Session.EhAdmin)
+    @if (Session.EhAdmin)
     {
-        <div class="card shadow-sm">
-            <div class="card-header bg-dark text-white">
-                <h5 class="mb-0">🎟️ Meus Ingressos</h5>
-            </div>
-            <div class="card-body">
-
-                @if (!string.IsNullOrEmpty(mensagem))
-                {
-                    <div class="alert @(mensagem.Contains("sucesso") ? "alert-success" : "alert-danger")">
-                        @mensagem
-                    </div>
-                }
-
-                @if (reservas == null)
-                {
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p>Carregando ingressos...</p>
-                    </div>
-                }
-                else if (!reservas.Any())
-                {
-                    <div class="alert alert-info">Você ainda não comprou nenhum ingresso.</div>
-                }
-                else
-                {
-                    <table class="table table-hover">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Evento</th>
-                                <th>Data do Evento</th>
-                                <th>Preço</th>
-                                <th>Data da Compra</th>
-                                <th>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var reserva in reservas)
-                            {
-                                <tr>
-                                    <td>@reserva.Nome</td>
-                                    <td>@reserva.DataEvento.ToString("dd/MM/yyyy HH:mm")</td>
-                                    <td>@reserva.PrecoPadrao.ToString("C")</td>
-                                    <td>@reserva.DataCompra.ToString("dd/MM/yyyy HH:mm")</td>
-                                    <td>
-                                        <button class="btn btn-danger btn-sm"
-                                                @onclick="() => Cancelar(reserva.Id)"
-                                                disabled="@cancelando">
-                                            @if (cancelando && reservaSelecionada == reserva.Id)
-                                            {
-                                                <span class="spinner-border spinner-border-sm"></span>
-                                            }
-                                            else
-                                            {
-                                                <span>Cancelar</span>
-                                            }
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
-            </div>
+        <!-- ADMIN: mostra eventos cadastrados -->
+        <div class="pf-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Eventos Cadastrados
+            @if (eventos != null)
+            {
+                <span style="background:#F0F0FF;color:#5B5BD6;padding:0.2rem 0.7rem;border-radius:20px;font-size:0.78rem;">
+                    @eventos.Count evento@(eventos.Count != 1 ? "s" : "")
+                </span>
+            }
         </div>
+
+        @if (eventos == null)
+        {
+            <div class="pf-loading"><div class="pf-spinner"></div><p>Carregando eventos...</p></div>
+        }
+        else if (!eventos.Any())
+        {
+            <div class="pf-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <h3>Nenhum evento cadastrado</h3>
+                <p>Crie o primeiro evento da plataforma!</p>
+                <a href="/eventos/novo" class="pf-btn-explore">Criar Evento</a>
+            </div>
+        }
+        else
+        {
+            <div class="pf-evento-grid">
+                @foreach (var evento in eventos)
+                {
+                    <div class="pf-evento-card">
+                        <div class="pf-evento-name">@evento.Nome</div>
+                        <div class="pf-evento-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            @evento.DataEvento.ToString("dd/MM/yyyy 'às' HH:mm")
+                        </div>
+                        <div class="pf-evento-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                            </svg>
+                            <span class="pf-badge-vagas @(evento.CapacidadeTotal > 0 ? "pf-badge-vagas-ok" : "pf-badge-vagas-zero")">
+                                @evento.CapacidadeTotal vagas
+                            </span>
+                        </div>
+                        <div class="pf-evento-price">@evento.PrecoPadrao.ToString("C")</div>
+                    </div>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <!-- CLIENTE: mostra ingressos comprados -->
+        <div class="pf-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                <path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a2 2 0 0 0 0 4v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0 0-4z"/>
+            </svg>
+            Meus Ingressos
+            @if (reservas != null)
+            {
+                <span style="background:#F0F0FF;color:#5B5BD6;padding:0.2rem 0.7rem;border-radius:20px;font-size:0.78rem;">
+                    @reservas.Count ingresso@(reservas.Count != 1 ? "s" : "")
+                </span>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(mensagem))
+        {
+            <div class="pf-alert @(mensagem.Contains("sucesso") ? "pf-alert-success" : "pf-alert-error")">@mensagem</div>
+        }
+
+        @if (reservas == null)
+        {
+            <div class="pf-loading"><div class="pf-spinner"></div><p>Carregando ingressos...</p></div>
+        }
+        else if (!reservas.Any())
+        {
+            <div class="pf-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
+                    <path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a2 2 0 0 0 0 4v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0 0-4z"/>
+                </svg>
+                <h3>Nenhum ingresso comprado</h3>
+                <p>Explore os eventos disponíveis e garanta seu lugar!</p>
+                <a href="/eventos" class="pf-btn-explore">Ver eventos</a>
+            </div>
+        }
+        else
+        {
+            <div class="pf-ticket-grid">
+                @foreach (var reserva in reservas)
+                {
+                    <div class="pf-ticket-card">
+                        <div class="pf-ticket-top">
+                            <h4>@reserva.Nome</h4>
+                            <p>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                                @reserva.DataEvento.ToString("dd/MM/yyyy 'às' HH:mm")
+                            </p>
+                        </div>
+                        <div class="pf-ticket-body">
+                            <div class="pf-ticket-price">@reserva.PrecoPadrao.ToString("C")</div>
+                            <div class="pf-ticket-divider"></div>
+                            <div class="pf-ticket-row">
+                                <span class="pf-ticket-row-label">Comprado em</span>
+                                <span class="pf-ticket-row-value">@reserva.DataCompra.ToString("dd/MM/yyyy")</span>
+                            </div>
+                            <div class="pf-ticket-row" style="margin-bottom:1rem;">
+                                <span class="pf-ticket-row-label">Nº do ingresso</span>
+                                <span class="pf-ticket-row-value">#@reserva.Id.ToString("D5")</span>
+                            </div>
+                            <button class="pf-btn-cancel" @onclick="() => Cancelar(reserva.Id)" disabled="@(cancelando && reservaSelecionada == reserva.Id)">
+                                @if (cancelando && reservaSelecionada == reserva.Id)
+                                {
+                                    <div style="width:14px;height:14px;border:2px solid rgba(220,38,38,0.3);border-top-color:#DC2626;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                                    <span>Cancelando...</span>
+                                }
+                                else
+                                {
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                                    </svg>
+                                    <span>Cancelar ingresso</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     }
 </div>
 
 @code {
     private PerfilResponse? perfil;
     private List<ReservaDetalhadaResponse>? reservas;
-    private List<EventoResponse>? eventos;
+    private List<Evento>? eventos;
     private string mensagem = "";
     private bool cancelando = false;
     private int reservaSelecionada = 0;
@@ -185,72 +360,39 @@
             await CarregarReservas();
     }
 
-    private async Task CarregarEventos()
-    {
-        try
-        {
-            eventos = await Http.GetFromJsonAsync<List<EventoResponse>>("api/eventos/meus");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Erro ao carregar eventos: {ex.Message}");
-        }
-    }
-
     private async Task CarregarPerfil()
     {
-        try
-        {
-            perfil = await Http.GetFromJsonAsync<PerfilResponse>("api/perfil");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Erro ao carregar perfil: {ex.Message}");
-        }
+        try { perfil = await Http.GetFromJsonAsync<PerfilResponse>("api/perfil"); }
+        catch (Exception ex) { Console.Error.WriteLine($"Erro: {ex.Message}"); }
+    }
+
+    private async Task CarregarEventos()
+    {
+        try { eventos = await Http.GetFromJsonAsync<List<Evento>>("api/eventos"); }
+        catch (Exception ex) { Console.Error.WriteLine($"Erro: {ex.Message}"); }
     }
 
     private async Task CarregarReservas()
     {
-        try
-        {
-            reservas = await Http.GetFromJsonAsync<List<ReservaDetalhadaResponse>>("api/reservas/minhas");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Erro ao carregar reservas: {ex.Message}");
-        }
+        try { reservas = await Http.GetFromJsonAsync<List<ReservaDetalhadaResponse>>("api/reservas/minhas"); }
+        catch (Exception ex) { Console.Error.WriteLine($"Erro: {ex.Message}"); }
     }
 
     private async Task Cancelar(int reservaId)
     {
-        cancelando = true;
-        reservaSelecionada = reservaId;
-        mensagem = "";
-
+        cancelando = true; reservaSelecionada = reservaId; mensagem = "";
         try
         {
             var response = await Http.DeleteAsync($"api/reservas/{reservaId}");
-
             if (response.IsSuccessStatusCode)
             {
-                mensagem = "✅ Ingresso cancelado com sucesso! Vaga devolvida ao evento.";
+                mensagem = "✅ Ingresso cancelado! Vaga devolvida ao evento.";
                 await CarregarReservas();
             }
-            else
-            {
-                var erro = await response.Content.ReadAsStringAsync();
-                mensagem = $"❌ Erro: {erro}";
-            }
+            else { mensagem = "❌ Não foi possível cancelar. Tente novamente."; }
         }
-        catch (Exception ex)
-        {
-            mensagem = $"❌ Erro de conexão: {ex.Message}";
-        }
-        finally
-        {
-            cancelando = false;
-            reservaSelecionada = 0;
-        }
+        catch { mensagem = "❌ Erro de conexão."; }
+        finally { cancelando = false; reservaSelecionada = 0; }
     }
 
     public class PerfilResponse
@@ -268,14 +410,5 @@
         public DateTime DataEvento { get; set; }
         public decimal PrecoPadrao { get; set; }
         public DateTime DataCompra { get; set; }
-    }
-
-    public class EventoResponse
-    {
-        public int Id { get; set; }
-        public string Nome { get; set; } = "";
-        public int CapacidadeTotal { get; set; }
-        public DateTime DataEvento { get; set; }
-        public decimal PrecoPadrao { get; set; }
     }
 }
