@@ -4,70 +4,302 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 
-<div class="container mt-4">
-    <h3>Cadastro de Usuário</h3>
+<PageTitle>Criar Conta - TicketPrime</PageTitle>
 
-    <EditForm Model="@novoUsuario" OnValidSubmit="@HandleRegistration">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="text-danger" />
-
-        <div class="mb-3">
-            <label class="form-label">CPF:</label>
-            <InputText @bind-Value="novoUsuario.Cpf" class="form-control" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Nome:</label>
-            <InputText @bind-Value="novoUsuario.Nome" class="form-control" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Email:</label>
-            <InputText @bind-Value="novoUsuario.Email" class="form-control" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Senha:</label>
-            <InputText @bind-Value="novoUsuario.Senha" type="password" class="form-control" />
-        </div>
-
-        <button type="submit" class="btn btn-primary">Cadastrar</button>
-    </EditForm>
-
-    @if (!string.IsNullOrEmpty(mensagem))
-    {
-        <div class="alert @(mensagem.Contains("sucesso") ? "alert-success" : "alert-danger") mt-3">
-            @mensagem
-        </div>
+<style>
+    .cu-wrapper {
+        min-height: 100vh;
+        background: #F8FAFC;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
+
+    .cu-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .cu-header-logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        text-decoration: none;
+        margin-bottom: 1.5rem;
+    }
+
+    .cu-header-logo-icon {
+        width: 38px; height: 38px;
+        background: #5B5BD6;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    .cu-header-logo-icon svg { width: 18px; height: 18px; fill: white; }
+
+    .cu-header-logo-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+
+    .cu-header h2 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 0.4rem 0;
+    }
+
+    .cu-header p {
+        font-size: 0.9rem;
+        color: #6B7280;
+        margin: 0;
+    }
+
+    .cu-card {
+        background: white;
+        border-radius: 18px;
+        border: 1.5px solid #F1F5F9;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        width: 100%;
+        max-width: 460px;
+        overflow: hidden;
+    }
+
+    .cu-card-body {
+        padding: 1.8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+    }
+
+    .cu-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .cu-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .cu-input {
+        padding: 0.7rem 1rem;
+        border: 1.5px solid #E5E7EB;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        color: #1a1a2e;
+        background: white;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        outline: none;
+        width: 100%;
+    }
+
+    .cu-input:focus {
+        border-color: #5B5BD6;
+        box-shadow: 0 0 0 3px rgba(91,91,214,0.1);
+    }
+
+    .cu-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .cu-alert {
+        padding: 0.9rem 1.2rem;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .cu-alert-success { background: #D1FAE5; color: #065F46; }
+    .cu-alert-error   { background: #FEE2E2; color: #991B1B; }
+
+    .cu-footer {
+        padding: 1.2rem 1.8rem;
+        border-top: 1.5px solid #F1F5F9;
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .cu-btn-save {
+        padding: 0.75rem;
+        background: #5B5BD6;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        transition: background 0.2s, transform 0.15s;
+    }
+
+    .cu-btn-save:hover { background: #4949c4; transform: translateY(-1px); }
+    .cu-btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .cu-login-link {
+        text-align: center;
+        font-size: 0.875rem;
+        color: #6B7280;
+    }
+
+    .cu-login-link a {
+        color: #5B5BD6;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .cu-login-link a:hover { text-decoration: underline; }
+
+    .cu-spinner {
+        width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,0.4);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: cu-spin 0.8s linear infinite;
+    }
+
+    @@keyframes cu-spin { to { transform: rotate(360deg); } }
+
+    @@media (max-width: 500px) {
+        .cu-wrapper { padding: 1rem; justify-content: flex-start; padding-top: 2rem; }
+        .cu-row { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="cu-wrapper">
+
+    <div class="cu-header">
+        <a href="/" class="cu-header-logo">
+            <div class="cu-header-logo-icon">
+                <svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            </div>
+            <span class="cu-header-logo-name">TicketPrime</span>
+        </a>
+        <h2>Crie sua conta</h2>
+        <p>Comece a comprar ingressos em segundos</p>
+    </div>
+
+    <div class="cu-card">
+        <EditForm Model="@novoUsuario" OnValidSubmit="@HandleRegistration" FormName="formCadastroUser">
+            <DataAnnotationsValidator />
+
+            <div class="cu-card-body">
+
+                @if (!string.IsNullOrEmpty(mensagem))
+                {
+                    <div class="cu-alert @(sucesso ? "cu-alert-success" : "cu-alert-error")">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            @if (sucesso)
+                            {
+                                <polyline points="20 6 9 17 4 12"/>
+                            }
+                            else
+                            {
+                                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                            }
+                        </svg>
+                        @mensagem
+                    </div>
+                }
+
+                <div class="cu-row">
+                    <div class="cu-field">
+                        <label class="cu-label">CPF</label>
+                        <InputText @bind-Value="novoUsuario.Cpf" class="cu-input" placeholder="00000000000" />
+                    </div>
+                    <div class="cu-field">
+                        <label class="cu-label">Nome completo</label>
+                        <InputText @bind-Value="novoUsuario.Nome" class="cu-input" placeholder="Seu nome" />
+                    </div>
+                </div>
+
+                <div class="cu-field">
+                    <label class="cu-label">E-mail</label>
+                    <InputText @bind-Value="novoUsuario.Email" class="cu-input" placeholder="seu@email.com" />
+                </div>
+
+                <div class="cu-field">
+                    <label class="cu-label">Senha</label>
+                    <InputText @bind-Value="novoUsuario.Senha" type="password" class="cu-input" placeholder="Mínimo 6 caracteres" />
+                </div>
+
+            </div>
+
+            <div class="cu-footer">
+                <button type="submit" class="cu-btn-save" disabled="@salvando">
+                    @if (salvando)
+                    {
+                        <div class="cu-spinner"></div>
+                        <span>Criando conta...</span>
+                    }
+                    else
+                    {
+                        <span>Criar conta grátis</span>
+                    }
+                </button>
+                <div class="cu-login-link">
+                    Já tem uma conta? <a href="/login">Entrar</a>
+                </div>
+            </div>
+
+        </EditForm>
+    </div>
 </div>
 
 @code {
     private Usuario novoUsuario = new();
     private string mensagem = "";
+    private bool sucesso = false;
+    private bool salvando = false;
 
     private async Task HandleRegistration()
     {
-        try 
+        salvando = true;
+        mensagem = "";
+        sucesso = false;
+
+        try
         {
-            mensagem = "Processando...";
             var response = await Http.PostAsJsonAsync("api/usuarios", novoUsuario);
 
             if (response.IsSuccessStatusCode)
             {
-                mensagem = "Usuário cadastrado com sucesso!";
-                novoUsuario = new Usuario(); 
+                sucesso = true;
+                mensagem = "Conta criada com sucesso! Redirecionando...";
+                novoUsuario = new Usuario();
+                await Task.Delay(1500);
+                Navigation.NavigateTo("/login");
             }
             else
             {
-                
-                var erroDetalhado = await response.Content.ReadAsStringAsync();
-                mensagem = $"Erro ao cadastrar: {erroDetalhado}";
+                var erro = await response.Content.ReadAsStringAsync();
+                mensagem = erro.Contains("já existe") || erro.Contains("CPF")
+                    ? "Este CPF já está cadastrado."
+                    : "Erro ao criar conta. Verifique os dados e tente novamente.";
             }
         }
         catch (Exception ex)
         {
-            mensagem = $"Erro de conexão: {ex.Message}";
+            mensagem = "Erro de conexão: " + ex.Message;
+        }
+        finally
+        {
+            salvando = false;
         }
     }
 }

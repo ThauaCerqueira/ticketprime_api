@@ -215,11 +215,7 @@
     </div>
 
     <div class="navbar-right">
-        @if (!Session.EstaLogado)
-        {
-            <a href="/login" class="navbar-login-btn">Entrar</a>
-        }
-        else
+        @if (Session.EstaLogado)
         {
             <div class="navbar-user-info">
                 <span>@Session.Nome</span>
