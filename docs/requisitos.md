@@ -1,23 +1,103 @@
-# Histórias
+# Requisitos do Sistema TicketPrime
 
-## História Cliente
+## Histórias
 
-> Como usuário, quero cadastrar uma conta no sistema informando senha e CPF para que eu não necessite cadastrar meus dados novamente no sistema. Dado que o usuário está na tela de cadastro, quando ele informar uma senha que não atende aos requisitos, aparecerá uma mensagem "Senha obrigatoriamente precisa de no mínimo 6 caracteres ou "Campo obrigatório".
+### História 1 — Cadastro de conta
+Como usuário, Quero cadastrar uma conta informando CPF, nome, e-mail e senha, Para acessar a plataforma e comprar ingressos sem precisar informar meus dados novamente.
 
-## Histórias focadas na Empresa
+**Critérios de Aceitação:**
 
-> Como empresa, quero limitar a venda de ingressos à capacidade total do evento para evitar superlotação e garantir a segurança e qualidade da experiência dos participantes. Dado que o evento possui uma capacidade máxima definida, quando houver ingressos disponíveis, então o sistema deve permitir a compra até atingir esse limite.
+Dado que o usuário está na tela de cadastro,
+Quando ele preencher todos os campos obrigatórios com dados válidos e CPF ainda não cadastrado,
+Então a API deve criar a conta e retornar status 201.
 
-> Como empresa, quero cadastrar um cupom de desconto no sistema informando código e percentual de desconto, para tornar os preços mais competitivos no mercado. Dado que a empresa está na tela de cadastro de cupons, quando informar um código único e um percentual de desconto válido (entre 1% e 100%), então o sistema deve cadastrar o cupom com sucesso e retornar status "Cupom cadastrado com sucesso".
+Dado que o usuário está na tela de cadastro,
+Quando ele informar um CPF que já existe no sistema,
+Então a API deve retornar status 400 com a mensagem "Erro: O CPF informado já está cadastrado."
 
-## História focada no Administrador
+Dado que o usuário está na tela de cadastro,
+Quando ele informar uma senha com menos de 6 caracteres,
+Então o sistema deve exibir a mensagem "A senha deve ter no mínimo 6 caracteres."
 
-> Como administrador, quero validar os dados enviados na requisição de cadastro de evento antes de salvar o evento no sistema, para garantir a integridade dos dados e evitar inconsistências no sistema. Dado que o administrador envia uma requisição de cadastro de evento com todos os campos obrigatórios preenchidos corretamente, quando a requisição for processada, então o sistema deve validar os dados e salvar o evento com sucesso, retornando.
+---
 
-## História no formato BDD
+### História 2 — Compra de ingresso
+Como usuário, Quero comprar um ingresso para um evento disponível, Para garantir minha vaga sem risco de superlotação.
 
-> * Cenário: Cadastro de evento pela empresa
+**Critérios de Aceitação:**
 
-> Dado que a empresa está autenticada no sistema,
-quando a empresa preencher os dados do evento (nome, data, capacidade e preço)
-e confirmar o cadastro para disponibilizar eventos, para venda e gerenciar minha oferta para os clientes. Então o sistema deve registrar o evento no banco de dados e o evento deve aparecer na lista de eventos disponíveis.
+Dado que o usuário está autenticado e o evento possui vagas disponíveis,
+Quando ele realizar a compra de um ingresso para um evento com data futura,
+Então a API deve criar a reserva, diminuir a capacidade do evento em 1 e retornar status 201.
+
+Dado que o usuário tenta comprar um ingresso,
+Quando a capacidade do evento for igual a zero,
+Então a API deve retornar status 400 com a mensagem "Não há mais vagas disponíveis para este evento."
+
+Dado que o usuário tenta comprar um ingresso,
+Quando a data do evento já tiver passado,
+Então a API deve retornar status 400 com a mensagem "Este evento já aconteceu."
+
+---
+
+### História 3 — Cancelamento de ingresso
+Como usuário, Quero cancelar um ingresso comprado, Para liberar minha vaga e não ser cobrado por um evento que não poderei comparecer.
+
+**Critérios de Aceitação:**
+
+Dado que o usuário possui uma reserva ativa,
+Quando ele solicitar o cancelamento da reserva,
+Então a API deve remover a reserva do banco e devolver 1 vaga à capacidade do evento.
+
+Dado que o usuário tenta cancelar uma reserva,
+Quando o ID da reserva não pertencer ao CPF do usuário autenticado,
+Então a API deve retornar status 400 com a mensagem "Não foi possível cancelar a reserva."
+
+---
+
+### História 4 — Listagem dos próprios ingressos
+Como usuário, Quero visualizar todos os ingressos que comprei, Para acompanhar minhas reservas ativas e o histórico de eventos.
+
+**Critérios de Aceitação:**
+
+Dado que o usuário está autenticado,
+Quando ele acessar a listagem de seus ingressos,
+Então a API deve retornar todas as reservas do CPF autenticado com nome do evento, data do evento e preço, usando INNER JOIN com a tabela de Eventos.
+
+---
+
+### História 5 — Cadastro de evento
+Como administrador, Quero cadastrar novos eventos informando nome, capacidade, data e preço, Para disponibilizá-los para venda na plataforma.
+
+**Critérios de Aceitação:**
+
+Dado que o administrador está autenticado,
+Quando ele preencher todos os campos com dados válidos e data futura,
+Então a API deve registrar o evento no banco e retornar status 201.
+
+Dado que o administrador tenta cadastrar um evento,
+Quando informar capacidade igual ou menor que zero,
+Então o sistema deve lançar a mensagem "A capacidade total deve ser um valor positivo."
+
+Dado que o administrador tenta cadastrar um evento,
+Quando informar uma data no passado,
+Então o sistema deve lançar a mensagem "A data do evento deve ser no futuro."
+
+---
+
+### História 6 — Cadastro de cupom de desconto
+Como administrador, Quero cadastrar cupons de desconto com código, percentual e valor mínimo, Para aplicar promoções a eventos com preço acima do limite definido.
+
+**Critérios de Aceitação:**
+
+Dado que o administrador está autenticado,
+Quando ele informar um código único e um percentual válido entre 1 e 100,
+Então a API deve cadastrar o cupom e retornar status 201.
+
+Dado que o administrador tenta cadastrar um cupom,
+Quando o código já existir no banco de dados,
+Então a API deve retornar status 409 com a mensagem "Cupom já existe."
+
+Dado que o administrador tenta cadastrar um cupom,
+Quando o percentual de desconto for menor ou igual a zero ou maior que 100,
+Então a API deve retornar status 400 com a mensagem "Desconto deve ser entre 0 e 100."
