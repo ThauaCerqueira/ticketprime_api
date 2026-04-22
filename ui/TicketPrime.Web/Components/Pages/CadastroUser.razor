@@ -173,6 +173,21 @@
         animation: cu-spin 0.8s linear infinite;
     }
 
+    .cu-input.invalid {
+        border-color: #E24B4A;
+        box-shadow: 0 0 0 3px rgba(226,75,74,0.1);
+    }
+
+    .cu-validation-msg {
+        font-size: 0.78rem;
+        color: #E24B4A;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-top: 0.1rem;
+    }
+
     @@keyframes cu-spin { to { transform: rotate(360deg); } }
 
     @@media (max-width: 500px) {
@@ -220,22 +235,30 @@
                 <div class="cu-row">
                     <div class="cu-field">
                         <label class="cu-label">CPF</label>
-                        <InputText @bind-Value="novoUsuario.Cpf" class="cu-input" placeholder="00000000000" />
+                        <InputText @bind-Value="novoUsuario.Cpf"
+                                   class="cu-input"
+                                   placeholder="00000000000"
+                                   maxlength="11"
+                                   @oninput="FiltrarCpf" />
+                        <ValidationMessage For="@(() => novoUsuario.Cpf)" class="cu-validation-msg" />
                     </div>
                     <div class="cu-field">
                         <label class="cu-label">Nome completo</label>
                         <InputText @bind-Value="novoUsuario.Nome" class="cu-input" placeholder="Seu nome" />
+                        <ValidationMessage For="@(() => novoUsuario.Nome)" class="cu-validation-msg" />
                     </div>
                 </div>
 
                 <div class="cu-field">
                     <label class="cu-label">E-mail</label>
                     <InputText @bind-Value="novoUsuario.Email" class="cu-input" placeholder="seu@email.com" />
+                    <ValidationMessage For="@(() => novoUsuario.Email)" class="cu-validation-msg" />
                 </div>
 
                 <div class="cu-field">
                     <label class="cu-label">Senha</label>
                     <InputText @bind-Value="novoUsuario.Senha" type="password" class="cu-input" placeholder="Mínimo 6 caracteres" />
+                    <ValidationMessage For="@(() => novoUsuario.Senha)" class="cu-validation-msg" />
                 </div>
 
             </div>
@@ -266,6 +289,12 @@
     private string mensagem = "";
     private bool sucesso = false;
     private bool salvando = false;
+
+    private void FiltrarCpf(ChangeEventArgs e)
+    {
+        var valor = e.Value?.ToString() ?? "";
+        novoUsuario.Cpf = new string(valor.Where(char.IsDigit).Take(11).ToArray());
+    }
 
     private async Task HandleRegistration()
     {
