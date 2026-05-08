@@ -310,6 +310,7 @@
 
     private DateTime dataSelecionada = DateTime.Today.AddDays(1);
     private string? mensagemErro;
+    private string? erroValidacao;
     private string mensagemSucesso = "";
     private bool salvando = false;
 
@@ -318,16 +319,53 @@
         eventoDto ??= new CriarEventoDTO();
     }
 
+    private bool ValidarCampos()
+    {
+        erroValidacao = null;
+
+        if (dataSelecionada <= DateTime.Today)
+        {
+            erroValidacao = "A data do evento deve ser futura.";
+            return false;
+        }
+
+        if (eventoDto.CapacidadeTotal <= 0)
+        {
+            erroValidacao = "A capacidade total deve ser um valor positivo.";
+            return false;
+        }
+
+        if (eventoDto.PrecoPadrao <= 0)
+        {
+            erroValidacao = "O preço do ingresso deve ser maior que zero.";
+            return false;
+        }
+
+        return true;
+    }
+
     private async Task HandleSubmit()
     {
         salvando = true;
         mensagemErro = null;
+        erroValidacao = null;
         mensagemSucesso = "";
 
         try
         {
+            // Validação frontend adicional (RT-005)
+            if (!ValidarCampos())
+            {
+                mensagemErro = erroValidacao;
+                salvando = false;
+                return;
+            }
+
+            Console.WriteLine($"[DEBUG] Enviando requisição POST /api/eventos com token JWT");
             var dtoParaEnviar = eventoDto with { DataEvento = dataSelecionada };
             var response = await Http.PostAsJsonAsync("api/eventos", dtoParaEnviar);
+
+            Console.WriteLine($"[DEBUG] Resposta recebida: {(int)response.StatusCode} {response.StatusCode}");
 
             if (response.IsSuccessStatusCode)
             {
@@ -337,20 +375,51 @@
             }
             else
             {
-                try
+                var statusCode = (int)response.StatusCode;
+
+                // Tratamento específico por status code (RT-003)
+                switch (statusCode)
                 {
-                    var erro = await response.Content.ReadFromJsonAsync<ErroResponse>();
-                    mensagemErro = erro?.Mensagem ?? "Erro ao criar evento.";
-                }
-                catch
-                {
-                    mensagemErro = await response.Content.ReadAsStringAsync();
+                    case 401:
+                        mensagemErro = "❌ Não autorizado. Faça login novamente.";
+                        Console.WriteLine("[DEBUG] Erro 401 - Token JWT ausente ou inválido");
+                        break;
+                    case 400:
+                        try
+                        {
+                            var erro = await response.Content.ReadFromJsonAsync<ErroResponse>();
+                            mensagemErro = erro?.Mensagem ?? "Dados inválidos. Verifique os campos.";
+                            Console.WriteLine($"[DEBUG] Erro 400 - Validação: {mensagemErro}");
+                        }
+                        catch
+                        {
+                            mensagemErro = await response.Content.ReadAsStringAsync();
+                        }
+                        break;
+                    case 500:
+                        mensagemErro = "❌ Erro interno do servidor. Tente novamente mais tarde.";
+                        Console.WriteLine("[DEBUG] Erro 500 - Internal Server Error");
+                        break;
+                    default:
+                        mensagemErro = $"Erro ao criar evento ({(int)response.StatusCode}).";
+                        break;
                 }
             }
         }
+        catch (HttpRequestException ex)
+        {
+            mensagemErro = "❌ Erro de conexão com o servidor. Verifique se a API está rodando.";
+            Console.WriteLine($"[DEBUG] HttpRequestException: {ex.Message}");
+        }
+        catch (TaskCanceledException)
+        {
+            mensagemErro = "❌ A requisição excedeu o tempo limite. Tente novamente.";
+            Console.WriteLine("[DEBUG] TaskCanceledException - Timeout na requisição");
+        }
         catch (Exception ex)
         {
-            mensagemErro = "Erro de conexão: " + ex.Message;
+            mensagemErro = $"❌ Erro inesperado: {ex.Message}";
+            Console.WriteLine($"[DEBUG] Exception: {ex.GetType().Name} - {ex.Message}");
         }
         finally
         {
