@@ -591,10 +591,18 @@
     {
         try
         {
+            Console.WriteLine("[DEBUG] Carregando estatísticas da home...");
             var eventos = await Http.GetFromJsonAsync<List<object>>("api/eventos");
             totalEventos = eventos?.Count ?? 0;
         }
-        catch { }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"[DEBUG] HttpRequestException (home stats): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] Exception (home stats): {ex.GetType().Name} - {ex.Message}");
+        }
 
         try
         {
@@ -604,6 +612,13 @@
                 totalReservas = reservas?.Count ?? 0;
             }
         }
-        catch { }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"[DEBUG] HttpRequestException (home reservas): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] Exception (home reservas): {ex.GetType().Name} - {ex.Message}");
+        }
     }
 }

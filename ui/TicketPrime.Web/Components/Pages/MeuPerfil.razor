@@ -350,6 +350,9 @@
     private string mensagem = "";
     private bool cancelando = false;
     private int reservaSelecionada = 0;
+    private string? erroPerfil;
+    private string? erroEventos;
+    private string? erroReservas;
 
     protected override async Task OnInitializedAsync()
     {
@@ -362,20 +365,59 @@
 
     private async Task CarregarPerfil()
     {
-        try { perfil = await Http.GetFromJsonAsync<PerfilResponse>("api/perfil"); }
-        catch (Exception ex) { Console.Error.WriteLine($"Erro: {ex.Message}"); }
+        try
+        {
+            Console.WriteLine("[DEBUG] Carregando perfil do usuário...");
+            perfil = await Http.GetFromJsonAsync<PerfilResponse>("api/perfil");
+        }
+        catch (HttpRequestException ex)
+        {
+            erroPerfil = "Erro de conexão ao carregar perfil.";
+            Console.WriteLine($"[DEBUG] HttpRequestException (perfil): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            erroPerfil = $"Erro ao carregar perfil: {ex.Message}";
+            Console.WriteLine($"[DEBUG] Exception (perfil): {ex.GetType().Name} - {ex.Message}");
+        }
     }
 
     private async Task CarregarEventos()
     {
-        try { eventos = await Http.GetFromJsonAsync<List<Evento>>("api/eventos"); }
-        catch (Exception ex) { Console.Error.WriteLine($"Erro: {ex.Message}"); }
+        try
+        {
+            Console.WriteLine("[DEBUG] Carregando eventos do admin...");
+            eventos = await Http.GetFromJsonAsync<List<Evento>>("api/eventos");
+        }
+        catch (HttpRequestException ex)
+        {
+            erroEventos = "Erro de conexão ao carregar eventos.";
+            Console.WriteLine($"[DEBUG] HttpRequestException (eventos): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            erroEventos = $"Erro ao carregar eventos: {ex.Message}";
+            Console.WriteLine($"[DEBUG] Exception (eventos): {ex.GetType().Name} - {ex.Message}");
+        }
     }
 
     private async Task CarregarReservas()
     {
-        try { reservas = await Http.GetFromJsonAsync<List<ReservaDetalhadaResponse>>("api/reservas/minhas"); }
-        catch (Exception ex) { Console.Error.WriteLine($"Erro: {ex.Message}"); }
+        try
+        {
+            Console.WriteLine("[DEBUG] Carregando reservas do usuário...");
+            reservas = await Http.GetFromJsonAsync<List<ReservaDetalhadaResponse>>("api/reservas/minhas");
+        }
+        catch (HttpRequestException ex)
+        {
+            erroReservas = "Erro de conexão ao carregar ingressos.";
+            Console.WriteLine($"[DEBUG] HttpRequestException (reservas): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            erroReservas = $"Erro ao carregar ingressos: {ex.Message}";
+            Console.WriteLine($"[DEBUG] Exception (reservas): {ex.GetType().Name} - {ex.Message}");
+        }
     }
 
     private async Task Cancelar(int reservaId)
@@ -383,15 +425,38 @@
         cancelando = true; reservaSelecionada = reservaId; mensagem = "";
         try
         {
+            Console.WriteLine($"[DEBUG] Cancelando reserva {reservaId}...");
             var response = await Http.DeleteAsync($"api/reservas/{reservaId}");
+            Console.WriteLine($"[DEBUG] Cancelamento resposta: {(int)response.StatusCode}");
+
             if (response.IsSuccessStatusCode)
             {
                 mensagem = "✅ Ingresso cancelado! Vaga devolvida ao evento.";
                 await CarregarReservas();
             }
-            else { mensagem = "❌ Não foi possível cancelar. Tente novamente."; }
+            else
+            {
+                var statusCode = (int)response.StatusCode;
+                mensagem = statusCode switch
+                {
+                    401 => "❌ Não autorizado. Faça login novamente.",
+                    400 => "❌ Não foi possível cancelar a reserva.",
+                    404 => "❌ Reserva não encontrada.",
+                    _ => $"❌ Erro ao cancelar (código {statusCode})."
+                };
+                Console.WriteLine($"[DEBUG] Erro {statusCode} ao cancelar reserva");
+            }
         }
-        catch { mensagem = "❌ Erro de conexão."; }
+        catch (HttpRequestException ex)
+        {
+            mensagem = "❌ Erro de conexão com o servidor.";
+            Console.WriteLine($"[DEBUG] HttpRequestException (cancelar): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro inesperado: {ex.Message}";
+            Console.WriteLine($"[DEBUG] Exception (cancelar): {ex.GetType().Name} - {ex.Message}");
+        }
         finally { cancelando = false; reservaSelecionada = 0; }
     }
 

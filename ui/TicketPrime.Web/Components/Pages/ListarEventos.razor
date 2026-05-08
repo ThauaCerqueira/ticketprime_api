@@ -246,14 +246,18 @@
         </div>
     }
 
-    @if (eventos == null)
+    @if (carregando)
     {
         <div class="ev-loading">
             <div class="ev-spinner"></div>
             <p>Carregando eventos...</p>
         </div>
     }
-    else if (!eventos.Any())
+    else if (!string.IsNullOrEmpty(mensagemErro))
+    {
+        <div class="ev-alert ev-alert-error">@mensagemErro</div>
+    }
+    else if (eventos == null || !eventos.Any())
     {
         <div class="ev-empty">
             <svg viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
@@ -328,6 +332,8 @@
 @code {
     private List<Evento>? eventos;
     private string mensagem = "";
+    private string? mensagemErro;
+    private bool carregando = true;
     private bool comprando = false;
     private int eventoSelecionado = 0;
 
@@ -335,8 +341,34 @@
 
     private async Task CarregarEventos()
     {
-        try { eventos = await Http.GetFromJsonAsync<List<Evento>>("api/eventos"); }
-        catch (Exception ex) { Console.Error.WriteLine($"Erro: {ex.Message}"); }
+        carregando = true;
+        mensagemErro = null;
+
+        try
+        {
+            Console.WriteLine("[DEBUG] Carregando lista de eventos...");
+            eventos = await Http.GetFromJsonAsync<List<Evento>>("api/eventos");
+            Console.WriteLine($"[DEBUG] Eventos carregados: {eventos?.Count ?? 0}");
+        }
+        catch (HttpRequestException ex)
+        {
+            mensagemErro = "❌ Erro de conexão com o servidor. Verifique se a API está rodando.";
+            Console.WriteLine($"[DEBUG] HttpRequestException: {ex.Message}");
+        }
+        catch (TaskCanceledException)
+        {
+            mensagemErro = "❌ A requisição excedeu o tempo limite. Tente novamente.";
+            Console.WriteLine("[DEBUG] Timeout ao carregar eventos");
+        }
+        catch (Exception ex)
+        {
+            mensagemErro = $"❌ Erro ao carregar eventos: {ex.Message}";
+            Console.WriteLine($"[DEBUG] Exception: {ex.GetType().Name} - {ex.Message}");
+        }
+        finally
+        {
+            carregando = false;
+        }
     }
 
     private async Task Comprar(int eventoId)
@@ -345,7 +377,10 @@
         comprando = true; eventoSelecionado = eventoId; mensagem = "";
         try
         {
+            Console.WriteLine($"[DEBUG] Comprando ingresso para evento {eventoId}...");
             var response = await Http.PostAsJsonAsync("api/reservas", new { EventoId = eventoId });
+            Console.WriteLine($"[DEBUG] Compra resposta: {(int)response.StatusCode}");
+
             if (response.IsSuccessStatusCode)
             {
                 mensagem = "✅ Ingresso comprado com sucesso!";
@@ -353,12 +388,15 @@
             }
             else
             {
+                var statusCode = (int)response.StatusCode;
                 try
                 {
                     var erro = await response.Content.ReadFromJsonAsync<ErroResponse>();
                     var textoErro = erro?.Mensagem ?? "";
 
-                    if (textoErro.Contains("já aconteceu") || textoErro.Contains("já passou"))
+                    if (statusCode == 401)
+                        mensagem = "❌ Não autorizado. Faça login novamente.";
+                    else if (textoErro.Contains("já aconteceu") || textoErro.Contains("já passou"))
                         mensagem = "❌ Evento já passou da data.";
                     else if (textoErro.Contains("vagas"))
                         mensagem = "❌ Não há mais vagas disponíveis para este evento.";
@@ -367,11 +405,31 @@
                 }
                 catch
                 {
-                    mensagem = "❌ Erro ao comprar ingresso. Tente novamente.";
+                    mensagem = statusCode switch
+                    {
+                        401 => "❌ Não autorizado. Faça login novamente.",
+                        400 => "❌ Dados inválidos para a compra.",
+                        _ => $"❌ Erro ao comprar ingresso (código {statusCode}). Tente novamente."
+                    };
                 }
+                Console.WriteLine($"[DEBUG] Erro {statusCode} ao comprar ingresso: {mensagem}");
             }
         }
-        catch { mensagem = "❌ Erro de conexão."; }
+        catch (HttpRequestException ex)
+        {
+            mensagem = "❌ Erro de conexão com o servidor. Verifique sua conexão.";
+            Console.WriteLine($"[DEBUG] HttpRequestException (comprar): {ex.Message}");
+        }
+        catch (TaskCanceledException)
+        {
+            mensagem = "❌ A requisição excedeu o tempo limite. Tente novamente.";
+            Console.WriteLine("[DEBUG] Timeout ao comprar ingresso");
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro inesperado: {ex.Message}";
+            Console.WriteLine($"[DEBUG] Exception (comprar): {ex.GetType().Name} - {ex.Message}");
+        }
         finally { comprando = false; eventoSelecionado = 0; }
     }
 
