@@ -18,6 +18,9 @@ namespace TicketPrime.Api
  
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
                 ?? "Server=localhost;Database=TicketPrime;Integrated Security=True;TrustServerCertificate=True;";
+            
+            // Initialize database
+            InitializeDatabase(connectionString);
  
             builder.Services.AddCors(options =>
             {
@@ -216,6 +219,68 @@ namespace TicketPrime.Api
             }).RequireAuthorization();
  
             app.Run();
+        }
+
+        private static void InitializeDatabase(string connectionString)
+        {
+            try
+            {
+                // Use Directory.GetCurrentDirectory() which returns the content root path (src folder)
+                // Then go one level up to get to the root project folder
+                var scriptPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "db", "script.sql");
+                scriptPath = Path.GetFullPath(scriptPath);
+                
+                Console.WriteLine($"Looking for database script at: {scriptPath}");
+                
+                if (!File.Exists(scriptPath))
+                {
+                    Console.WriteLine($"Warning: Database script not found at {scriptPath}");
+                    return;
+                }
+
+                var sqlScript = File.ReadAllText(scriptPath);
+                var statements = sqlScript.Split(new[] { "\nGO\n", "\nGO\r\n", "\r\nGO\r\n", "\nGO\r", "\nGO" }, StringSplitOptions.RemoveEmptyEntries);
+
+                // Change connection string to use master database for initial setup
+                var masterConnectionString = connectionString.Replace("Database=TicketPrime", "Database=master");
+
+                using (var connection = new Microsoft.Data.SqlClient.SqlConnection(masterConnectionString))
+                {
+                    connection.Open();
+                    Console.WriteLine("✓ Connected to SQL Server for database initialization");
+
+                    foreach (var statement in statements)
+                    {
+                        var trimmedStatement = statement.Trim();
+                        if (trimmedStatement.Length == 0)
+                            continue;
+
+                        using (var command = connection.CreateCommand())
+                        {
+                            command.CommandText = trimmedStatement;
+                            command.CommandTimeout = 60;
+
+                            try
+                            {
+                                command.ExecuteNonQuery();
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"⚠ Database setup notice: {ex.Message}");
+                            }
+                        }
+                    }
+
+                    connection.Close();
+                }
+
+                Console.WriteLine("✓ Database initialization completed successfully!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠ Warning during database setup: {ex.Message}");
+                // Don't exit, let the application try to continue
+            }
         }
     }
 }
