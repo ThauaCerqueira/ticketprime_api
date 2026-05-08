@@ -1,8 +1,9 @@
-namespace src.Repositories;
 using Dapper;
 using src.Models;
 using src.Infrastructure;
 using src.Infrastructure.IRepository;
+
+namespace src.Infrastructure.Repository;
 
 public class CupomRepository : ICupomRepository
 {

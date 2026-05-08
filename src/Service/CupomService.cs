@@ -32,7 +32,7 @@ public class CupomService
         {
             Codigo = dto.Codigo,
             PorcentagemDesconto = dto.PorcentagemDesconto,
-            valorMinimoregra = dto.ValorMinimoRegra
+            ValorMinimoRegra = dto.ValorMinimoRegra
         };
 
         var resultado = await _repository.CriarAsync(cupom);

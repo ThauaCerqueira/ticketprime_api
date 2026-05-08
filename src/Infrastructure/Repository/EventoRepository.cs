@@ -5,52 +5,65 @@ using src.DTOs;
 
 namespace src.Infrastructure.Repository;
 
-public class ReservaRepository : IReservaRepository
+public class EventoRepository : IEventoRepository
 {
     private readonly DbConnectionFactory _connectionFactory;
 
-    public ReservaRepository(DbConnectionFactory connectionFactory)
+    public EventoRepository(DbConnectionFactory connectionFactory)
     {
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<Reserva> CriarAsync(Reserva reserva)
+    public async Task AdicionarAsync(Evento evento)
     {
+        const string sql = @"
+            INSERT INTO Eventos (Nome, CapacidadeTotal, DataEvento, PrecoPadrao, LimiteIngressosPorUsuario)
+            VALUES (@Nome, @CapacidadeTotal, @DataEvento, @PrecoPadrao, @LimiteIngressosPorUsuario)";
+
         using var connection = _connectionFactory.CreateConnection();
-        var sql = @"INSERT INTO Reservas (UsuarioCpf, EventoId, DataCompra)
-                    VALUES (@UsuarioCpf, @EventoId, GETDATE());
-                    SELECT CAST(SCOPE_IDENTITY() AS INT)";
-        var id = await connection.QuerySingleAsync<int>(sql, reserva);
-        reserva.Id = id;
-        return reserva;
+        await connection.ExecuteAsync(sql, evento);
     }
 
-    public async Task<IEnumerable<ReservaDetalhadaDTO>> ListarPorUsuarioAsync(string cpf)
+    public async Task<IEnumerable<Evento>> ObterTodosAsync()
     {
-        using var connection = _connectionFactory.CreateConnection();
-        var sql = @"SELECT r.Id, r.UsuarioCpf, r.EventoId, r.DataCompra,
-                           e.Nome, e.DataEvento, e.PrecoPadrao
-                    FROM Reservas r
-                    INNER JOIN Eventos e ON e.Id = r.EventoId
-                    WHERE r.UsuarioCpf = @Cpf
-                    ORDER BY r.DataCompra DESC";
-        return await connection.QueryAsync<ReservaDetalhadaDTO>(sql, new { Cpf = cpf });
+        using var conn = _connectionFactory.CreateConnection();
+        string sql = "SELECT * FROM Eventos ORDER BY DataEvento ASC";
+        return await conn.QueryAsync<Evento>(sql);
     }
 
-    public async Task<bool> CancelarAsync(int reservaId, string usuarioCpf)
+    public async Task<IEnumerable<Evento>> ObterDisponiveisAsync()
     {
-        using var connection = _connectionFactory.CreateConnection();
-        var sql = @"DELETE FROM Reservas
-                    WHERE Id = @ReservaId AND UsuarioCpf = @UsuarioCpf";
-        var rows = await connection.ExecuteAsync(sql, new { ReservaId = reservaId, UsuarioCpf = usuarioCpf });
+        using var conn = _connectionFactory.CreateConnection();
+        string sql = @"SELECT * FROM Eventos
+                       WHERE DataEvento > GETDATE()
+                       AND CapacidadeTotal > 0
+                       ORDER BY DataEvento ASC";
+        return await conn.QueryAsync<Evento>(sql);
+    }
+
+    public async Task<Evento?> ObterPorIdAsync(int id)
+    {
+        using var conn = _connectionFactory.CreateConnection();
+        string sql = "SELECT * FROM Eventos WHERE Id = @Id";
+        return await conn.QueryFirstOrDefaultAsync<Evento>(sql, new { Id = id });
+    }
+
+    public async Task<bool> DiminuirCapacidadeAsync(int eventoId)
+    {
+        using var conn = _connectionFactory.CreateConnection();
+        string sql = @"UPDATE Eventos 
+                       SET CapacidadeTotal = CapacidadeTotal - 1
+                       WHERE Id = @EventoId AND CapacidadeTotal > 0";
+        var rows = await conn.ExecuteAsync(sql, new { EventoId = eventoId });
         return rows > 0;
     }
 
-    public async Task<int> ContarReservasUsuarioPorEventoAsync(string usuarioCpf, int eventoId)
+    public async Task AumentarCapacidadeAsync(int eventoId)
     {
-        using var connection = _connectionFactory.CreateConnection();
-        var sql = @"SELECT COUNT(*) FROM Reservas
-                    WHERE UsuarioCpf = @UsuarioCpf AND EventoId = @EventoId";
-        return await connection.QuerySingleAsync<int>(sql, new { UsuarioCpf = usuarioCpf, EventoId = eventoId });
+        using var conn = _connectionFactory.CreateConnection();
+        string sql = @"UPDATE Eventos 
+                       SET CapacidadeTotal = CapacidadeTotal + 1
+                       WHERE Id = @EventoId";
+        await conn.ExecuteAsync(sql, new { EventoId = eventoId });
     }
 }
