@@ -27,8 +27,8 @@ builder.Services.AddScoped<EventoService>();
 builder.Services.AddScoped<ReservaService>();
 builder.Services.AddScoped<CupomService>();
 
-// Session
-builder.Services.AddSingleton<SessionService>();
+// Session (Scoped = cada usuário tem sua própria sessão no InteractiveServer)
+builder.Services.AddScoped<SessionService>();
 
 // HttpClient for API calls with JWT authentication
 var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5164";

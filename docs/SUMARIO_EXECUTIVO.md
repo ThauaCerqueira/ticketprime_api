@@ -130,12 +130,18 @@ Foram criados 3 documentos detalhados:
 - [x] Documentação detalhada
 - [x] Requisitos funcional e técnico
 - [x] Plano de implementação
+- [x] Criação do `AuthHttpClientHandler.cs`
+- [x] Atualização do `Program.cs` com `AddHttpClient` + handler
+- [x] Correção crítica: `SessionService` alterado de `AddSingleton` para `AddScoped`
+- [x] Melhorias de tratamento de erros em `CriarEvento.razor` e `CadastrodeCupom.razor`
+- [x] Build bem-sucedido (0 erros, 0 warnings)
+- [x] Testes unitários: 14/14 passando
 
 ### ⏳ Próximo (RECOMENDADO)
 - [ ] Aprovação dos requisitos
-- [ ] Implementação do AuthHttpClientHandler
-- [ ] Atualização do Program.cs
-- [ ] Testes manuais
+- [ ] Executar aplicação e testar manualmente
+- [ ] Testar criação de evento
+- [ ] Testar criação de cupom
 - [ ] Deploy em produção
 
 ---

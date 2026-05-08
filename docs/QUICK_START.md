@@ -97,13 +97,14 @@ builder.Services.AddHttpClient<HttpClient>()
 
 ## Checklist de Implementação (5 min)
 
-- [ ] Criar arquivo `AuthHttpClientHandler.cs`
-- [ ] Copiar código do Passo 1
-- [ ] Atualizar `Program.cs` (Passo 2)
-- [ ] Recompilar
-- [ ] Executar
-- [ ] Testar criação de evento
-- [ ] Testar criação de cupom
+- [x] Criar arquivo `AuthHttpClientHandler.cs` ✅
+- [x] Copiar código do Passo 1 ✅
+- [x] Atualizar `Program.cs` (Passo 2) ✅
+- [x] Corrigir `SessionService` de `AddSingleton` para `AddScoped` ⚠️
+- [x] Recompilar ✅ (0 warnings, 0 errors)
+- [ ] Executar (pendente)
+- [ ] Testar criação de evento (pendente)
+- [ ] Testar criação de cupom (pendente)
 
 ---
 

@@ -8,15 +8,15 @@ Implementação de autenticação JWT automática em requisições HTTP para cor
 ## Fase 1: Preparação
 
 ### 1.1 Backup
-- [ ] Fazer backup de `ui/TicketPrime.Web/Program.cs`
-- [ ] Fazer backup de `ui/TicketPrime.Web/Components/Pages/CriarEvento.razor`
-- [ ] Fazer backup de `ui/TicketPrime.Web/Components/Pages/CadastrodeCupom.razor`
+- [x] Fazer backup de `ui/TicketPrime.Web/Program.cs`
+- [x] Fazer backup de `ui/TicketPrime.Web/Components/Pages/CriarEvento.razor`
+- [x] Fazer backup de `ui/TicketPrime.Web/Components/Pages/CadastrodeCupom.razor`
 
 ### 1.2 Verificação de Pré-requisitos
-- [ ] SessionService já existe ✓
-- [ ] Componentes Razor já existem ✓
-- [ ] API está funcionando ✓
-- [ ] Autorização [Authorize] está na API ✓
+- [x] SessionService já existe ✓
+- [x] Componentes Razor já existem ✓
+- [x] API está funcionando ✓
+- [x] Autorização [Authorize] está na API ✓
 
 ---
 
@@ -61,12 +61,12 @@ public class AuthHttpClientHandler : DelegatingHandler
 ```
 
 **Checklist**:
-- [ ] Arquivo criado em `ui/TicketPrime.Web/Services/AuthHttpClientHandler.cs`
-- [ ] Namespace correto: `TicketPrime.Web.Services`
-- [ ] Herança: `DelegatingHandler`
-- [ ] Método `SendAsync` implementado
-- [ ] Token lido de `SessionService.Token`
-- [ ] Header `Authorization` adicionado corretamente
+- [x] Arquivo criado em `ui/TicketPrime.Web/Services/AuthHttpClientHandler.cs`
+- [x] Namespace correto: `TicketPrime.Web.Services`
+- [x] Herança: `DelegatingHandler`
+- [x] Método `SendAsync` implementado
+- [x] Token lido de `SessionService.Token`
+- [x] Header `Authorization` adicionado corretamente
 
 ---
 
@@ -96,12 +96,13 @@ builder.Services.AddHttpClient<HttpClient>()
 ```
 
 **Checklist**:
-- [ ] Linha antiga removida
-- [ ] `AddScoped<AuthHttpClientHandler>()` adicionado
-- [ ] `AddHttpClient<HttpClient>()` adicionado
-- [ ] `ConfigureHttpClient` configura BaseAddress
-- [ ] `AddHttpMessageHandler<AuthHttpClientHandler>()` adicionado
-- [ ] Nenhuma linha foi removida acidentalmente
+- [x] Linha antiga removida
+- [x] `AddScoped<AuthHttpClientHandler>()` adicionado
+- [x] `AddHttpClient<HttpClient>()` adicionado
+- [x] `ConfigureHttpClient` configura BaseAddress
+- [x] `AddHttpMessageHandler<AuthHttpClientHandler>()` adicionado
+- [x] Nenhuma linha foi removida acidentalmente
+- [x] `SessionService` alterado de `AddSingleton` para `AddScoped` (correção crítica)
 
 ---
 
@@ -384,10 +385,11 @@ Se algo der errado:
 ## Checklist Final
 
 ### Código
-- [ ] `AuthHttpClientHandler.cs` criado
-- [ ] `Program.cs` atualizado
-- [ ] Sem erros de compilação
-- [ ] Sem warnings
+- [x] `AuthHttpClientHandler.cs` criado
+- [x] `Program.cs` atualizado
+- [x] `SessionService` alterado de `AddSingleton` para `AddScoped`
+- [x] Sem erros de compilação
+- [x] Sem warnings
 
 ### Testes
 - [ ] Testes manuais: Criar evento OK

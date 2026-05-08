@@ -10,10 +10,10 @@
 O sistema deve automaticamente incluir o token JWT de autenticação em todas as requisições HTTP da aplicação web para a API.
 
 ### Critério de Aceitação
-- [ ] Requisições POST, PUT, DELETE incluem header `Authorization: Bearer <token>`
-- [ ] Header é adicionado automaticamente sem modificação do código em cada componente
-- [ ] Se usuário não está logado (token vazio), requisição é enviada sem token (API retorna 401)
-- [ ] Token é retirado do `SessionService` a cada requisição (token atualizado)
+- [x] Requisições POST, PUT, DELETE incluem header `Authorization: Bearer <token>` ✅
+- [x] Header é adicionado automaticamente sem modificação do código em cada componente ✅
+- [x] Se usuário não está logado (token vazio), requisição é enviada sem token (API retorna 401) ✅
+- [x] Token é retirado do `SessionService` a cada requisição (token atualizado) ✅
 
 ### Prioridade
 **CRÍTICA** - Bloqueia funcionalidade de criação de eventos e cupons
@@ -26,13 +26,13 @@ O sistema deve automaticamente incluir o token JWT de autenticação em todas as
 Usuários com perfil ADMIN devem conseguir criar novos eventos preenchendo um formulário.
 
 ### Critério de Aceitação
-- [ ] Formulário aceita: Nome, Data, Capacidade, Preço
-- [ ] Ao submeter, dados são enviados para `POST /api/eventos`
-- [ ] Se sucesso (200): Exibir "Evento criado com sucesso!" e limpar formulário
-- [ ] Se erro 401: Exibir "Não autorizado. Faça login novamente."
-- [ ] Se erro 400: Exibir mensagem de erro da API
-- [ ] Se erro de conexão: Exibir "Erro de conexão com o servidor"
-- [ ] Após sucesso, usuário continua na página de criar evento (não redireciona automaticamente)
+- [x] Formulário aceita: Nome, Data, Capacidade, Preço ✅
+- [x] Ao submeter, dados são enviados para `POST /api/eventos` ✅
+- [x] Se sucesso (200): Exibir "Evento criado com sucesso!" e limpar formulário ✅
+- [x] Se erro 401: Exibir "Não autorizado. Faça login novamente." ✅
+- [x] Se erro 400: Exibir mensagem de erro da API ✅
+- [x] Se erro de conexão: Exibir "Erro de conexão com o servidor" ✅
+- [x] Após sucesso, usuário continua na página de criar evento (não redireciona automaticamente) ✅
 
 ### Prioridade
 **ALTA** - Funcionalidade principal do sistema
@@ -45,13 +45,13 @@ Usuários com perfil ADMIN devem conseguir criar novos eventos preenchendo um fo
 Usuários com perfil ADMIN devem conseguir criar novos cupons de desconto.
 
 ### Critério de Aceitação
-- [ ] Formulário aceita: Código, Desconto (%), Valor Mínimo
-- [ ] Ao submeter, dados são enviados para `POST /api/cupons`
-- [ ] Se sucesso (201): Exibir "Cupom criado com sucesso!" e limpar formulário
-- [ ] Se erro 401: Exibir "Não autorizado. Faça login novamente."
-- [ ] Se erro 400: Exibir mensagem de erro da API
-- [ ] Se erro de conexão: Exibir "Erro de conexão com o servidor"
-- [ ] Após sucesso, usuário continua na página de criar cupom (não redireciona automaticamente)
+- [x] Formulário aceita: Código, Desconto (%), Valor Mínimo ✅
+- [x] Ao submeter, dados são enviados para `POST /api/cupons` ✅
+- [x] Se sucesso (201): Exibir "Cupom criado com sucesso!" e limpar formulário ✅
+- [x] Se erro 401: Exibir "Não autorizado. Faça login novamente." ✅
+- [x] Se erro 400: Exibir mensagem de erro da API ✅
+- [x] Se erro de conexão: Exibir "Erro de conexão com o servidor" ✅
+- [x] Após sucesso, usuário continua na página de criar cupom (não redireciona automaticamente) ✅
 
 ### Prioridade
 **ALTA** - Funcionalidade principal do sistema
@@ -75,13 +75,13 @@ public class AuthHttpClientHandler : DelegatingHandler
 ```
 
 ### Requisitos Técnicos
-- [ ] Classe deve herdar de `DelegatingHandler`
-- [ ] Injetar `SessionService` via construtor
-- [ ] Ler `SessionService.Token` a cada requisição
-- [ ] Se token não vazio: adicionar `Authorization: Bearer {token}`
-- [ ] Se token vazio: não adicionar header (deixa API retornar 401)
-- [ ] Propagar para handler seguinte (InnerHandler)
-- [ ] Tratar exceções graciosamente
+- [x] Classe deve herdar de `DelegatingHandler` ✅
+- [x] Injetar `SessionService` via construtor ✅
+- [x] Ler `SessionService.Token` a cada requisição ✅
+- [x] Se token não vazio: adicionar `Authorization: Bearer {token}` ✅
+- [x] Se token vazio: não adicionar header (deixa API retornar 401) ✅
+- [x] Propagar para handler seguinte (InnerHandler) ✅
+- [x] Tratar exceções graciosamente ✅
 
 ### Localização
 `ui/TicketPrime.Web/Services/AuthHttpClientHandler.cs` (novo arquivo)
@@ -102,10 +102,11 @@ builder.Services.AddHttpClient<HttpClient>()
 Atualizar a configuração do `HttpClient` em `Program.cs` para usar o novo `AuthHttpClientHandler`.
 
 ### Modificações Necessárias
-- [ ] Remover registro simples de HttpClient (linha ~30)
-- [ ] Adicionar `AddHttpClient<HttpClient>()` com handler customizado
-- [ ] Garantir `BaseAddress` continua sendo configurada de `appsettings.json`
-- [ ] Manter `ApiSettings:BaseUrl` em `appsettings.json` (já existe)
+- [x] Remover registro simples de HttpClient ✅
+- [x] Adicionar `AddHttpClient<HttpClient>()` com handler customizado ✅
+- [x] Garantir `BaseAddress` continua sendo configurada de `appsettings.json` ✅
+- [x] Manter `ApiSettings:BaseUrl` em `appsettings.json` (já existe) ✅
+- [x] Corrigir `SessionService` de `AddSingleton` para `AddScoped` ⚠️ (bug crítico)
 
 ### Antes
 ```csharp
@@ -132,12 +133,12 @@ builder.Services.AddScoped<SessionService>();
 Melhorar o tratamento de erros ao enviar requisição de criação de evento.
 
 ### Modificações Necessárias
-- [ ] Se HTTP 401: Exibir "Não autorizado"
-- [ ] Se HTTP 400: Extrair mensagem de erro da resposta
-- [ ] Se HTTP 500: Exibir "Erro interno do servidor"
-- [ ] Se exception de conexão: Exibir "Erro de conexão"
-- [ ] Manter estado do formulário se houver erro (não limpar)
-- [ ] Adicionar log/console para debug
+- [x] Se HTTP 401: Exibir "Não autorizado" ✅
+- [x] Se HTTP 400: Extrair mensagem de erro da resposta ✅
+- [x] Se HTTP 500: Exibir "Erro interno do servidor" ✅
+- [x] Se exception de conexão: Exibir "Erro de conexão" ✅
+- [x] Manter estado do formulário se houver erro (não limpar) ✅
+- [x] Adicionar log/console para debug ✅
 
 ### Status Code Esperados
 | Code | Ação |
@@ -155,13 +156,13 @@ Melhorar o tratamento de erros ao enviar requisição de criação de evento.
 Melhorar o tratamento de erros ao enviar requisição de criação de cupom.
 
 ### Modificações Necessárias
-- [ ] Se HTTP 201: Exibir "Cupom criado com sucesso!"
-- [ ] Se HTTP 401: Exibir "Não autorizado"
-- [ ] Se HTTP 400: Extrair mensagem de erro
-- [ ] Se HTTP 409: Exibir "Cupom já existe"
-- [ ] Se HTTP 500: Exibir "Erro interno do servidor"
-- [ ] Manter estado do formulário se houver erro
-- [ ] Adicionar log/console para debug
+- [x] Se HTTP 201: Exibir "Cupom criado com sucesso!" ✅
+- [x] Se HTTP 401: Exibir "Não autorizado" ✅
+- [x] Se HTTP 400: Extrair mensagem de erro ✅
+- [x] Se HTTP 409: Exibir "Cupom já existe" ✅
+- [x] Se HTTP 500: Exibir "Erro interno do servidor" ✅
+- [x] Manter estado do formulário se houver erro ✅
+- [x] Adicionar log/console para debug ✅
 
 ### Status Code Esperados
 | Code | Ação |
@@ -180,12 +181,12 @@ Melhorar o tratamento de erros ao enviar requisição de criação de cupom.
 Adicionar validações do lado do cliente para melhorar UX.
 
 ### Modificações Necessárias
-- [ ] CriarEvento.razor: Validar data (deve ser futura)
-- [ ] CriarEvento.razor: Validar capacidade (maior que 0)
-- [ ] CriarEvento.razor: Validar preço (maior que 0)
-- [ ] CadastrodeCupom.razor: Validar código (não vazio, apenas alfanuméricos)
-- [ ] CadastrodeCupom.razor: Validar desconto (1-100%)
-- [ ] CadastrodeCupom.razor: Validar valor mínimo (>=0)
+- [x] CriarEvento.razor: Validar data (deve ser futura) ✅
+- [x] CriarEvento.razor: Validar capacidade (maior que 0) ✅
+- [x] CriarEvento.razor: Validar preço (maior que 0) ✅
+- [x] CadastrodeCupom.razor: Validar código (não vazio, apenas alfanuméricos) ✅
+- [x] CadastrodeCupom.razor: Validar desconto (1-100%) ✅
+- [x] CadastrodeCupom.razor: Validar valor mínimo (>=0) ✅
 
 ---
 
@@ -205,28 +206,28 @@ Adicionar validações do lado do cliente para melhorar UX.
 
 ### Teste de Unidade
 ```
-- [ ] AuthHttpClientHandler adiciona token quando presente
-- [ ] AuthHttpClientHandler não adiciona token quando vazio
-- [ ] AuthHttpClientHandler preserva headers existentes
+- [x] AuthHttpClientHandler adiciona token quando presente ✅
+- [x] AuthHttpClientHandler não adiciona token quando vazio ✅
+- [x] AuthHttpClientHandler preserva headers existentes ✅
 ```
 
 ### Teste de Integração
 ```
-- [ ] POST /api/eventos com token: 201
-- [ ] POST /api/eventos sem token: 401
-- [ ] POST /api/cupons com token: 201
-- [ ] POST /api/cupons sem token: 401
+- [ ] POST /api/eventos com token: 201 (pendente teste manual)
+- [ ] POST /api/eventos sem token: 401 (pendente teste manual)
+- [ ] POST /api/cupons com token: 201 (pendente teste manual)
+- [ ] POST /api/cupons sem token: 401 (pendente teste manual)
 ```
 
 ### Teste Manual (Smoke Test)
 ```
-- [ ] Login como ADMIN
-- [ ] Criar evento com sucesso
-- [ ] Ver evento na lista
-- [ ] Criar cupom com sucesso
-- [ ] Ver cupom na lista
-- [ ] Logout
-- [ ] Tentar criar evento sem login: deve falhar
+- [ ] Login como ADMIN (pendente)
+- [ ] Criar evento com sucesso (pendente)
+- [ ] Ver evento na lista (pendente)
+- [ ] Criar cupom com sucesso (pendente)
+- [ ] Ver cupom na lista (pendente)
+- [ ] Logout (pendente)
+- [ ] Tentar criar evento sem login: deve falhar (pendente)
 ```
 
 ---
