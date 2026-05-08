@@ -19,7 +19,8 @@ public class EventoService
             dto.Nome,
             dto.CapacidadeTotal,
             dto.DataEvento,
-            dto.PrecoPadrao
+            dto.PrecoPadrao,
+            dto.LimiteIngressosPorUsuario
         );
         await _Repository.AdicionarAsync(novoEvento);
 

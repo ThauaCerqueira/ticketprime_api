@@ -40,9 +40,17 @@ public class ReservaRepository : IReservaRepository
     public async Task<bool> CancelarAsync(int reservaId, string usuarioCpf)
     {
         using var connection = _connectionFactory.CreateConnection();
-        var sql = @"DELETE FROM Reservas 
+        var sql = @"DELETE FROM Reservas
                     WHERE Id = @ReservaId AND UsuarioCpf = @UsuarioCpf";
         var rows = await connection.ExecuteAsync(sql, new { ReservaId = reservaId, UsuarioCpf = usuarioCpf });
         return rows > 0;
+    }
+
+    public async Task<int> ContarReservasUsuarioPorEventoAsync(string usuarioCpf, int eventoId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var sql = @"SELECT COUNT(*) FROM Reservas
+                    WHERE UsuarioCpf = @UsuarioCpf AND EventoId = @EventoId";
+        return await connection.QuerySingleAsync<int>(sql, new { UsuarioCpf = usuarioCpf, EventoId = eventoId });
     }
 }

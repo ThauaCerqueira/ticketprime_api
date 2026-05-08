@@ -15,4 +15,7 @@ public record CriarEventoDTO
 
     [Range(0, 100000, ErrorMessage = "O preço não pode ser negativo.")]
     public decimal PrecoPadrao { get; set; }
+
+    [Range(1, 100, ErrorMessage = "O limite de ingressos por usuário deve ser entre 1 e 100.")]
+    public int LimiteIngressosPorUsuario { get; set; } = 6;
 }

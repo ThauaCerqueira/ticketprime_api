@@ -8,4 +8,5 @@ public interface IReservaRepository
     Task<Reserva> CriarAsync(Reserva reserva);
     Task<IEnumerable<ReservaDetalhadaDTO>> ListarPorUsuarioAsync(string cpf);
     Task<bool> CancelarAsync(int reservaId, string usuarioCpf);
+    Task<int> ContarReservasUsuarioPorEventoAsync(string usuarioCpf, int eventoId);
 }

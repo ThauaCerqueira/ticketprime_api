@@ -18,27 +18,32 @@ public class ReservaService
     public async Task<Reserva> ComprarIngressoAsync(string usuarioCpf, int eventoId)
     {
         var evento = await _eventoRepository.ObterPorIdAsync(eventoId);
- 
+
         if (evento == null)
             throw new InvalidOperationException("Evento não encontrado.");
- 
+
         if (evento.CapacidadeTotal <= 0)
             throw new InvalidOperationException("Não há mais vagas disponíveis para este evento.");
- 
+
         if (evento.DataEvento <= DateTime.Now)
             throw new InvalidOperationException("Este evento já aconteceu.");
- 
+
+        // Verifica se o usuário já atingiu o limite de ingressos para este evento
+        var reservasAtuais = await _reservaRepository.ContarReservasUsuarioPorEventoAsync(usuarioCpf, eventoId);
+        if (reservasAtuais >= evento.LimiteIngressosPorUsuario)
+            throw new InvalidOperationException($"Você já atingiu o limite de {evento.LimiteIngressosPorUsuario} ingressos para este evento.");
+
         var diminuiu = await _eventoRepository.DiminuirCapacidadeAsync(eventoId);
- 
+
         if (!diminuiu)
             throw new InvalidOperationException("Não foi possível reservar a vaga. Tente novamente.");
- 
+
         var reserva = new Reserva
         {
             UsuarioCpf = usuarioCpf,
             EventoId = eventoId
         };
- 
+
         return await _reservaRepository.CriarAsync(reserva);
     }
  

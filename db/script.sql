@@ -24,11 +24,12 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Eventos]') AND type in (N'U'))
 BEGIN
     CREATE TABLE [dbo].[Eventos] (
-        [Id]              INT              IDENTITY (1, 1) NOT NULL,
-        [Nome]            NVARCHAR (150)   NOT NULL,
-        [CapacidadeTotal] INT              NOT NULL,
-        [DataEvento]      DATETIME2 (7)    NOT NULL,
-        [PrecoPadrao]     DECIMAL (18, 2)  NOT NULL,
+        [Id]                        INT              IDENTITY (1, 1) NOT NULL,
+        [Nome]                      NVARCHAR (150)   NOT NULL,
+        [CapacidadeTotal]           INT              NOT NULL,
+        [DataEvento]                DATETIME2 (7)    NOT NULL,
+        [PrecoPadrao]               DECIMAL (18, 2)  NOT NULL,
+        [LimiteIngressosPorUsuario] INT              NOT NULL DEFAULT 6,
         
         CONSTRAINT [PK_Eventos] PRIMARY KEY CLUSTERED ([Id] ASC)
     );
@@ -68,6 +69,13 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Usuarios]') AND name = 'Perfil')
 BEGIN
     ALTER TABLE Usuarios ADD Perfil VARCHAR(10) NOT NULL DEFAULT 'CLIENTE';
+END
+GO
+
+-- Adiciona coluna LimiteIngressosPorUsuario na tabela Eventos (caso não exista)
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Eventos]') AND name = 'LimiteIngressosPorUsuario')
+BEGIN
+    ALTER TABLE Eventos ADD LimiteIngressosPorUsuario INT NOT NULL DEFAULT 6;
 END
 GO
 
