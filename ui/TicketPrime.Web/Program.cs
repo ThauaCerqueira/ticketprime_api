@@ -30,9 +30,12 @@ builder.Services.AddScoped<CupomService>();
 // Session
 builder.Services.AddSingleton<SessionService>();
 
-// HttpClient for API calls
+// HttpClient for API calls with JWT authentication
 var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5164";
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
+builder.Services.AddScoped<AuthHttpClientHandler>();
+builder.Services.AddHttpClient<HttpClient>()
+    .ConfigureHttpClient(client => client.BaseAddress = new Uri(apiBaseUrl))
+    .AddHttpMessageHandler<AuthHttpClientHandler>();
 
 var app = builder.Build();
 
