@@ -1,8 +1,9 @@
 @page "/login"
-@using System.Net.Http.Json
+@using src.DTOs
+@using src.Service
 @using TicketPrime.Web.Services
 @rendermode InteractiveServer
-@inject HttpClient Http
+@inject AuthService Auth
 @inject NavigationManager Navigation
 @inject SessionService Session
 
@@ -257,17 +258,14 @@
 
         try
         {
-            var response = await Http.PostAsJsonAsync("api/auth/login", new { Cpf = cpf, Senha = senha });
+            var dto = new LoginDTO { Cpf = cpf, Senha = senha };
+            var resultado = await Auth.LoginAsync(dto);
 
-            if (response.IsSuccessStatusCode)
+            if (resultado != null)
             {
-                var resultado = await response.Content.ReadFromJsonAsync<LoginResponse>();
-                if (resultado != null)
-                {
-                    Session.Logar(resultado.Nome, resultado.Perfil, resultado.Token);
-                    Navigation.NavigateTo("/");
-                    StateHasChanged();
-                }
+                Session.Logar(resultado.Nome, resultado.Perfil, resultado.Token);
+                Navigation.NavigateTo("/");
+                StateHasChanged();
             }
             else
             {
@@ -282,12 +280,5 @@
         {
             carregando = false;
         }
-    }
-
-    public class LoginResponse
-    {
-        public string Nome { get; set; } = "";
-        public string Perfil { get; set; } = "";
-        public string Token { get; set; } = "";
     }
 }

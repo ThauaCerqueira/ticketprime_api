@@ -1,7 +1,9 @@
 ﻿@page "/cadastro-user"
-@using System.Net.Http.Json
+@using src.Models
+@using src.Service
+@using src.DTOs
 @rendermode InteractiveServer
-@inject HttpClient Http
+@inject UsuarioService UsuarioService
 @inject NavigationManager Navigation
 
 <PageTitle>Criar Conta - TicketPrime</PageTitle>
@@ -304,23 +306,19 @@
 
         try
         {
-            var response = await Http.PostAsJsonAsync("api/usuarios", novoUsuario);
+            await UsuarioService.CadastrarUsuario(novoUsuario);
 
-            if (response.IsSuccessStatusCode)
-            {
-                sucesso = true;
-                mensagem = "Conta criada com sucesso! Redirecionando...";
-                novoUsuario = new Usuario();
-                await Task.Delay(1500);
-                Navigation.NavigateTo("/login");
-            }
-            else
-            {
-                var erro = await response.Content.ReadAsStringAsync();
-                mensagem = erro.Contains("já existe") || erro.Contains("CPF")
-                    ? "Este CPF já está cadastrado."
-                    : "Erro ao criar conta. Verifique os dados e tente novamente.";
-            }
+            sucesso = true;
+            mensagem = "Conta criada com sucesso! Redirecionando...";
+            novoUsuario = new Usuario();
+            await Task.Delay(1500);
+            Navigation.NavigateTo("/login");
+        }
+        catch (InvalidOperationException ex)
+        {
+            mensagem = ex.Message.Contains("CPF") || ex.Message.Contains("cadastrado")
+                ? "Este CPF já está cadastrado."
+                : "Erro ao criar conta. Verifique os dados e tente novamente.";
         }
         catch (Exception ex)
         {
