@@ -81,7 +81,7 @@ namespace TicketPrime.Api
                 {
                     var resultado = await service.CriarNovoEvento(dto);
                     if (resultado == null)
-                        return Results.BadRequest("Erro ao criar evento.");
+                        return Results.BadRequest(new { mensagem = "Erro ao criar evento." });
  
                     return Results.Created($"/api/eventos/{resultado.Id}", resultado);
                 }
@@ -97,8 +97,13 @@ namespace TicketPrime.Api
                 return Results.Ok(eventos);
             });
 
-            app.MapGet("/api/eventos/meus", async (EventoService service) =>
+            app.MapGet("/api/eventos/meus", async (EventoService service, HttpContext context) =>
             {
+                var cpf = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(cpf))
+                    return Results.Unauthorized();
+
                 var eventos = await service.ListarEventos();
                 return Results.Ok(eventos);
             }).RequireAuthorization(policy => policy.RequireRole("ADMIN"));
@@ -111,7 +116,7 @@ namespace TicketPrime.Api
                     if (sucesso)
                         return Results.Created($"/api/cupons/{dto.Codigo}", dto);
  
-                    return Results.BadRequest("Não foi possível criar o cupom.");
+                    return Results.BadRequest(new { mensagem = "Não foi possível criar o cupom." });
                 }
                 catch (ArgumentException ex)
                 {
@@ -121,8 +126,12 @@ namespace TicketPrime.Api
                 {
                     return Results.Conflict(new { mensagem = ex.Message });
                 }
+                catch (Exception ex)
+                {
+                    return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
+                }
             }).RequireAuthorization(policy => policy.RequireRole("ADMIN"));
- 
+
             app.MapPost("/api/usuarios", async (Usuario usuario, UsuarioService service) =>
             {
                 try
@@ -140,11 +149,11 @@ namespace TicketPrime.Api
             {
                 var resultado = await service.LoginAsync(dto);
                 if (resultado == null)
-                    return Results.Unauthorized();
- 
+                    return Results.Json(new { mensagem = "CPF ou senha inválidos." }, statusCode: 401);
+
                 return Results.Ok(resultado);
             });
- 
+
             app.MapPost("/api/reservas", async (ComprarIngressoDTO dto, ReservaService service, HttpContext context) =>
             {
                 try

@@ -12,10 +12,10 @@ public class Evento
     public Evento(string nome, int capacidadeTotal, DateTime dataEvento, decimal precoPadrao, int limiteIngressosPorUsuario = 6)
     {
         if (string.IsNullOrWhiteSpace(nome)) throw new ArgumentException("O nome do evento é obrigatório.");
-        if (dataEvento <= DateTime.Now) throw new Exception("A data do evento deve ser no futuro.");
-        if (precoPadrao < 0) throw new Exception("O preço padrão deve ser um valor positivo.");
-        if (capacidadeTotal <= 0) throw new Exception("A capacidade total deve ser um valor positivo.");
-        if (limiteIngressosPorUsuario <= 0) throw new Exception("O limite de ingressos por usuário deve ser um valor positivo.");
+        if (dataEvento <= DateTime.Now) throw new ArgumentException("A data do evento deve ser no futuro.");
+        if (precoPadrao < 0) throw new ArgumentException("O preço padrão deve ser um valor positivo.");
+        if (capacidadeTotal <= 0) throw new ArgumentException("A capacidade total deve ser um valor positivo.");
+        if (limiteIngressosPorUsuario <= 0) throw new ArgumentException("O limite de ingressos por usuário deve ser um valor positivo.");
 
         Nome = nome;
         CapacidadeTotal = capacidadeTotal;

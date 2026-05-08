@@ -24,15 +24,19 @@ public class UsuariosController : ControllerBase
         {
             var novoUsuario = await _usuarioService.CadastrarUsuario(usuario);
             
-            return Created($"/api/usuarios/{novoUsuario.Cpf}", new { message = "Usuário criado com sucesso" });
+            return Created($"/api/usuarios/{novoUsuario.Cpf}", new { mensagem = "Usuário criado com sucesso.", dados = novoUsuario });
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ex.Message);
+            return BadRequest(new { mensagem = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { mensagem = ex.Message });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, $"Erro interno: {ex.Message}");
+            return StatusCode(500, new { mensagem = "Erro interno do servidor." });
         }
     }
 }

@@ -23,23 +23,23 @@ public class CupomController : ControllerBase
         try
         {
             var sucesso = await _cupomService.CriarAsync(dto);
- 
+
             if (!sucesso)
-                return BadRequest("Não foi possível criar o cupom.");
- 
+                return BadRequest(new { mensagem = "Não foi possível criar o cupom." });
+
             return CreatedAtAction(nameof(ObterPorCodigo), new { codigo = dto.Codigo }, dto);
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(ex.Message);
+            return BadRequest(new { mensagem = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
-            return Conflict(ex.Message);
+            return Conflict(new { mensagem = ex.Message });
         }
         catch (Exception)
         {
-            return StatusCode(500, "Erro interno no servidor.");
+            return StatusCode(500, new { mensagem = "Erro interno no servidor." });
         }
     }
  

@@ -33,9 +33,13 @@ builder.Services.AddScoped<SessionService>();
 // HttpClient for API calls with JWT authentication
 var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5164";
 builder.Services.AddScoped<AuthHttpClientHandler>();
-builder.Services.AddHttpClient<HttpClient>()
-    .ConfigureHttpClient(client => client.BaseAddress = new Uri(apiBaseUrl))
-    .AddHttpMessageHandler<AuthHttpClientHandler>();
+builder.Services.AddScoped(sp =>
+{
+    var handler = sp.GetRequiredService<AuthHttpClientHandler>();
+    var client = new HttpClient(handler);
+    client.BaseAddress = new Uri(apiBaseUrl);
+    return client;
+});
 
 var app = builder.Build();
 

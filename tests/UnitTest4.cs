@@ -40,7 +40,7 @@ namespace TicketPrime.Tests.Service
 
             
             var ex = await Assert.ThrowsAsync<ArgumentException>(() => _cupomService.CriarAsync(dto));
-            Assert.Equal("Desconto deve ser entre 0 e 100.", ex.Message);
+            Assert.Equal("Desconto deve ser entre 1 e 100.", ex.Message);
         }
 
         [Fact]

@@ -30,7 +30,7 @@ namespace TicketPrime.Tests.Models
             var data = DateTime.Now.AddDays(30);
             var preco = 300.00m;
 
-            var exception = Assert.Throws<Exception>(() => new Evento(nome, capacidadeInvalida, data, preco));
+            var exception = Assert.Throws<ArgumentException>(() => new Evento(nome, capacidadeInvalida, data, preco));
             Assert.Equal("A capacidade total deve ser um valor positivo.", exception.Message);
         }
     }

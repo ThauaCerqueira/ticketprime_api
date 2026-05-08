@@ -18,21 +18,26 @@ public class EventosController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "ADMIN")]
+    [Obsolete("Use o endpoint em Program.cs - POST /api/eventos")]
     public async Task<IActionResult> CriarEvento([FromBody] CriarEventoDTO eventoDTO)
     {
         try
         {
             var novoEvento = await _eventoService.CriarNovoEvento(eventoDTO);
             if (novoEvento == null)
-                return BadRequest("Não foi possível criar o evento.");
+                return BadRequest(new { mensagem = "Não foi possível criar o evento." });
 
             return CreatedAtAction(nameof(CriarEvento),
                 new { id = novoEvento.Id },
-                new { Mensagem = "Evento criado com sucesso!", Dados = novoEvento });
+                new { mensagem = "Evento criado com sucesso!", dados = novoEvento });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { mensagem = ex.Message });
         }
         catch (Exception ex)
         {
-            return BadRequest(new { erro = ex.Message });
+            return StatusCode(500, new { mensagem = "Erro interno do servidor." });
         }
     }
 
