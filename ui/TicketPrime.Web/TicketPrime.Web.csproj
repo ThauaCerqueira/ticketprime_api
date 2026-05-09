@@ -11,4 +11,12 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <!-- Pacotes adicionados para EventoCreate (criptografia E2E) -->
+  <ItemGroup>
+    <!-- Componentes visuais MudBlazor (tema escuro, formulários, ícones) -->
+    <PackageReference Include="MudBlazor" Version="7.*" />
+    <!-- Validação de formulários com mensagens em português -->
+    <PackageReference Include="FluentValidation" Version="11.*" />
+  </ItemGroup>
+
 </Project>

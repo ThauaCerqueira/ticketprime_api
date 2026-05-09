@@ -4,6 +4,7 @@ using src.Service;
 using src.Infrastructure;
 using src.Infrastructure.Repository;
 using src.Infrastructure.IRepository;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,12 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// MudBlazor (componentes visuais + serviços de Snackbar, Dialog, etc.)
+builder.Services.AddMudServices();
+
+// Serviço de criptografia E2E (wraps Web Crypto API via JSInterop)
+builder.Services.AddScoped<CryptoService>();
 
 // Infrastructure
 builder.Services.AddSingleton(new DbConnectionFactory(connectionString));

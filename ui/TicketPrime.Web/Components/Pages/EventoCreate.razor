@@ -1,0 +1,549 @@
+@page "/eventos/criar-seguro"
+@rendermode InteractiveServer
+@using TicketPrime.Web.Models
+@using TicketPrime.Web.Validators
+@using TicketPrime.Web.Services
+@using MudBlazor
+
+@inject CryptoService  CryptoSvc
+@inject ISnackbar      Snackbar
+@inject HttpClient     Http
+@inject NavigationManager Navigation
+@inject SessionService Session
+
+<PageTitle>Criar Evento Seguro – TicketPrime</PageTitle>
+
+<MudThemeProvider Theme="_tema" IsDarkMode="true" />
+
+<div class="ec-page">
+
+    @* ── Cabeçalho ─────────────────────────────────────────────────────────── *@
+    <div class="ec-header">
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   Color="Color.Default"
+                   Class="ec-back-btn"
+                   OnClick="@(() => Navigation.NavigateTo("/"))">
+            Voltar
+        </MudButton>
+
+        <div class="ec-title-row">
+            <MudIcon Icon="@Icons.Material.Filled.MusicNote" Color="Color.Primary" Size="Size.Large" />
+            <div>
+                <MudText Typo="Typo.h4" Class="ec-title">Criar Evento</MudText>
+                <MudText Typo="Typo.body2" Class="ec-subtitle">
+                    Fotos criptografadas no navegador antes do envio
+                </MudText>
+            </div>
+            @* Badge de status: mostra o estado atual do evento *@
+            <MudChip T="string" Icon="@Icons.Material.Filled.Drafts"
+                     Color="Color.Warning" Size="Size.Small" Class="ml-auto">
+                @EventoStatus.Rascunho
+            </MudChip>
+        </div>
+
+        @* Status da criptografia *@
+        <div class="ec-crypto-status">
+            @if (_cryptoErro is not null)
+            {
+                <MudChip T="string" Icon="@Icons.Material.Filled.ErrorOutline"
+                         Color="Color.Error" Size="Size.Small">
+                    Erro na criptografia
+                </MudChip>
+            }
+            else if (_cryptoInicializado)
+            {
+                <MudChip T="string" Icon="@Icons.Material.Filled.Lock"
+                         Color="Color.Success" Size="Size.Small">
+                    Criptografia E2E ativa
+                </MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Icon="@Icons.Material.Filled.HourglassEmpty"
+                         Color="Color.Warning" Size="Size.Small">
+                    Inicializando criptografia…
+                </MudChip>
+            }
+        </div>
+    </div>
+
+    @* ── Formulário ─────────────────────────────────────────────────────────── *@
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="ec-container">
+        <MudForm @ref="_form" @bind-IsValid="_formValido">
+
+            @* ── Seção 1: Informações Básicas ────────────────────────────── *@
+            <MudCard Class="ec-card mb-6">
+                <MudCardHeader>
+                    <CardHeaderAvatar>
+                        <MudAvatar Color="Color.Primary" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
+                        </MudAvatar>
+                    </CardHeaderAvatar>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Informações do Evento</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid Spacing="3">
+
+                        @* Nome *@
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          @bind-Value="_evento.Nome"
+                                          Label="Nome do evento"
+                                          Placeholder="Ex.: Rock na Praça 2026"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="O nome do evento é obrigatório."
+                                          Validation="@_validarNome"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Title"
+                                          Counter="200"
+                                          MaxLength="200"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        @* Data *@
+                        <MudItem xs="12" sm="4">
+                            <MudDatePicker Date="_dataEvento"
+                                           DateChanged="OnDataChanged"
+                                           Label="Data do evento"
+                                           Variant="Variant.Outlined"
+                                           Required="true"
+                                           RequiredError="A data é obrigatória."
+                                           MinDate="DateTime.Today.AddDays(1)"
+                                           DateFormat="dd/MM/yyyy"
+                                           Adornment="Adornment.Start"
+                                           AdornmentIcon="@Icons.Material.Filled.CalendarToday"
+                                           Class="w-100" />
+                        </MudItem>
+
+                        @* Hora *@
+                        <MudItem xs="12" sm="4">
+                            <MudTimePicker Time="_horaEvento"
+                                           TimeChanged="OnHoraChanged"
+                                           Label="Hora do evento"
+                                           Variant="Variant.Outlined"
+                                           Required="true"
+                                           RequiredError="A hora é obrigatória."
+                                           Adornment="Adornment.Start"
+                                           AdornmentIcon="@Icons.Material.Filled.AccessTime"
+                                           Class="w-100" />
+                        </MudItem>
+
+                        @* Gênero Musical *@
+                        <MudItem xs="12" sm="4">
+                            <MudSelect T="string"
+                                       @bind-Value="_evento.GeneroMusical"
+                                       Label="Gênero musical"
+                                       Variant="Variant.Outlined"
+                                       Required="true"
+                                       RequiredError="Selecione o gênero musical."
+                                       Validation="@_validarGenero"
+                                       Adornment="Adornment.Start"
+                                       AdornmentIcon="@Icons.Material.Filled.LibraryMusic"
+                                       FullWidth="true">
+                                @foreach (var genero in _generosMusicas)
+                                {
+                                    <MudSelectItem T="string" Value="@genero">@genero</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        @* Local *@
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          @bind-Value="_evento.Local"
+                                          Label="Local / Endereço ou link do Google Maps"
+                                          Placeholder="Rua das Flores, 123 – São Paulo, SP ou https://maps.google.com/…"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="O local do evento é obrigatório."
+                                          Validation="@_validarLocal"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.LocationOn"
+                                          MaxLength="500"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        @* Descrição *@
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          @bind-Value="_evento.Descricao"
+                                          Label="Descrição (opcional)"
+                                          Placeholder="Fale sobre o evento, artistas, atrações…"
+                                          Variant="Variant.Outlined"
+                                          Lines="4"
+                                          Validation="@_validarDescricao"
+                                          Counter="2000"
+                                          MaxLength="2000"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+
+            @* ── Seção 2: Ingressos ──────────────────────────────────────── *@
+            <MudCard Class="ec-card mb-6">
+                <MudCardHeader>
+                    <CardHeaderAvatar>
+                        <MudAvatar Color="Color.Secondary" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
+                        </MudAvatar>
+                    </CardHeaderAvatar>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Ingressos</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid Spacing="3">
+
+                        <MudItem xs="12" sm="6">
+                            <MudSwitch T="bool"
+                                       @bind-Value="_evento.EventoGratuito"
+                                       Color="Color.Success"
+                                       Label="Evento gratuito"
+                                       UncheckedColor="Color.Default" />
+                        </MudItem>
+
+                        @if (!_evento.EventoGratuito)
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudNumericField T="decimal?"
+                                                 @bind-Value="_evento.Preco"
+                                                 Label="Preço do ingresso (R$)"
+                                                 Variant="Variant.Outlined"
+                                                 Min="0m"
+                                                 Max="50000m"
+                                                 Format="F2"
+                                                 Validation="@_validarPreco"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentText="R$"
+                                                 FullWidth="true"
+                                                 HideSpinButtons="true" />
+                            </MudItem>
+                        }
+
+                        @* Capacidade máxima de participantes *@
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField T="int"
+                                             @bind-Value="_evento.CapacidadeMaxima"
+                                             Label="Capacidade máxima (participantes)"
+                                             Variant="Variant.Outlined"
+                                             Min="1"
+                                             Max="100000"
+                                             Validation="@_validarCapacidade"
+                                             Required="true"
+                                             RequiredError="A capacidade máxima é obrigatória."
+                                             Adornment="Adornment.Start"
+                                             AdornmentIcon="@Icons.Material.Filled.People"
+                                             FullWidth="true"
+                                             HideSpinButtons="true" />
+                        </MudItem>
+
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+
+            @* ── Seção 3: Fotos da Banda ─────────────────────────────────── *@
+            <MudCard Class="ec-card mb-6">
+                <MudCardHeader>
+                    <CardHeaderAvatar>
+                        <MudAvatar Color="Color.Tertiary" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.PhotoCamera" Size="Size.Small" />
+                        </MudAvatar>
+                    </CardHeaderAvatar>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            Fotos da Banda
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success"
+                                     Icon="@Icons.Material.Filled.Lock" Class="ml-2">
+                                Criptografia E2E
+                            </MudChip>
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            JPG, PNG ou WebP · mín. 800×600 px · máx. 5 MB por foto · 1 a 10 fotos obrigatórias
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+
+                    @* Zona de Drag & Drop *@
+                    <div id="ec-drop-zone"
+                         class="ec-drop-zone @(_isDragOver ? "ec-drop-zone--active" : "")"
+                         @ondragover:preventDefault="true"
+                         @ondragenter:preventDefault="true"
+                         @ondragleave:preventDefault="true">
+
+                        <MudIcon Icon="@Icons.Material.Filled.CloudUpload"
+                                 Size="Size.Large"
+                                 Color="@(_isDragOver ? Color.Primary : Color.Default)"
+                                 Class="mb-2" />
+                        <MudText Typo="Typo.body1" Class="mb-1">
+                            @if (_isDragOver)
+                            {
+                                <span>Solte as fotos aqui</span>
+                            }
+                            else
+                            {
+                                <span>Arraste as fotos aqui ou</span>
+                            }
+                        </MudText>
+                        @if (!_isDragOver)
+                        {
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.FolderOpen"
+                                       OnClick="@AbrirSeletorArquivosAsync"
+                                       Disabled="@(!_cryptoInicializado || _fotos.Count >= MaxFotos)">
+                                Selecionar arquivos
+                            </MudButton>
+                        }
+
+                        @* InputFile oculto – acionado pelo botão acima *@
+                        <InputFile id="ec-file-input"
+                                   OnChange="HandleInputFileAsync"
+                                   multiple
+                                   accept="image/jpeg,image/png,image/webp"
+                                   style="display:none" />
+                    </div>
+
+                    @* Contador *@
+                    @if (_fotos.Count > 0)
+                    {
+                        <MudText Typo="Typo.caption" Class="mt-2 mud-text-secondary">
+                            @_fotos.Count de @MaxFotos fotos adicionadas
+                        </MudText>
+                    }
+
+                    @* Grid de miniaturas *@
+                    @if (_fotos.Count > 0)
+                    {
+                        <div class="ec-photo-grid mt-4">
+                            @foreach (var foto in _fotos)
+                            {
+                                <div class="ec-photo-item">
+
+                                    @* Imagem – após criptografia mostra bytes cifrados (imagem quebrada) *@
+                                    <img class="ec-photo-thumb"
+                                         src="@(foto.Criptografada ? foto.CiphertextPreviewDataUrl : foto.ThumbnailDataUrl)"
+                                         alt="@foto.NomeArquivo"
+                                         title="@foto.NomeArquivo" />
+
+                                    @* Overlay de estado *@
+                                    @if (foto.Criptografando)
+                                    {
+                                        <div class="ec-photo-overlay ec-photo-overlay--encrypting">
+                                            <MudProgressCircular Size="Size.Small"
+                                                                  Indeterminate="true"
+                                                                  Color="Color.Primary" />
+                                            <span class="ec-overlay-label">Cifrando…</span>
+                                        </div>
+                                    }
+                                    else if (foto.Criptografada)
+                                    {
+                                        <div class="ec-photo-overlay ec-photo-overlay--encrypted">
+                                            <MudIcon Icon="@Icons.Material.Filled.Lock"
+                                                     Size="Size.Small"
+                                                     Class="mb-1" />
+                                            <span class="ec-overlay-label">CIFRADA</span>
+                                        </div>
+                                    }
+
+                                    @* Botão remover *@
+                                    <button class="ec-photo-remove"
+                                            @onclick="@(() => RemoverFoto(foto.Id))"
+                                            title="Remover foto"
+                                            disabled="@foto.Criptografando">
+                                        ×
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @* Aviso de criptografia pendente *@
+                    @if (_criptografandoFotos)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-1" />
+                            Criptografando fotos no navegador…
+                        </MudAlert>
+                    }
+
+                </MudCardContent>
+            </MudCard>
+
+            @* ── Área de ação ────────────────────────────────────────────── *@
+            <div class="ec-actions">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           OnClick="@(() => Navigation.NavigateTo("/"))"
+                           Disabled="@_carregando">
+                    Cancelar
+                </MudButton>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.Rocket"
+                           OnClick="@CriarEventoAsync"
+                           Disabled="@(_carregando || _criptografandoFotos || !_cryptoInicializado)"
+                           Class="ec-submit-btn">
+                    @if (_carregando)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Criando evento…</span>
+                    }
+                    else
+                    {
+                        <span>Criar Evento</span>
+                    }
+                </MudButton>
+            </div>
+
+        </MudForm>
+    </MudContainer>
+</div>
+
+@* ── Estilos escopados ─────────────────────────────────────────────────────── *@
+<style>
+    .ec-page {
+        min-height: 100vh;
+        background: #0D1117;
+        padding: 2rem 1rem 4rem;
+        color: #E6EDF3;
+    }
+
+    /* Cabeçalho */
+    .ec-header {
+        max-width: 800px;
+        margin: 0 auto 2rem;
+    }
+    .ec-back-btn { color: #8B949E !important; margin-bottom: 1rem; }
+    .ec-title-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    .ec-title { color: #E6EDF3 !important; font-weight: 700 !important; }
+    .ec-subtitle { color: #8B949E !important; }
+    .ec-crypto-status { display: flex; align-items: center; gap: 0.5rem; }
+
+    /* Container */
+    .ec-container { padding: 0 !important; }
+
+    /* Cards */
+    .ec-card {
+        background: #161B22 !important;
+        border: 1px solid #30363D !important;
+        border-radius: 12px !important;
+    }
+
+    /* Zona de drop */
+    .ec-drop-zone {
+        border: 2px dashed #30363D;
+        border-radius: 12px;
+        padding: 2.5rem 1rem;
+        text-align: center;
+        transition: border-color 0.2s, background 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        background: #0D1117;
+    }
+    .ec-drop-zone--active {
+        border-color: #7C3AED;
+        background: rgba(124, 58, 237, 0.08);
+    }
+    .ec-drop-zone:hover {
+        border-color: #5B5BD6;
+        background: rgba(91, 91, 214, 0.05);
+    }
+
+    /* Grid de fotos */
+    .ec-photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 0.75rem;
+    }
+    .ec-photo-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        aspect-ratio: 1;
+        background: #21262D;
+        border: 1px solid #30363D;
+    }
+    .ec-photo-thumb {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    /* Overlay da foto */
+    .ec-photo-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        border-radius: 8px;
+    }
+    .ec-photo-overlay--encrypting {
+        background: rgba(13, 17, 23, 0.75);
+        backdrop-filter: blur(2px);
+    }
+    .ec-photo-overlay--encrypted {
+        background: rgba(0, 0, 0, 0.55);
+    }
+    .ec-overlay-label {
+        font-size: 0.6rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: #3FB950;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+    .ec-photo-overlay--encrypting .ec-overlay-label { color: #58A6FF; }
+
+    /* Botão remover */
+    .ec-photo-remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(248, 81, 73, 0.85);
+        border: none;
+        color: #fff;
+        font-size: 1rem;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s;
+        z-index: 10;
+    }
+    .ec-photo-remove:hover:not(:disabled) { background: #F85149; }
+    .ec-photo-remove:disabled { opacity: 0.4; cursor: default; }
+
+    /* Ações */
+    .ec-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        padding-top: 0.5rem;
+    }
+    .ec-submit-btn { min-width: 180px; }
+</style>
