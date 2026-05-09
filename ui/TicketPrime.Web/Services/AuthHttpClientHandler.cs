@@ -12,7 +12,7 @@ public class AuthHttpClientHandler : DelegatingHandler
     public AuthHttpClientHandler(SessionService sessionService)
     {
         _sessionService = sessionService;
-        InnerHandler = new HttpClientHandler();
+        InnerHandler ??= new HttpClientHandler();
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
