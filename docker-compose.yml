@@ -1,4 +1,6 @@
 services:
+
+  # ── Banco de dados ────────────────────────────────────────────────────────────
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: ticketprime_sqlserver
@@ -9,13 +11,52 @@ services:
     ports:
       - "1433:1433"
     volumes:
-      - ./db/script.sql:/docker-entrypoint-initdb.d/script.sql
+      - ./db/script.sql:/scripts/init.sql:ro
+      - ./docker/init-db.sh:/init-db.sh:ro
       - sqlserver_data:/var/opt/mssql
+    entrypoint: ["/bin/bash", "/init-db.sh"]
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "TicketPrime@2024!", "-Q", "SELECT 1"]
+      # sqlcmd 18 + flag -C (trust cert) para SQL Server 2022
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd",
+             "-S", "localhost", "-U", "sa", "-P", "TicketPrime@2024!",
+             "-Q", "SELECT 1", "-C"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
+
+  # ── API (backend) ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .                      # raiz do repositório
+      dockerfile: src/Dockerfile
+    container_name: ticketprime_api
+    ports:
+      - "5164:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Sobrescreve a connection string para apontar ao container do SQL Server
+      ConnectionStrings__DefaultConnection: >-
+        Server=sqlserver,1433;Database=TicketPrime;
+        User Id=sa;Password=TicketPrime@2024!;TrustServerCertificate=True;
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  # ── UI (Blazor Server) ────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .                      # raiz do repositório (UI referencia src/)
+      dockerfile: ui/TicketPrime.Web/Dockerfile
+    container_name: ticketprime_frontend
+    ports:
+      - "5194:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Aponta para o serviço "api" na rede interna do Docker
+      ApiSettings__BaseUrl: http://api:8080
+    depends_on:
+      - api
 
 volumes:
   sqlserver_data:
