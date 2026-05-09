@@ -8,6 +8,11 @@ public class Evento
     public DateTime DataEvento { get; set; }
     public decimal PrecoPadrao { get; set; }
     public int LimiteIngressosPorUsuario { get; set; } = 6;
+    public string Local { get; set; } = string.Empty;
+    public string? Descricao { get; set; }
+    public string GeneroMusical { get; set; } = string.Empty;
+    public bool EventoGratuito { get; set; }
+    public string Status { get; set; } = "Rascunho";
 
     public Evento(string nome, int capacidadeTotal, DateTime dataEvento, decimal precoPadrao, int limiteIngressosPorUsuario = 6)
     {

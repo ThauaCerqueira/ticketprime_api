@@ -17,8 +17,12 @@ public class EventoRepository : IEventoRepository
     public async Task AdicionarAsync(Evento evento)
     {
         const string sql = @"
-            INSERT INTO Eventos (Nome, CapacidadeTotal, DataEvento, PrecoPadrao, LimiteIngressosPorUsuario)
-            VALUES (@Nome, @CapacidadeTotal, @DataEvento, @PrecoPadrao, @LimiteIngressosPorUsuario)";
+            INSERT INTO Eventos (
+                Nome, CapacidadeTotal, DataEvento, PrecoPadrao, LimiteIngressosPorUsuario,
+                Local, Descricao, GeneroMusical, EventoGratuito, Status)
+            VALUES (
+                @Nome, @CapacidadeTotal, @DataEvento, @PrecoPadrao, @LimiteIngressosPorUsuario,
+                @Local, @Descricao, @GeneroMusical, @EventoGratuito, @Status)";
 
         using var connection = _connectionFactory.CreateConnection();
         await connection.ExecuteAsync(sql, evento);
