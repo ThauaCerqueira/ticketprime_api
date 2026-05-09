@@ -5,6 +5,7 @@
 @using TicketPrime.Web.Services
 @rendermode InteractiveServer
 @inject UsuarioService UsuarioService
+@inject AuthService Auth
 @inject NavigationManager Navigation
 @inject SessionService Session
 
@@ -12,7 +13,7 @@
 
 @if (Session.EstaLogado)
 {
-    Navigation.NavigateTo("/eventos", forceLoad: true);
+    Navigation.NavigateTo("/eventos");
     return;
 }
 
@@ -314,13 +315,24 @@
 
         try
         {
+            var cpf = novoUsuario.Cpf;
+            var senha = novoUsuario.Senha;
+
             await UsuarioService.CadastrarUsuario(novoUsuario);
+
+            // Auto-login após cadastro bem-sucedido
+            var loginDto = new LoginDTO { Cpf = cpf, Senha = senha };
+            var resultado = await Auth.LoginAsync(loginDto);
+            if (resultado != null)
+            {
+                Session.Logar(resultado.Cpf, resultado.Nome, resultado.Perfil, resultado.Token);
+            }
 
             sucesso = true;
             mensagem = "Conta criada com sucesso! Redirecionando...";
             novoUsuario = new Usuario();
             await Task.Delay(1500);
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("/eventos");
         }
         catch (InvalidOperationException ex)
         {
