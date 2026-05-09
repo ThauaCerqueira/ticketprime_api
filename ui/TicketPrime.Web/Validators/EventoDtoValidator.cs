@@ -75,7 +75,19 @@ public class EventoCreateDtoValidator : AbstractValidator<EventoCreateDto>
             .Must(p => p is null or 0)
                 .WithMessage("Evento gratuito não pode ter preço diferente de zero.")
             .When(x => x.EventoGratuito && x.Preco.HasValue);
+        // ── Taxa de serviço – máximo 5% do preço do ingresso ────────────────────
+        RuleFor(x => x.TaxaServico)
+            .GreaterThanOrEqualTo(0)
+                .WithMessage("A taxa de serviço não pode ser negativa.")
+            .Must((dto, taxa) =>
+                !taxa.HasValue || dto.Preco is null or 0 || taxa.Value <= dto.Preco.Value * 0.05m)
+                .WithMessage("A taxa de serviço não pode exceder 5% do preço do ingresso.")
+            .When(x => !x.EventoGratuito);
 
+        RuleFor(x => x.TaxaServico)
+            .Must(t => t is null or 0)
+                .WithMessage("Evento gratuito não pode cobrar taxa de serviço.")
+            .When(x => x.EventoGratuito && x.TaxaServico.HasValue && x.TaxaServico > 0);
         // ── Capacidade máxima ───────────────────────────────────────────────────
         RuleFor(x => x.CapacidadeMaxima)
             .GreaterThanOrEqualTo(CapacidadeMinima)

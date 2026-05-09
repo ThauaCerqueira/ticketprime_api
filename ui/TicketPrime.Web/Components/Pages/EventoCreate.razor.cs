@@ -132,6 +132,9 @@ public partial class EventoCreate : IAsyncDisposable
     private Func<decimal?, IEnumerable<string>> _validarPreco =>
         _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.Preco));
 
+    private Func<decimal?, IEnumerable<string>> _validarTaxaServico =>
+        _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.TaxaServico));
+
     private Func<int, IEnumerable<string>> _validarCapacidade =>
         _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.CapacidadeMaxima));
 

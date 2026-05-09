@@ -13,6 +13,8 @@ public class Evento
     public string GeneroMusical { get; set; } = string.Empty;
     public bool EventoGratuito { get; set; }
     public string Status { get; set; } = "Rascunho";
+    /// <summary>Taxa de serviço cobrada por ingresso. Máximo 5% do PrecoPadrao.</summary>
+    public decimal TaxaServico { get; set; }
 
     public Evento(string nome, int capacidadeTotal, DateTime dataEvento, decimal precoPadrao, int limiteIngressosPorUsuario = 6)
     {

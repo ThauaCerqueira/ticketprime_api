@@ -35,9 +35,11 @@ BEGIN
         [GeneroMusical]             NVARCHAR (100)   NOT NULL DEFAULT '',
         [EventoGratuito]            BIT              NOT NULL DEFAULT 0,
         [Status]                    VARCHAR (20)     NOT NULL DEFAULT 'Rascunho',
+        [TaxaServico]               DECIMAL (18, 2)  NOT NULL DEFAULT 0,
         
         CONSTRAINT [PK_Eventos] PRIMARY KEY CLUSTERED ([Id] ASC),
-        CONSTRAINT [CK_Eventos_Status] CHECK ([Status] IN ('Rascunho', 'Publicado', 'Encerrado', 'Cancelado'))
+        CONSTRAINT [CK_Eventos_Status] CHECK ([Status] IN ('Rascunho', 'Publicado', 'Encerrado', 'Cancelado')),
+        CONSTRAINT [CK_Eventos_TaxaServico] CHECK ([TaxaServico] >= 0)
     );
 END
 GO
@@ -51,6 +53,9 @@ BEGIN
         [DataCompra]      DATETIME       DEFAULT GETDATE(),
         [CupomUtilizado]  NVARCHAR(20)   NULL,
         [ValorFinalPago]  DECIMAL(18, 2) NOT NULL DEFAULT 0,
+        [TaxaServicoPago] DECIMAL(18, 2) NOT NULL DEFAULT 0,
+        [TemSeguro]       BIT            NOT NULL DEFAULT 0,
+        [ValorSeguroPago] DECIMAL(18, 2) NOT NULL DEFAULT 0,
 
         CONSTRAINT [PK_Reservas] PRIMARY KEY ([Id]),
         CONSTRAINT [FK_Reservas_Usuarios] FOREIGN KEY ([UsuarioCpf]) REFERENCES [Usuarios]([Cpf]),
@@ -103,6 +108,24 @@ BEGIN
 END
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'TaxaServicoPago')
+BEGIN
+    ALTER TABLE Reservas ADD TaxaServicoPago DECIMAL(18, 2) NOT NULL DEFAULT 0;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'TemSeguro')
+BEGIN
+    ALTER TABLE Reservas ADD TemSeguro BIT NOT NULL DEFAULT 0;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'ValorSeguroPago')
+BEGIN
+    ALTER TABLE Reservas ADD ValorSeguroPago DECIMAL(18, 2) NOT NULL DEFAULT 0;
+END
+GO
+
 -- ─── Novos campos da tabela Eventos (compatibilidade com bancos existentes) ──────────────────
 
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Eventos]') AND name = 'Local')
@@ -136,6 +159,13 @@ BEGIN
         DEFAULT 'Rascunho'
         CONSTRAINT [CK_Eventos_Status]
         CHECK ([Status] IN ('Rascunho', 'Publicado', 'Encerrado', 'Cancelado'));
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Eventos]') AND name = 'TaxaServico')
+BEGIN
+    ALTER TABLE Eventos ADD [TaxaServico] DECIMAL(18, 2) NOT NULL DEFAULT 0
+        CONSTRAINT [CK_Eventos_TaxaServico] CHECK ([TaxaServico] >= 0);
 END
 GO
 

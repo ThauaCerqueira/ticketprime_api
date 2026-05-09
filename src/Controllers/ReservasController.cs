@@ -53,7 +53,7 @@ public class ReservasController : ControllerBase
     {
         try
         {
-            var reserva = await _reservaService.ComprarIngressoAsync(cpf, dto.EventoId, dto.CupomUtilizado);
+            var reserva = await _reservaService.ComprarIngressoAsync(cpf, dto.EventoId, dto.CupomUtilizado, dto.ContratarSeguro);
             return CreatedAtAction(nameof(ObterPorCpf), new { cpf }, reserva);
         }
         catch (InvalidOperationException ex)

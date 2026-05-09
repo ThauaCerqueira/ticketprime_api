@@ -18,4 +18,8 @@ public record CriarEventoDTO
 
     [Range(1, 100, ErrorMessage = "O limite de ingressos por usuário deve ser entre 1 e 100.")]
     public int LimiteIngressosPorUsuario { get; set; } = 6;
+
+    /// <summary>Taxa de serviço por ingresso. Não pode exceder 5% do PrecoPadrao.</summary>
+    [Range(0, double.MaxValue, ErrorMessage = "A taxa de serviço não pode ser negativa.")]
+    public decimal TaxaServico { get; set; }
 }

@@ -10,4 +10,5 @@ public interface IEventoRepository
     Task<Evento?> ObterPorIdAsync(int id);
     Task<bool> DiminuirCapacidadeAsync(int eventoId);
     Task AumentarCapacidadeAsync(int eventoId);
+    Task<bool> DeletarAsync(int id);
 }

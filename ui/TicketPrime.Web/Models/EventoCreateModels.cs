@@ -30,6 +30,8 @@ public class EventoCreateDto
     public string   GeneroMusical     { get; set; } = string.Empty;
     public decimal? Preco             { get; set; }
     public bool     EventoGratuito    { get; set; }
+    /// <summary>Taxa de serviço por ingresso. Máximo 5% do preço. Zero para eventos gratuitos.</summary>
+    public decimal? TaxaServico       { get; set; }
 
     /// <summary>Capacidade máxima de participantes. Controla o limite de reservas.</summary>
     public int CapacidadeMaxima { get; set; }

@@ -23,7 +23,7 @@ public class ReservaService
         _cupomRepository = cupomRepository;
     }
  
-    public async Task<Reserva> ComprarIngressoAsync(string usuarioCpf, int eventoId, string? cupomUtilizado = null)
+    public async Task<Reserva> ComprarIngressoAsync(string usuarioCpf, int eventoId, string? cupomUtilizado = null, bool contratarSeguro = false)
     {
         // R1 — Validação de Integridade
         var usuario = await _usuarioRepository.ObterPorCpf(usuarioCpf);
@@ -48,7 +48,7 @@ public class ReservaService
             throw new InvalidOperationException("Não há mais vagas disponíveis para este evento.");
 
         // R4 — Motor de Cupons
-        decimal valorFinal = evento.PrecoPadrao;
+        decimal valorIngresso = evento.PrecoPadrao;
 
         if (!string.IsNullOrEmpty(cupomUtilizado))
         {
@@ -60,16 +60,25 @@ public class ReservaService
             if (evento.PrecoPadrao >= cupom.ValorMinimoRegra)
             {
                 var desconto = evento.PrecoPadrao * (cupom.PorcentagemDesconto / 100);
-                valorFinal = evento.PrecoPadrao - desconto;
+                valorIngresso = evento.PrecoPadrao - desconto;
             }
         }
 
+        // R5 — Taxa de serviço (fixa por ingresso, não devolvida sem seguro)
+        decimal taxaServico = evento.TaxaServico;
+
+        // R6 — Seguro de devolução integral (opcional, 15% do preço original do ingresso)
+        decimal valorSeguro = contratarSeguro ? evento.PrecoPadrao * 0.15m : 0m;
+
         var reserva = new Reserva
         {
-            UsuarioCpf = usuarioCpf,
-            EventoId = eventoId,
-            CupomUtilizado = cupomUtilizado,
-            ValorFinalPago = valorFinal
+            UsuarioCpf       = usuarioCpf,
+            EventoId         = eventoId,
+            CupomUtilizado   = cupomUtilizado,
+            TaxaServicoPago  = taxaServico,
+            TemSeguro        = contratarSeguro,
+            ValorSeguroPago  = valorSeguro,
+            ValorFinalPago   = valorIngresso + taxaServico + valorSeguro
         };
 
         return await _reservaRepository.CriarAsync(reserva);
@@ -82,17 +91,14 @@ public class ReservaService
  
     public async Task CancelarIngressoAsync(int reservaId, string usuarioCpf)
     {
-        var reservas = await _reservaRepository.ListarPorUsuarioAsync(usuarioCpf);
-        var reserva = reservas.FirstOrDefault(r => r.Id == reservaId);
- 
-        if (reserva == null)
-            throw new InvalidOperationException("Reserva não encontrada.");
- 
+        var reserva = await _reservaRepository.ObterDetalhadaPorIdAsync(reservaId, usuarioCpf)
+            ?? throw new InvalidOperationException("Reserva não encontrada.");
+
         var cancelou = await _reservaRepository.CancelarAsync(reservaId, usuarioCpf);
- 
+
         if (!cancelou)
             throw new InvalidOperationException("Não foi possível cancelar a reserva.");
- 
+
         await _eventoRepository.AumentarCapacidadeAsync(reserva.EventoId);
     }
 }

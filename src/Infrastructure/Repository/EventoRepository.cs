@@ -19,10 +19,10 @@ public class EventoRepository : IEventoRepository
         const string sql = @"
             INSERT INTO Eventos (
                 Nome, CapacidadeTotal, DataEvento, PrecoPadrao, LimiteIngressosPorUsuario,
-                Local, Descricao, GeneroMusical, EventoGratuito, Status)
+                Local, Descricao, GeneroMusical, EventoGratuito, Status, TaxaServico)
             VALUES (
                 @Nome, @CapacidadeTotal, @DataEvento, @PrecoPadrao, @LimiteIngressosPorUsuario,
-                @Local, @Descricao, @GeneroMusical, @EventoGratuito, @Status)";
+                @Local, @Descricao, @GeneroMusical, @EventoGratuito, @Status, @TaxaServico)";
 
         using var connection = _connectionFactory.CreateConnection();
         await connection.ExecuteAsync(sql, evento);
@@ -69,5 +69,18 @@ public class EventoRepository : IEventoRepository
                        SET CapacidadeTotal = CapacidadeTotal + 1
                        WHERE Id = @EventoId";
         await conn.ExecuteAsync(sql, new { EventoId = eventoId });
+    }
+
+    public async Task<bool> DeletarAsync(int id)
+    {
+        using var conn = _connectionFactory.CreateConnection();
+        // Só permite excluir se não houver reservas ativas
+        const string check = "SELECT COUNT(*) FROM Reservas WHERE EventoId = @Id";
+        var total = await conn.QuerySingleAsync<int>(check, new { Id = id });
+        if (total > 0) return false;
+
+        const string sql = "DELETE FROM Eventos WHERE Id = @Id";
+        var rows = await conn.ExecuteAsync(sql, new { Id = id });
+        return rows > 0;
     }
 }

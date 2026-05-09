@@ -223,6 +223,21 @@
                                                  FullWidth="true"
                                                  HideSpinButtons="true" />
                             </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudNumericField T="decimal?"
+                                                 @bind-Value="_evento.TaxaServico"
+                                                 Label="Taxa de serviço (R$) — máx. 5% do ingresso"
+                                                 Variant="Variant.Outlined"
+                                                 Min="0m"
+                                                 Format="F2"
+                                                 Validation="@_validarTaxaServico"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentText="R$"
+                                                 FullWidth="true"
+                                                 HideSpinButtons="true"
+                                                 HelperText="@($"Máx.: R$ {(_evento.Preco.GetValueOrDefault() * 0.05m):F2} · Não é reembolsada na devolução sem seguro")" />
+                            </MudItem>
                         }
 
                         @* Capacidade máxima de participantes *@

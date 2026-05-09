@@ -63,4 +63,23 @@ public class EventosController : ControllerBase
         var eventos = await _eventoService.ListarEventos();
         return Ok(eventos);
     }
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> DeletarEvento(int id)
+    {
+        try
+        {
+            await _eventoService.DeletarEventoAsync(id);
+            return Ok(new { mensagem = "Evento excluído com sucesso." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensagem = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { mensagem = "Erro interno ao excluir evento." });
+        }
+    }
 }
