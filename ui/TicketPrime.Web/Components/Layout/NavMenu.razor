@@ -249,12 +249,6 @@
                         </svg>
                         Eventos
                     </button>
-                    <button class="navbar-dropdown-item" @onclick='() => Navegar("/cupons")'>
-                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
-                            <path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/>
-                        </svg>
-                        Cupons
-                    </button>
 
                     @if (Session.EstaLogado)
                     {
@@ -275,12 +269,6 @@
                                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
                             Criar Evento
-                        </button>
-                        <button class="navbar-dropdown-item" @onclick='() => Navegar("/cupons/cadastrar")'>
-                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
-                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                            </svg>
-                            Criar Cupom
                         </button>
                     }
                 </div>
@@ -322,10 +310,12 @@
 
 @code {
     private bool menuAberto = false;
+    private Action? _onSessionChange;
 
     protected override void OnInitialized()
     {
-        Session.OnChange += async () => await InvokeAsync(StateHasChanged);
+        _onSessionChange = () => InvokeAsync(StateHasChanged);
+        Session.OnChange += _onSessionChange;
     }
 
     private void ToggleMenu() => menuAberto = !menuAberto;
@@ -346,6 +336,9 @@
 
     void IDisposable.Dispose()
     {
-        Session.OnChange -= async () => await InvokeAsync(StateHasChanged);
+        if (_onSessionChange != null)
+        {
+            Session.OnChange -= _onSessionChange;
+        }
     }
 }
