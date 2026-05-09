@@ -339,12 +339,21 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Carregamento feito em OnAfterRenderAsync para evitar conflito com prerendering
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
         if (!Session.EstaLogado)
         {
-            Navigation.NavigateTo("/login", forceLoad: true);
+            Navigation.NavigateTo("/login");
             return;
         }
+
         await CarregarEventos();
+        StateHasChanged();
     }
 
     private async Task CarregarEventos()

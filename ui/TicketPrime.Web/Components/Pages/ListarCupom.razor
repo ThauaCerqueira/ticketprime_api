@@ -10,12 +10,6 @@
 
 <PageTitle>Cupons - TicketPrime</PageTitle>
 
-@if (!Session.EstaLogado)
-{
-    Navigation.NavigateTo("/login", forceLoad: true);
-    return;
-}
-
 <style>
     .cp-wrapper {
         min-height: 100vh;

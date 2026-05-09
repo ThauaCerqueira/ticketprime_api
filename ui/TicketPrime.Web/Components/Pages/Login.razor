@@ -251,6 +251,14 @@
     private string erro = "";
     private bool carregando = false;
 
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && Session.EstaLogado)
+        {
+            Navigation.NavigateTo("/eventos");
+        }
+    }
+
     private async Task HandleLogin()
     {
         carregando = true;
@@ -265,7 +273,6 @@
             {
                 Session.Logar(resultado.Cpf, resultado.Nome, resultado.Perfil, resultado.Token);
                 Navigation.NavigateTo("/eventos");
-                StateHasChanged();
             }
             else
             {
