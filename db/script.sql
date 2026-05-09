@@ -131,8 +131,10 @@ GO
 
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Eventos]') AND name = 'Status')
 BEGIN
-    ALTER TABLE Eventos ADD [Status] VARCHAR(20) NOT NULL DEFAULT 'Rascunho';
-    ALTER TABLE Eventos ADD CONSTRAINT [CK_Eventos_Status]
+    -- Constraint inline no ADD COLUMN para evitar erros de resolução em batch único
+    ALTER TABLE Eventos ADD [Status] VARCHAR(20) NOT NULL
+        DEFAULT 'Rascunho'
+        CONSTRAINT [CK_Eventos_Status]
         CHECK ([Status] IN ('Rascunho', 'Publicado', 'Encerrado', 'Cancelado'));
 END
 GO
