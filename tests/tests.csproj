@@ -16,6 +16,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!-- FluentValidation: necessário para testar EventoCreateDtoValidator -->
+    <PackageReference Include="FluentValidation" Version="11.*" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +26,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\src\src.csproj" />
+    <!-- UI: necessário para acessar Validators e Models do EventoCreate -->
+    <ProjectReference Include="..\ui\TicketPrime.Web\TicketPrime.Web.csproj" />
   </ItemGroup>
 
 </Project>
