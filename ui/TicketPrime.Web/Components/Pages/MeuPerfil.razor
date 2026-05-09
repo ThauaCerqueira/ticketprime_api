@@ -10,12 +10,6 @@
 
 <PageTitle>Meu Perfil - TicketPrime</PageTitle>
 
-@if (!Session.EstaLogado)
-{
-    Navigation.NavigateTo("/login", forceLoad: true);
-    return;
-}
-
 <style>
     .pf-wrapper {
         min-height: 100vh;
@@ -184,9 +178,13 @@
     </div>
 
     <!-- Card de perfil -->
-    @if (perfil == null)
+    @if (carregandoPerfil)
     {
         <div class="pf-loading"><div class="pf-spinner"></div><p>Carregando perfil...</p></div>
+    }
+    else if (perfil == null)
+    {
+        <div class="pf-alert pf-alert-error">@(erroPerfil ?? "Nao foi possivel carregar o perfil.")</div>
     }
     else
     {
@@ -231,11 +229,15 @@
             }
         </div>
 
-        @if (eventos == null)
+        @if (carregandoEventos)
         {
             <div class="pf-loading"><div class="pf-spinner"></div><p>Carregando eventos...</p></div>
         }
-        else if (!eventos.Any())
+        else if (!string.IsNullOrEmpty(erroEventos))
+        {
+            <div class="pf-alert pf-alert-error">@erroEventos</div>
+        }
+        else if (!(eventos?.Any() ?? false))
         {
             <div class="pf-empty">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
@@ -289,16 +291,21 @@
             }
         </div>
 
+        @if (!string.IsNullOrEmpty(erroReservas))
+        {
+            <div class="pf-alert pf-alert-error">@erroReservas</div>
+        }
+
         @if (!string.IsNullOrEmpty(mensagem))
         {
             <div class="pf-alert @(mensagem.Contains("sucesso") ? "pf-alert-success" : "pf-alert-error")">@mensagem</div>
         }
 
-        @if (reservas == null)
+        @if (carregandoReservas)
         {
             <div class="pf-loading"><div class="pf-spinner"></div><p>Carregando ingressos...</p></div>
         }
-        else if (!reservas.Any())
+        else if (!(reservas?.Any() ?? false))
         {
             <div class="pf-empty">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
@@ -382,7 +389,7 @@
 
 @code {
     private PerfilResponse? perfil;
-    private List<ReservaDetalhadaResponse>? reservas;
+    private List<ReservaDetalhadaDTO>? reservas;
     private List<Evento>? eventos;
     private string mensagem = "";
     private bool cancelando = false;
@@ -390,14 +397,31 @@
     private string? erroPerfil;
     private string? erroEventos;
     private string? erroReservas;
+    private bool carregandoPerfil = true;
+    private bool carregandoEventos = false;
+    private bool carregandoReservas = false;
 
     protected override async Task OnInitializedAsync()
     {
+        // Carregamento feito em OnAfterRenderAsync para evitar conflito com prerendering
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (!Session.EstaLogado)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         await CarregarPerfil();
         if (Session.EhAdmin)
             await CarregarEventos();
         else
             await CarregarReservas();
+        StateHasChanged();
     }
 
     private async Task CarregarPerfil()
@@ -406,57 +430,123 @@
         {
             Console.WriteLine("[DEBUG] Carregando perfil do usuário...");
             perfil = await Http.GetFromJsonAsync<PerfilResponse>("api/perfil");
+
+            if (perfil == null)
+            {
+                perfil = new PerfilResponse
+                {
+                    Cpf = Session.Cpf ?? "",
+                    Nome = Session.Nome ?? "Usuario",
+                    Email = "-",
+                    Perfil = Session.Perfil ?? "CLIENTE"
+                };
+            }
         }
         catch (HttpRequestException ex)
         {
             erroPerfil = "Erro de conexão ao carregar perfil.";
             Console.WriteLine($"[DEBUG] HttpRequestException (perfil): {ex.Message}");
+            perfil ??= new PerfilResponse
+            {
+                Cpf = Session.Cpf ?? "",
+                Nome = Session.Nome ?? "Usuario",
+                Email = "-",
+                Perfil = Session.Perfil ?? "CLIENTE"
+            };
         }
         catch (Exception ex)
         {
             erroPerfil = $"Erro ao carregar perfil: {ex.Message}";
             Console.WriteLine($"[DEBUG] Exception (perfil): {ex.GetType().Name} - {ex.Message}");
+            perfil ??= new PerfilResponse
+            {
+                Cpf = Session.Cpf ?? "",
+                Nome = Session.Nome ?? "Usuario",
+                Email = "-",
+                Perfil = Session.Perfil ?? "CLIENTE"
+            };
+        }
+        finally
+        {
+            carregandoPerfil = false;
         }
     }
 
     private async Task CarregarEventos()
     {
+        carregandoEventos = true;
+        erroEventos = null;
         try
         {
             Console.WriteLine("[DEBUG] Carregando eventos do admin...");
             eventos = await Http.GetFromJsonAsync<List<Evento>>("api/eventos");
+            eventos ??= new List<Evento>();
         }
         catch (HttpRequestException ex)
         {
             erroEventos = "Erro de conexão ao carregar eventos.";
             Console.WriteLine($"[DEBUG] HttpRequestException (eventos): {ex.Message}");
+            eventos = new List<Evento>();
         }
         catch (Exception ex)
         {
             erroEventos = $"Erro ao carregar eventos: {ex.Message}";
             Console.WriteLine($"[DEBUG] Exception (eventos): {ex.GetType().Name} - {ex.Message}");
+            eventos = new List<Evento>();
+        }
+        finally
+        {
+            carregandoEventos = false;
         }
     }
 
     private async Task CarregarReservas()
     {
+        carregandoReservas = true;
+        erroReservas = null;
         try
         {
             Console.WriteLine("[DEBUG] Carregando reservas do usuário...");
-            if (perfil != null)
+            if (string.IsNullOrEmpty(Session.Cpf))
             {
-                reservas = await Http.GetFromJsonAsync<List<ReservaDetalhadaResponse>>($"api/reservas/{perfil.Cpf}");
+                erroReservas = "Sessao sem CPF. Faca login novamente.";
+                reservas = new List<ReservaDetalhadaDTO>();
+            }
+            else
+            {
+                var response = await Http.GetAsync($"api/reservas/{Session.Cpf}");
+                if (response.IsSuccessStatusCode)
+                {
+                    reservas = await response.Content.ReadFromJsonAsync<List<ReservaDetalhadaDTO>>();
+                    reservas ??= new List<ReservaDetalhadaDTO>();
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    // API retorna 404 quando não há ingressos — tratar como lista vazia
+                    reservas = new List<ReservaDetalhadaDTO>();
+                }
+                else
+                {
+                    erroReservas = $"Erro ao carregar ingressos (código {(int)response.StatusCode}).";
+                    reservas = new List<ReservaDetalhadaDTO>();
+                }
             }
         }
         catch (HttpRequestException ex)
         {
             erroReservas = "Erro de conexão ao carregar ingressos.";
             Console.WriteLine($"[DEBUG] HttpRequestException (reservas): {ex.Message}");
+            reservas = new List<ReservaDetalhadaDTO>();
         }
         catch (Exception ex)
         {
             erroReservas = $"Erro ao carregar ingressos: {ex.Message}";
             Console.WriteLine($"[DEBUG] Exception (reservas): {ex.GetType().Name} - {ex.Message}");
+            reservas = new List<ReservaDetalhadaDTO>();
+        }
+        finally
+        {
+            carregandoReservas = false;
         }
     }
 
@@ -466,7 +556,7 @@
         try
         {
             Console.WriteLine($"[DEBUG] Cancelando reserva {reservaId}...");
-            var response = await Http.DeleteAsync($"api/reservas/{reservaId}");
+            var response = await Http.DeleteAsync($"api/reservas/{reservaId}?cpf={Session.Cpf}");
             Console.WriteLine($"[DEBUG] Cancelamento resposta: {(int)response.StatusCode}");
 
             if (response.IsSuccessStatusCode)
@@ -506,16 +596,5 @@
         public string Nome { get; set; } = "";
         public string Email { get; set; } = "";
         public string Perfil { get; set; } = "";
-    }
-
-    public class ReservaDetalhadaResponse
-    {
-        public int Id { get; set; }
-        public string Nome { get; set; } = "";
-        public DateTime DataEvento { get; set; }
-        public decimal PrecoPadrao { get; set; }
-        public decimal ValorFinalPago { get; set; }
-        public string? CupomUtilizado { get; set; }
-        public DateTime DataCompra { get; set; }
     }
 }
