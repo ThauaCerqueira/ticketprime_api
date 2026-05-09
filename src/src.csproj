@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateProgramFile>false</GenerateProgramFile>
+    <!-- Evita bloqueio do src.exe quando o backend está em execução e o frontend é compilado -->
+    <UseAppHost>false</UseAppHost>
   </PropertyGroup>
 
   <ItemGroup>
