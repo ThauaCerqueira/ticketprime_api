@@ -17,8 +17,8 @@ public class ReservaRepository : IReservaRepository
     public async Task<Reserva> CriarAsync(Reserva reserva)
     {
         using var connection = _connectionFactory.CreateConnection();
-        var sql = @"INSERT INTO Reservas (UsuarioCpf, EventoId, DataCompra)
-                    VALUES (@UsuarioCpf, @EventoId, GETDATE());
+        var sql = @"INSERT INTO Reservas (UsuarioCpf, EventoId, DataCompra, CupomUtilizado, ValorFinalPago)
+                    VALUES (@UsuarioCpf, @EventoId, GETDATE(), @CupomUtilizado, @ValorFinalPago);
                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
         var id = await connection.QuerySingleAsync<int>(sql, reserva);
         reserva.Id = id;
@@ -29,6 +29,7 @@ public class ReservaRepository : IReservaRepository
     {
         using var connection = _connectionFactory.CreateConnection();
         var sql = @"SELECT r.Id, r.UsuarioCpf, r.EventoId, r.DataCompra,
+                           r.CupomUtilizado, r.ValorFinalPago,
                            e.Nome, e.DataEvento, e.PrecoPadrao
                     FROM Reservas r
                     INNER JOIN Eventos e ON e.Id = r.EventoId
@@ -52,5 +53,13 @@ public class ReservaRepository : IReservaRepository
         var sql = @"SELECT COUNT(*) FROM Reservas
                     WHERE UsuarioCpf = @UsuarioCpf AND EventoId = @EventoId";
         return await connection.QuerySingleAsync<int>(sql, new { UsuarioCpf = usuarioCpf, EventoId = eventoId });
+    }
+
+    public async Task<int> ContarReservasPorEventoAsync(int eventoId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var sql = @"SELECT COUNT(*) FROM Reservas
+                    WHERE EventoId = @EventoId";
+        return await connection.QuerySingleAsync<int>(sql, new { EventoId = eventoId });
     }
 }

@@ -1,7 +1,13 @@
 @page "/vitrine"
 @using System.Net.Http.Json
+@using System.Text.Json
+@using System.Text
 @using src.Models
+@using src.DTOs
+@using TicketPrime.Web.Services
 @inject HttpClient Http
+@inject SessionService Session
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <PageTitle>Eventos Disponíveis - TicketPrime</PageTitle>
@@ -65,6 +71,7 @@
         display: flex;
         flex-direction: column;
         gap: 0.4rem;
+        flex: 1;
     }
 
     .vitrine-card-row {
@@ -82,6 +89,27 @@
         font-weight: 800;
         color: #5B5BD6;
     }
+
+    .vitrine-btn-comprar {
+        width: 100%;
+        padding: 0.65rem;
+        background: #5B5BD6;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        margin-top: auto;
+    }
+
+    .vitrine-btn-comprar:hover { background: #4949c4; transform: translateY(-1px); }
+    .vitrine-btn-comprar:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
     .vitrine-empty {
         text-align: center;
@@ -121,6 +149,147 @@
     }
 
     .vitrine-alert-error { background: #FEE2E2; color: #991B1B; }
+    .vitrine-alert-success { background: #D1FAE5; color: #065F46; }
+
+    /* Modal de compra */
+    .vitrine-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.4);
+        backdrop-filter: blur(4px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000;
+    }
+
+    .vitrine-modal {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        max-width: 440px;
+        width: 90%;
+        box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+        animation: fadeUp 0.25s ease;
+    }
+
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .vitrine-modal h3 {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 0.3rem 0;
+    }
+
+    .vitrine-modal .vitrine-modal-sub {
+        font-size: 0.875rem;
+        color: #6B7280;
+        margin-bottom: 1.5rem;
+    }
+
+    .vitrine-modal-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.6rem 0;
+        font-size: 0.9rem;
+    }
+
+    .vitrine-modal-row-label { color: #6B7280; }
+    .vitrine-modal-row-value { font-weight: 600; color: #1a1a2e; }
+
+    .vitrine-modal-divider { height: 1px; background: #F1F5F9; margin: 0.5rem 0; }
+
+    .vitrine-modal-input {
+        width: 100%;
+        padding: 0.7rem 1rem;
+        border: 1.5px solid #E5E7EB;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        margin: 0.5rem 0 1rem 0;
+        transition: border-color 0.2s;
+    }
+
+    .vitrine-modal-input:focus {
+        outline: none;
+        border-color: #5B5BD6;
+        box-shadow: 0 0 0 3px rgba(91,91,214,0.1);
+    }
+
+    .vitrine-modal-actions {
+        display: flex;
+        gap: 0.8rem;
+        margin-top: 1.2rem;
+    }
+
+    .vitrine-modal-btn-primary {
+        flex: 1;
+        padding: 0.7rem;
+        background: #5B5BD6;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .vitrine-modal-btn-primary:hover { background: #4949c4; }
+    .vitrine-modal-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .vitrine-modal-btn-sec {
+        padding: 0.7rem 1.2rem;
+        background: #F3F4F6;
+        color: #374151;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .vitrine-modal-btn-sec:hover { background: #E5E7EB; }
+
+    .vitrine-modal-error {
+        background: #FEE2E2;
+        color: #991B1B;
+        padding: 0.7rem 1rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+    }
+
+    .vitrine-modal-success {
+        text-align: center;
+        padding: 1.5rem 0;
+    }
+
+    .vitrine-modal-success-icon {
+        width: 56px; height: 56px;
+        background: #D1FAE5;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+    }
+
+    .vitrine-modal-success h4 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #065F46;
+        margin-bottom: 0.4rem;
+    }
+
+    .vitrine-modal-success p {
+        font-size: 0.875rem;
+        color: #6B7280;
+        margin-bottom: 1.2rem;
+    }
 
     @@media (max-width: 600px) {
         .vitrine-wrapper { padding: 1rem; }
@@ -140,6 +309,16 @@
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             @mensagemErro
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(mensagemSucesso))
+    {
+        <div class="vitrine-alert vitrine-alert-success">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            @mensagemSucesso
         </div>
     }
 
@@ -182,16 +361,110 @@
                         </div>
                         <div class="vitrine-card-price">@evento.PrecoPadrao.ToString("C")</div>
                     </div>
+                    @if (Session.EstaLogado)
+                    {
+                        <button class="vitrine-btn-comprar" @onclick="() => AbrirCompra(evento)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a2 2 0 0 0 0 4v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0 0-4z"/>
+                            </svg>
+                            Comprar ingresso
+                        </button>
+                    }
                 </div>
             }
         </div>
     }
 </div>
 
+@if (mostrarModal && eventoSelecionado != null)
+{
+    <div class="vitrine-overlay" @onclick="FecharModal">
+        <div class="vitrine-modal" @onclick:stopPropagation>
+            @if (compraSucesso)
+            {
+                <div class="vitrine-modal-success">
+                    <div class="vitrine-modal-success-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <h4>Ingresso comprado! 🎫</h4>
+                    <p>Seu ingresso para <strong>@eventoSelecionado.Nome</strong> foi confirmado.</p>
+                    <button class="vitrine-modal-btn-primary" @onclick="FecharModal">
+                        Ver meus ingressos
+                    </button>
+                </div>
+            }
+            else
+            {
+                <h3>Confirmar compra</h3>
+                <div class="vitrine-modal-sub">Revise os detalhes antes de confirmar.</div>
+
+                @if (!string.IsNullOrEmpty(erroCompra))
+                {
+                    <div class="vitrine-modal-error">@erroCompra</div>
+                }
+
+                <div class="vitrine-modal-row">
+                    <span class="vitrine-modal-row-label">Evento</span>
+                    <span class="vitrine-modal-row-value">@eventoSelecionado.Nome</span>
+                </div>
+                <div class="vitrine-modal-row">
+                    <span class="vitrine-modal-row-label">Data</span>
+                    <span class="vitrine-modal-row-value">@eventoSelecionado.DataEvento.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
+                <div class="vitrine-modal-row">
+                    <span class="vitrine-modal-row-label">Preço</span>
+                    <span class="vitrine-modal-row-value">@eventoSelecionado.PrecoPadrao.ToString("C")</span>
+                </div>
+
+                <div class="vitrine-modal-divider"></div>
+
+                <label style="font-size:0.875rem;font-weight:600;color:#374151;">
+                    Cupom de desconto (opcional)
+                </label>
+                <input class="vitrine-modal-input"
+                       placeholder="Ex: PRIME10"
+                       @bind="cupomDigitado"
+                       @bind:event="oninput"
+                       disabled="@(comprando)" />
+
+                <div class="vitrine-modal-actions">
+                    <button class="vitrine-modal-btn-primary"
+                            @onclick="Comprar"
+                            disabled="@(comprando)">
+                        @if (comprando)
+                        {
+                            <span style="display:flex;align-items:center;gap:0.4rem;justify-content:center;">
+                                <span style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;"></span>
+                                Comprando...
+                            </span>
+                        }
+                        else
+                        {
+                            <span>Confirmar compra</span>
+                        }
+                    </button>
+                    <button class="vitrine-modal-btn-sec" @onclick="FecharModal" disabled="@(comprando)">Cancelar</button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
 @code {
     private List<Evento>? eventosDisponiveis;
     private bool carregando = true;
     private string? mensagemErro;
+    private string? mensagemSucesso;
+
+    // Modal state
+    private bool mostrarModal;
+    private bool comprando;
+    private bool compraSucesso;
+    private string? erroCompra;
+    private string cupomDigitado = "";
+    private Evento? eventoSelecionado;
 
     protected override async Task OnInitializedAsync()
     {
@@ -227,6 +500,83 @@
         finally
         {
             carregando = false;
+        }
+    }
+
+    private void AbrirCompra(Evento evento)
+    {
+        eventoSelecionado = evento;
+        cupomDigitado = "";
+        erroCompra = null;
+        compraSucesso = false;
+        comprando = false;
+        mostrarModal = true;
+    }
+
+    private void FecharModal()
+    {
+        mostrarModal = false;
+        if (compraSucesso)
+        {
+            Navigation.NavigateTo("/perfil");
+        }
+    }
+
+    private async Task Comprar()
+    {
+        if (eventoSelecionado == null) return;
+
+        comprando = true;
+        erroCompra = null;
+
+        try
+        {
+            var dto = new ComprarIngressoDTO
+            {
+                EventoId = eventoSelecionado.Id,
+                CupomUtilizado = string.IsNullOrWhiteSpace(cupomDigitado) ? null : cupomDigitado.Trim()
+            };
+
+            var json = JsonSerializer.Serialize(dto);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            Console.WriteLine($"[DEBUG] Comprando ingresso para evento {eventoSelecionado.Id}, cupom: {dto.CupomUtilizado ?? "(nenhum)"}");
+            var response = await Http.PostAsync("api/reservas", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                compraSucesso = true;
+                mensagemSucesso = $"✅ Ingresso para '{eventoSelecionado.Nome}' comprado com sucesso!";
+                await CarregarEventos();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var err = JsonSerializer.Deserialize<JsonElement>(body);
+                    erroCompra = err.TryGetProperty("mensagem", out var msg) ? msg.GetString() : "Erro ao comprar ingresso.";
+                }
+                catch
+                {
+                    erroCompra = $"Erro ao comprar ingresso (código {(int)response.StatusCode}).";
+                }
+                Console.WriteLine($"[DEBUG] Erro compra: {erroCompra}");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            erroCompra = "❌ Erro de conexão com o servidor.";
+            Console.WriteLine($"[DEBUG] HttpRequestException (compra): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            erroCompra = $"❌ Erro inesperado: {ex.Message}";
+            Console.WriteLine($"[DEBUG] Exception (compra): {ex.GetType().Name} - {ex.Message}");
+        }
+        finally
+        {
+            comprando = false;
         }
     }
 }

@@ -2,6 +2,7 @@ namespace TicketPrime.Web.Services;
 
 public class SessionService
 {
+    public string? Cpf { get; private set; }
     public string? Nome { get; private set; }
     public string? Perfil { get; private set; }
     public string? Token { get; private set; }
@@ -10,8 +11,9 @@ public class SessionService
 
     public event Action? OnChange;
 
-    public void Logar(string nome, string perfil, string token)
+    public void Logar(string cpf, string nome, string perfil, string token)
     {
+        Cpf = cpf;
         Nome = nome;
         Perfil = perfil;
         Token = token;
@@ -20,6 +22,7 @@ public class SessionService
 
     public void Deslogar()
     {
+        Cpf = null;
         Nome = null;
         Perfil = null;
         Token = null;

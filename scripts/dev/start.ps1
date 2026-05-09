@@ -25,6 +25,7 @@ if ($Kill) {
 
 $rootPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $rootPath = Join-Path $rootPath -ChildPath ".." | Resolve-Path
+$rootPath = Join-Path $rootPath -ChildPath ".." | Resolve-Path
 
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════╗" @cyan
@@ -34,19 +35,24 @@ Write-Host ""
 
 # 1. Subir Docker Compose (SQL Server)
 Write-Host "1️⃣  📦 Iniciando Docker Compose (SQL Server)..." @yellow
-Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$rootPath'; docker-compose up" -WindowStyle Normal
+Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$rootPath'; docker-compose up -d" -WindowStyle Normal
 
-Start-Sleep -Seconds 5
+Write-Host "⏳ Aguardando SQL Server ficar pronto..." @yellow
+Start-Sleep -Seconds 15
 
 # 2. Iniciar Backend (API)
 Write-Host "2️⃣  🔧 Iniciando Backend (API)..." @yellow
 Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$rootPath/src'; dotnet run" -WindowStyle Normal
 
-Start-Sleep -Seconds 5
+Write-Host "⏳ Aguardando Backend compilar e iniciar... (pode levar alguns segundos)..." @yellow
+Start-Sleep -Seconds 10
 
 # 3. Iniciar Frontend (Blazor)
 Write-Host "3️⃣  🎨 Iniciando Frontend (Blazor)..." @yellow
 Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$rootPath/ui/TicketPrime.Web'; dotnet run" -WindowStyle Normal
+
+Write-Host "⏳ Aguardando Frontend compilar e iniciar... (pode levar alguns segundos)..." @yellow
+Start-Sleep -Seconds 10
 
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════╗" @green

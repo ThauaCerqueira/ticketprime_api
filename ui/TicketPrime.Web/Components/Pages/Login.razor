@@ -263,7 +263,7 @@
 
             if (resultado != null)
             {
-                Session.Logar(resultado.Nome, resultado.Perfil, resultado.Token);
+                Session.Logar(resultado.Cpf, resultado.Nome, resultado.Perfil, resultado.Token);
                 Navigation.NavigateTo("/eventos");
                 StateHasChanged();
             }

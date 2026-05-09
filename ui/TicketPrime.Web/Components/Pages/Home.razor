@@ -606,9 +606,9 @@
 
         try
         {
-            if (Session.EstaLogado)
+            if (Session.EstaLogado && !string.IsNullOrEmpty(Session.Cpf))
             {
-                var reservas = await Http.GetFromJsonAsync<List<object>>("api/reservas/minhas");
+                var reservas = await Http.GetFromJsonAsync<List<object>>($"api/reservas/{Session.Cpf}");
                 totalReservas = reservas?.Count ?? 0;
             }
         }

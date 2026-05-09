@@ -39,14 +39,17 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND type in (N'U'))
 BEGIN
     CREATE TABLE [dbo].[Reservas] (
-        [Id]         INT      IDENTITY (1, 1) NOT NULL,
-        [UsuarioCpf] CHAR(11) NOT NULL,
-        [EventoId]   INT      NOT NULL,
-        [DataCompra] DATETIME DEFAULT GETDATE(),
+        [Id]              INT            IDENTITY (1, 1) NOT NULL,
+        [UsuarioCpf]      CHAR(11)       NOT NULL,
+        [EventoId]        INT            NOT NULL,
+        [DataCompra]      DATETIME       DEFAULT GETDATE(),
+        [CupomUtilizado]  NVARCHAR(20)   NULL,
+        [ValorFinalPago]  DECIMAL(18, 2) NOT NULL DEFAULT 0,
 
         CONSTRAINT [PK_Reservas] PRIMARY KEY ([Id]),
         CONSTRAINT [FK_Reservas_Usuarios] FOREIGN KEY ([UsuarioCpf]) REFERENCES [Usuarios]([Cpf]),
-        CONSTRAINT [FK_Reservas_Eventos] FOREIGN KEY ([EventoId]) REFERENCES [Eventos]([Id])
+        CONSTRAINT [FK_Reservas_Eventos] FOREIGN KEY ([EventoId]) REFERENCES [Eventos]([Id]),
+        CONSTRAINT [FK_Reservas_Cupons] FOREIGN KEY ([CupomUtilizado]) REFERENCES [Cupons]([Codigo])
     );
 END
 GO
@@ -76,6 +79,21 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Eventos]') AND name = 'LimiteIngressosPorUsuario')
 BEGIN
     ALTER TABLE Eventos ADD LimiteIngressosPorUsuario INT NOT NULL DEFAULT 6;
+END
+GO
+
+-- Adiciona colunas na tabela Reservas (caso a tabela já exista sem elas)
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'CupomUtilizado')
+BEGIN
+    ALTER TABLE Reservas ADD CupomUtilizado NVARCHAR(20) NULL;
+    ALTER TABLE Reservas ADD CONSTRAINT [FK_Reservas_Cupons]
+        FOREIGN KEY ([CupomUtilizado]) REFERENCES [Cupons]([Codigo]);
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'ValorFinalPago')
+BEGIN
+    ALTER TABLE Reservas ADD ValorFinalPago DECIMAL(18, 2) NOT NULL DEFAULT 0;
 END
 GO
 

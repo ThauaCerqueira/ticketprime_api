@@ -6,4 +6,6 @@ public class Reserva
     public string UsuarioCpf { get; set; } = string.Empty;
     public int EventoId { get; set; }
     public DateTime DataCompra { get; set; }
+    public string? CupomUtilizado { get; set; }
+    public decimal ValorFinalPago { get; set; }
 }

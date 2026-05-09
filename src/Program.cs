@@ -17,7 +17,8 @@ namespace TicketPrime.Api
             var builder = WebApplication.CreateBuilder(args);
  
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                ?? "Server=localhost;Database=TicketPrime;Integrated Security=True;TrustServerCertificate=True;";
+                ?? throw new InvalidOperationException(
+                    "Connection string 'DefaultConnection' não encontrada. Configure em appsettings.json ou User Secrets.");
             
             // Initialize database
             InitializeDatabase(connectionString);
@@ -32,7 +33,9 @@ namespace TicketPrime.Api
                 });
             });
  
-            var jwtKey = builder.Configuration["Jwt:Key"] ?? "TicketPrimeChaveSecreta2024SuperSegura!";
+            var jwtKey = builder.Configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException(
+                    "Chave JWT 'Jwt:Key' não encontrada. Configure em appsettings.json ou User Secrets.");
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -171,16 +174,18 @@ namespace TicketPrime.Api
                 try
                 {
                     var cpf = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
- 
+
                     if (string.IsNullOrEmpty(cpf))
                         return Results.Unauthorized();
- 
-                    var reserva = await service.ComprarIngressoAsync(cpf, dto.EventoId);
+
+                    var reserva = await service.ComprarIngressoAsync(cpf, dto.EventoId, dto.CupomUtilizado);
                     return Results.Created($"/api/reservas/{reserva.Id}", new
                     {
                         mensagem = "Ingresso comprado com sucesso!",
                         reservaId = reserva.Id,
-                        eventoId = reserva.EventoId
+                        eventoId = reserva.EventoId,
+                        valorPago = reserva.ValorFinalPago,
+                        cupomUtilizado = reserva.CupomUtilizado
                     });
                 }
                 catch (InvalidOperationException ex)
@@ -189,16 +194,14 @@ namespace TicketPrime.Api
                 }
             }).RequireAuthorization();
  
-            app.MapGet("/api/reservas/minhas", async (ReservaService service, HttpContext context) =>
+            app.MapGet("/api/reservas/{cpf}", async (string cpf, ReservaService service, HttpContext context) =>
             {
-                var cpf = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
- 
-                if (string.IsNullOrEmpty(cpf))
-                    return Results.Unauthorized();
- 
+                // AV2: rota pública com CPF no path — dados via INNER JOIN no repositório
                 var reservas = await service.ListarReservasUsuarioAsync(cpf);
-                return Results.Ok(reservas);
-            }).RequireAuthorization();
+                return reservas.Any()
+                    ? Results.Ok(reservas)
+                    : Results.NotFound(new { mensagem = "Nenhuma reserva encontrada para este CPF." });
+            });
  
             app.MapDelete("/api/reservas/{id}", async (int id, ReservaService service, HttpContext context) =>
             {
@@ -238,6 +241,30 @@ namespace TicketPrime.Api
                     usuario.Perfil
                 });
             }).RequireAuthorization();
+ 
+            // Rota raiz que redireciona para Swagger
+            app.MapGet("/", (HttpContext context) =>
+            {
+                if (app.Environment.IsDevelopment())
+                {
+                    context.Response.Redirect("/swagger", permanent: false);
+                    return Results.Empty;
+                }
+                return Results.Json(new { 
+                    mensagem = "TicketPrime API",
+                    versao = "1.0",
+                    documentacao = "/swagger"
+                });
+            });
+
+            // Rota de health check
+            app.MapGet("/health", () =>
+                Results.Json(new { 
+                    status = "API rodando com sucesso! 🎫",
+                    timestamp = DateTime.UtcNow,
+                    ambiente = "TicketPrime API"
+                })
+            );
  
             app.Run();
         }

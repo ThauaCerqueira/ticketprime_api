@@ -11,7 +11,12 @@ Write-Host "║         ❌  Encerrando todos os processos...               ║"
 Write-Host "╚════════════════════════════════════════════════════════════╝" @cyan
 Write-Host ""
 
+$rootPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+$rootPath = Join-Path $rootPath -ChildPath ".." | Resolve-Path
+$rootPath = Join-Path $rootPath -ChildPath ".." | Resolve-Path
+
 Write-Host "• Parando Docker Compose..." @yellow
+cd $rootPath
 docker-compose down --remove-orphans 2>$null
 
 Write-Host "• Encerrando processos dotnet..." @yellow

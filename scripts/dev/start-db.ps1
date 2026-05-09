@@ -15,4 +15,4 @@ Write-Host "💾 SQL Server será acessível em: localhost:1433" -ForegroundColo
 Write-Host ""
 
 cd $rootPath
-docker-compose up
+docker-compose up --remove-orphans
