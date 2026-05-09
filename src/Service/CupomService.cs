@@ -18,7 +18,7 @@ public class CupomService
         if (string.IsNullOrWhiteSpace(dto.Codigo))
             throw new ArgumentException("Código do cupom é obrigatório.");
 
-        if (dto.PorcentagemDesconto <= 0 || dto.PorcentagemDesconto > 100)
+        if (dto.PorcentagemDesconto < 1 || dto.PorcentagemDesconto > 100)
             throw new ArgumentException("Desconto deve ser entre 1 e 100.");
 
         if (dto.ValorMinimoRegra < 0)
