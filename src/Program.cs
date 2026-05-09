@@ -85,9 +85,13 @@ namespace TicketPrime.Api
  
                     return Results.Created($"/api/eventos/{resultado.Id}", resultado);
                 }
-                catch (Exception ex)
+                catch (ArgumentException ex)
                 {
                     return Results.BadRequest(new { mensagem = ex.Message });
+                }
+                catch (Exception)
+                {
+                    return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
                 }
             }).RequireAuthorization(policy => policy.RequireRole("ADMIN"));
  
@@ -106,7 +110,7 @@ namespace TicketPrime.Api
 
                 var eventos = await service.ListarEventos();
                 return Results.Ok(eventos);
-            }).RequireAuthorization(policy => policy.RequireRole("ADMIN"));
+            }).RequireAuthorization();
  
             app.MapPost("/api/cupons", async (CriarCupomDTO dto, CupomService service) =>
             {
@@ -126,7 +130,7 @@ namespace TicketPrime.Api
                 {
                     return Results.Conflict(new { mensagem = ex.Message });
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
                 }
@@ -137,11 +141,19 @@ namespace TicketPrime.Api
                 try
                 {
                     var resultado = await service.CadastrarUsuario(usuario);
-                    return Results.Created($"/api/usuarios/{resultado.Cpf}", resultado);
+                    return Results.Created($"/api/usuarios/{resultado.Cpf}", new { mensagem = "Usuário criado com sucesso.", dados = resultado });
                 }
                 catch (InvalidOperationException ex)
                 {
                     return Results.BadRequest(new { mensagem = ex.Message });
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { mensagem = ex.Message });
+                }
+                catch (Exception)
+                {
+                    return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
                 }
             });
  
