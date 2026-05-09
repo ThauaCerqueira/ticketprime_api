@@ -6,8 +6,15 @@
 @inject CupomService CupomService
 @inject SessionService Session
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <PageTitle>Cupons - TicketPrime</PageTitle>
+
+@if (!Session.EstaLogado)
+{
+    Navigation.NavigateTo("/login", forceLoad: true);
+    return;
+}
 
 <style>
     .cp-wrapper {

@@ -2,11 +2,19 @@
 @using src.Models
 @using src.Service
 @using src.DTOs
+@using TicketPrime.Web.Services
 @rendermode InteractiveServer
 @inject UsuarioService UsuarioService
 @inject NavigationManager Navigation
+@inject SessionService Session
 
 <PageTitle>Criar Conta - TicketPrime</PageTitle>
+
+@if (Session.EstaLogado)
+{
+    Navigation.NavigateTo("/eventos", forceLoad: true);
+    return;
+}
 
 <style>
     .cu-wrapper {

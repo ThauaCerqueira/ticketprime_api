@@ -337,7 +337,15 @@
     private bool comprando = false;
     private int eventoSelecionado = 0;
 
-    protected override async Task OnInitializedAsync() => await CarregarEventos();
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.EstaLogado)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+        await CarregarEventos();
+    }
 
     private async Task CarregarEventos()
     {
