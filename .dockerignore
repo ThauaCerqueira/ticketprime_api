@@ -1,0 +1,47 @@
+# ── Build artifacts (causam path length errors com pacotes como
+#    Microsoft.EntityFrameworkCore.Analyzers 10.0.5) ──────────────
+**/bin/
+**/obj/
+
+# ── Dependências ──────────────────────────────────────────────────
+**/node_modules/
+
+# ── Repositório ───────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+TicketPrime.sln
+
+# ── IDE / Editor ──────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.user
+*.suo
+
+# ── Sistema ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Ambiente ──────────────────────────────────────────────────────
+.env
+.env.*
+__azurite_db*
+
+# ── Testes (não necessários no runtime do container) ─────────────
+tests/
+
+# ── Documentação e scripts de automação (não necessários no runtime) ─
+docs/
+plans/
+scripts/
+*.md
+AUTOMATION_SCRIPTS.md
+release_checklist_final.md
+README.md
+
+# ── Banco (já é gerenciado pelo container sqlserver) ─────────────
+db/script.sql
+docker/init-db.sh
