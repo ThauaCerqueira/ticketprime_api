@@ -18,7 +18,8 @@ public class EventosController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "ADMIN")]
-    [Obsolete("Use o endpoint em Program.cs - POST /api/eventos")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    [Obsolete("Use o endpoint em Program.cs - POST /api/eventos", true)]
     public async Task<IActionResult> CriarEvento([FromBody] CriarEventoDTO eventoDTO)
     {
         try
@@ -35,7 +36,7 @@ public class EventosController : ControllerBase
         {
             return BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return StatusCode(500, new { mensagem = "Erro interno do servidor." });
         }

@@ -34,7 +34,7 @@ public class UsuariosController : ControllerBase
         {
             return BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return StatusCode(500, new { mensagem = "Erro interno do servidor." });
         }
