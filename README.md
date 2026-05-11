@@ -76,7 +76,7 @@ dotnet restore      # Restaurar pacotes
 
 | Tipo | CPF | Senha |
 |---|---|---|
-| Administrador | `00000000000` | `admin123` |
+| Administrador | `00000000191` | `admin123` |
 | Cliente | Cadastre-se em `/cadastro-user` | — |
 
 ---
@@ -86,17 +86,21 @@ dotnet restore      # Restaurar pacotes
 ```
 ticketprime_api/
 ├── src/                  # Minimal API em C# com Dapper
-│   ├── Controllers/      # Controllers auxiliares
 │   ├── DTOs/             # Objetos de transferência de dados
-│   ├── Infrastructure/   # Repositories e DbConnectionFactory
-│   ├── Models/           # Modelos de dados
-│   ├── Service/          # Serviços de negócio
-│   └── Program.cs
-├── ui/                   # Frontend Blazor Server
-│   └── TicketPrime.Web/
+│   ├── Infrastructure/   # DbConnectionFactory, Repositories, Interfaces
+│   ├── Models/           # Modelos de dados (Evento, Reserva, Usuario, Cupom)
+│   ├── Service/          # Serviços de negócio (Auth, Evento, Reserva, Cupom, Usuario, Crypto)
+│   └── Program.cs        # Minimal API endpoints
+├── ui/                   # Frontend Blazor Server (desacoplado da API)
+│   └── TicketPrime.Web/  # Comunica com API via REST (sem ProjectReference)
+│       ├── Models/       # DTOs frontend-side com [JsonPropertyName]
+│       ├── Services/     # CupomService, SessionService, AuthHttpClientHandler
+│       ├── Validators/   # FluentValidation para formulários
+│       └── Components/   # Páginas Blazor com MudBlazor
 ├── db/                   # Scripts SQL
-├── docs/                 # Documentação (requisitos)
-└── tests/                # Testes xUnit com Moq
+├── docs/                 # Documentação
+├── tests/                # Testes xUnit com Moq
+└── plans/                # Planos técnicos detalhados
 ```
 
 ---
@@ -127,12 +131,16 @@ ticketprime_api/
 
 ## ⚙️ Tecnologias
 
-- **Blazor Server** — Frontend com C# e renderização server-side
+- **Blazor Server** — Frontend com C# e renderização server-side (MudBlazor UI)
 - **.NET 10 / C#**
 - **Dapper** — Acesso ao banco com SQL puro e parâmetros `@`
 - **SQL Server** — Banco de dados relacional
-- **JWT** — Autenticação via Bearer Token
+- **JWT** — Autenticação via Bearer Token (header + httpOnly cookie)
+- **BCrypt** — Hash de senhas com work factor configurável
+- **Web Crypto API** — E2E encryption de fotos (ECDH P-256 + AES-GCM-256)
+- **FluentValidation** — Validação de formulários no frontend
 - **xUnit + Moq** — Testes unitários
+- **Rate Limiting** — 3 políticas (login: 5/min, escrita: 10/min, geral: 100/min)
 
 ---
 
@@ -146,8 +154,11 @@ Modelo **Incremental e Iterativo**, com entregas organizadas por funcionalidade 
 
 | Risco | Mitigação |
 |---|---|
-| Superlotação de evento | Controle de capacidade com decremento atômico no banco |
+| Superlotação de evento | Controle de capacidade com decremento atômico no banco + UPDLOCK |
 | Compra de ingresso com data expirada | Validação de `DataEvento > DateTime.Now` antes do INSERT |
 | CPF duplicado no cadastro | Verificação prévia no banco antes de inserir |
+| XSS em cadastro | Sanitização de nome com `SanitizarNome()` + HTML encoding do Blazor |
 | Fraude com cupom abaixo do valor mínimo | Validação do `ValorMinimoRegra` antes de aplicar desconto |
 | SQL Injection | Todas as queries usam parâmetros Dapper com `@` |
+| Colisão de código de ingresso | Unique constraint filtrada `UX_Reservas_CodigoIngresso` |
+| Performance em consultas de reserva | Índices `IX_Reservas_UsuarioCpf` e `IX_Reservas_EventoId` |

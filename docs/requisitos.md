@@ -16,8 +16,8 @@ Quando ele informar um CPF que já existe no sistema,
 Então a API deve retornar status 400 com a mensagem "Erro: O CPF informado já está cadastrado."
 
 Dado que o usuário está na tela de cadastro,
-Quando ele informar uma senha com menos de 6 caracteres,
-Então o sistema deve exibir a mensagem "A senha deve ter no mínimo 6 caracteres."
+Quando ele informar uma senha com menos de 8 caracteres,
+Então o sistema deve exibir a mensagem "A senha deve ter no mínimo 8 caracteres."
 
 ---
 

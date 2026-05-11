@@ -4,3 +4,12 @@
 
 # Ignora configurações do VS Code
 .vscode/
+
+# Nunca versionar arquivos com credenciais — use dotnet user-secrets ou variáveis de ambiente
+src/appsettings.Development.json
+ui/TicketPrime.Web/appsettings.Development.json
+**/appsettings.Production.json
+**/secrets.json
+
+# Ignora certificados SSL auto-assinados gerados localmente
+docker/nginx/certs/

@@ -1,8 +1,10 @@
 # 🎟️ Plano Completo — TicketPrime: Super Esqueleto Back + Front
 
+> **⚠️ STATUS DE IMPLEMENTAÇÃO (2026-05-10):** Este plano foi originalmente escrito em 2026-05-09 como um **guia de ações a executar**. Desde então, **todas as fases (FASE 0–6) foram implementadas**. Itens marcados com `✅` abaixo já estavam ok na data do plano. Os demais (marcados com `**❌` ou `**⚠️` no plano original) foram **implementados e concluídos**. Este documento permanece como registro histórico do planejamento — consulte os respectivos arquivos de código/docs para o estado atual.
+
 ## Sumário Executivo
 
-Este documento contém o plano completo para alinhar o projeto TicketPrime existente com os requisitos oficiais da disciplina de Engenharia de Software, cobrindo **AV1** (fundação) e **AV2** (coração do sistema). O repositório atual já possui boa parte da estrutura, mas existem **discrepâncias críticas** que precisam ser corrigidas para atender à avaliação automatizada.
+Este documento contém o plano completo para alinhar o projeto TicketPrime existente com os requisitos oficiais da disciplina de Engenharia de Software, cobrindo **AV1** (fundação) e **AV2** (coração do sistema). O repositório atual já possui boa parte da estrutura, mas existiam **discrepâncias críticas** que precisavam ser corrigidas para atender à avaliação automatizada. **Todas as discrepâncias foram corrigidas.**
 
 ---
 
@@ -221,20 +223,20 @@ ticketprime_api/
 | 9. Infra xUnit | ✅ OK | Projeto configurado |
 | 10. Testes com Assert | ✅ OK | Todos com Assert |
 
-### AV2 (10 itens — maioria precisa ser criada)
+### AV2 (10 itens — todos implementados)
 
 | Item | Status | Ação |
 |------|--------|------|
-| 1. ADR | ❌ Ausente | Criar [`docs/adr.md`](docs/adr.md) |
-| 2. Trade-offs no ADR | ❌ Ausente | Incluir Prós e Contras |
-| 3. Matriz de Riscos | ❌ Ausente | Criar [`docs/operacao.md`](docs/operacao.md) |
-| 4. Gatilhos de Risco | ❌ Ausente | Incluir coluna Gatilho |
-| 5. Métricas Operacionais | ❌ Ausente | Adicionar Fórmula, Fonte, Frequência |
-| 6. Ação da Métrica | ❌ Ausente | Adicionar Ação se Violado |
-| 7. SLO | ❌ Ausente | Definir SLO com % e janela de tempo |
-| 8. Error Budget Policy | ❌ Ausente | Documentar política |
-| 9. SSDF Segurança | ⚠️ Parcial | Mover configs para appsettings/ambiente |
-| 10. DoD Checklist | ❌ Ausente | Criar [`release_checklist_final.md`](release_checklist_final.md) |
+| 1. ADR | ✅ Criado | [`docs/adr.md`](docs/adr.md) com ADR-001, ADR-002, ADR-003 |
+| 2. Trade-offs no ADR | ✅ Presente | Prós e Contras em cada ADR |
+| 3. Matriz de Riscos | ✅ Criada | [`docs/operacao.md`](docs/operacao.md) com 7 riscos |
+| 4. Gatilhos de Risco | ✅ Presente | Coluna Gatilho na matriz |
+| 5. Métricas Operacionais | ✅ Presentes | 4 métricas com Fórmula, Fonte, Frequência |
+| 6. Ação da Métrica | ✅ Presente | Coluna "Ação se Violado" |
+| 7. SLO | ✅ Definido | 99.5% (janela de 30 dias) |
+| 8. Error Budget Policy | ✅ Documentada | 0.5% (~3h36min/mês) com plano de ação |
+| 9. SSDF Segurança | ✅ Corrigido | Configs em appsettings.json + variáveis de ambiente |
+| 10. DoD Checklist | ✅ Criado | [`release_checklist_final.md`](release_checklist_final.md) com 47 itens |
 
 ---
 
@@ -302,15 +304,18 @@ Isso significa que o sistema pode ficar indisponível por no máximo **~3 horas 
 
 ---
 
-## 📝 Próximos Passos Imediatos
+## ✅ Conclusão
 
-1. **Revisar e aprovar este plano** com o orientador/equipe
-2. **Iniciar pela Fase 0** (correções no banco de dados) — é a base de tudo
-3. **Seguir para Fase 2** (endpoints AV2) — coração do sistema
-4. **Fase 4** (documentação AV2) pode ser feita em paralelo
-5. **Testes (Fase 6)** devem ser escritos junto com o código
-6. **Finalizar com DoD Checklist** (Fase 4.6)
+Todas as fases (FASE 0–6) foram **implementadas e concluídas**:
+
+- ✅ **FASE 0** — Banco de dados: colunas `CupomUtilizado` e `ValorFinalPago` em Reservas
+- ✅ **FASE 1** — Endpoints AV1: todas as rotas verificadas e funcionando
+- ✅ **FASE 2** — Endpoints AV2: R1-R4 implementados em `ReservaService`, rota corrigida para `GET /api/reservas/{cpf}`
+- ✅ **FASE 3** — Documentação AV1: requisitos, BDD, README verificados
+- ✅ **FASE 4** — Documentação AV2: `docs/adr.md`, `docs/operacao.md`, `release_checklist_final.md` criados, SSDF corrigido
+- ✅ **FASE 5** — Frontend Blazor: formulário de compra com cupom, listagem com valor pago
+- ✅ **FASE 6** — Testes: R1-R4 + rota de reservas testados
 
 ---
 
-*Plano gerado em 2026-05-09 como parte do planejamento do TicketPrime*
+*Plano gerado em 2026-05-09 como parte do planejamento do TicketPrime. Implementação concluída em 2026-05-10.*

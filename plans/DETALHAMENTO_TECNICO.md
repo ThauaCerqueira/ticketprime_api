@@ -1,6 +1,8 @@
 # Detalhamento Técnico — TicketPrime
 
-## FASE 0 — Correções no Banco de Dados
+> **⚠️ STATUS DE IMPLEMENTAÇÃO (2026-05-10):** Este documento é o detalhamento técnico do plano de implementação. **Todas as fases descritas abaixo (FASE 0–6) foram executadas.** Os arquivos mencionados como "Criar" já existem e estão operacionais. Os arquivos mencionados como "Modificar" já contêm as alterações descritas. Consulte os respectivos arquivos de código para o estado atual.
+
+## FASE 0 — Correções no Banco de Dados (✅ IMPLEMENTADO)
 
 ### 0.1 Script SQL — Adicionar colunas em Reservas
 

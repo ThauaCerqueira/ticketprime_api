@@ -30,20 +30,20 @@
 ## 2. Qualidade
 
 ### Testes Unitários
-- [ ] Teste para R1: usuário não encontrado → InvalidOperationException
-- [ ] Teste para R1: evento não encontrado → InvalidOperationException
-- [ ] Teste para R1: evento já aconteceu → InvalidOperationException
-- [ ] Teste para R2: limite de 2 reservas → InvalidOperationException
-- [ ] Teste para R3: capacidade esgotada → InvalidOperationException
-- [ ] Teste para R4: cupom válido com valor mínimo atingido → desconto aplicado
-- [ ] Teste para R4: cupom válido mas valor mínimo não atingido → preço cheio
-- [ ] Teste para R4: cupom inválido → InvalidOperationException
-- [ ] Teste para GET /api/reservas/{cpf}: lista não vazia
-- [ ] Teste para GET /api/reservas/{cpf}: CPF sem reservas → lista vazia
+- [x] Teste para R1: usuário não encontrado → InvalidOperationException
+- [x] Teste para R1: evento não encontrado → InvalidOperationException
+- [x] Teste para R1: evento já aconteceu → InvalidOperationException
+- [x] Teste para R2: limite de 2 reservas → InvalidOperationException
+- [x] Teste para R3: capacidade esgotada → InvalidOperationException
+- [x] Teste para R4: cupom válido com valor mínimo atingido → desconto aplicado
+- [x] Teste para R4: cupom válido mas valor mínimo não atingido → preço cheio
+- [x] Teste para R4: cupom inválido → InvalidOperationException
+- [x] Teste para GET /api/reservas/{cpf}: lista não vazia
+- [x] Teste para GET /api/reservas/{cpf}: CPF sem reservas → lista vazia
 
 ### Build
-- [ ] `dotnet build` sem erros e sem warnings
-- [ ] `dotnet test` — todas as unidades passando
+- [x] `dotnet build` sem erros e sem warnings (3 projetos: src, ui, tests)
+- [x] `dotnet test` — todas as unidades passando
 
 ## 3. Segurança (SSDF)
 
@@ -57,12 +57,12 @@
 
 ## 4. Experiência do Usuário (Frontend Blazor)
 
-- [ ] Tela de login funcional (JWT salvo em sessão)
-- [ ] Listagem de eventos disponíveis
-- [ ] Compra de ingresso com campo de cupom opcional
-- [ ] Feedback visual para regras R1-R4 (mensagens de erro)
-- [ ] Listagem de reservas do usuário
-- [ ] Cancelamento de reserva
+- [x] Tela de login funcional (JWT salvo em sessão) — `Login.razor`
+- [x] Listagem de eventos disponíveis — `EventosDisponiveis.razor`
+- [x] Compra de ingresso com campo de cupom opcional — `DetalheEvento.razor`
+- [x] Feedback visual para regras R1-R4 (mensagens de erro) — implementado nos componentes
+- [x] Listagem de reservas do usuário — `MeuIngresso.razor`
+- [x] Cancelamento de reserva — `MeuIngresso.razor`
 
 ## 5. Documentação
 
@@ -78,4 +78,5 @@
 
 | Versão | Data | Itens Concluídos |
 |--------|------|------------------|
-| v1.0 | Pendente | Release inicial |
+| v1.0 | 2026-05-10 | Release inicial — 47 issues de due diligence analisadas, 45 corrigidas (conforme ANALISE_COMPRADOR_TICKETPRIME.md), 3 projetos compilam com 0 erros/0 warnings |
+| v1.1 | 2026-05-11 | Documentação sincronizada — status atualizado para refletir implementação completa |

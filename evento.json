@@ -1,0 +1,21 @@
+{
+    "nome": "Rock in Sampa 2026 - System of a Down",
+    "dataEvento": "2026-05-18T20:00:00",
+    "local": "Allianz Parque - Sao Paulo, SP",
+    "descricao": "O maior show de rock do ano!",
+    "generoMusical": "Rock",
+    "capacidadeTotal": 1200,
+    "precoPadrao": 150,
+    "limiteIngressosPorUsuario": 10,
+    "taxaServico": 5,
+    "status": "Publicado",
+    "temMeiaEntrada": true,
+    "tiposIngresso": [
+        {"nome": "Pista", "descricao": "Pista comum", "preco": 150, "capacidadeTotal": 1000, "ordem": 1},
+        {"nome": "VIP", "descricao": "Area VIP com open bar", "preco": 350, "capacidadeTotal": 200, "ordem": 2}
+    ],
+    "lotes": [
+        {"nome": "1 Lote", "preco": 120, "quantidadeMaxima": 400},
+        {"nome": "2 Lote", "preco": 150, "quantidadeMaxima": 400}
+    ]
+}

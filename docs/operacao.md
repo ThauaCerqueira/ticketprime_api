@@ -6,8 +6,8 @@
 |---|-------|:------------:|:-------:|-----------|
 | R01 | Falha no banco de dados (SQL Server fora do ar) | Baixa | Alto | Connection string com failover; retry policy no Dapper; health check `/health` |
 | R02 | SQL Injection | Muito Baixa | Crítico | Uso exclusivo de parâmetros nomeados `@param` no Dapper; sem concatenação de strings SQL |
-| R03 | Token JWT expirado durante uso | Média | Médio | Frontend trata 401 e redireciona para login; token com 8h de validade |
-| R04 | Race condition em compra simultânea do último ingresso | Baixa | Baixo | COUNT + verificação em nível de aplicação; em produção usar `SELECT ... WITH (UPDLOCK)` |
+| R03 | Token JWT expirado durante uso | Média | Médio | Frontend trata 401 e redireciona para login; token com 30min de validade (configurável via Jwt:ExpiresInMinutes) |
+| R04 | Race condition em compra simultânea do último ingresso | Baixa | Baixo | COUNT + verificação em nível de aplicação; `SELECT ... WITH (UPDLOCK)` já implementado na TransacaoCompraExecutor |
 | R05 | CPF inválido sendo cadastrado | Média | Médio | Validação com `[Required]` e regex `^\d{11}$`;后端 pode validar dígito verificador |
 | R06 | Cupom expirado ou já utilizado | Média | Baixo | Validação no service R4; cupons são reutilizáveis por design |
 | R07 | Vazamento de connection string em logs | Baixa | Alto | Connection string lida de `appsettings.json` + User Secrets; nunca logada |
@@ -72,11 +72,13 @@
 | Exemplo | 10 min | 0.05% | 77% | Nenhuma (dentro do orçamento) |
 | ⚠️ Gatilho | > 30 min | > 0.08% | < 30% | Revisão de incidentes, pausar deploys |
 
-### Política de Gestão
+### Error Budget Policy:
+
+Quando o Error Budget se esgotar, o time é obrigado a:
 
 - **Green** (budget ≥ 70%): Deploys liberados normalmente
 - **Yellow** (budget 30-70%): Deploys apenas em horário comercial com rollback preparado
-- **Red** (budget < 30%): Congelamento de deploys; investigação de causa raiz obrigatória
+- **Red** (budget < 30%): Congelamento de deploys; investigação de causa raiz obrigatória; postmortem obrigatório antes de retomar qualquer deploy
 
 ---
 
@@ -88,5 +90,5 @@
 | **Tampering** | Alteração de dados em trânsito | HTTPS obrigatório (configurado no launchSettings) |
 | **Repudiation** | Usuário nega ter comprado ingresso | Logs de auditoria em todas as operações de reserva |
 | **Information Disclosure** | Vazamento de dados via erro não tratado | Try/catch genérico retorna apenas `"Erro interno do servidor"` sem detalhes |
-| **Denial of Service** | Flood de requisições POST /api/reservas | Rate limiting (futuro — middleware a implementar) |
+| **Denial of Service** | Flood de requisições POST /api/reservas | Rate limiting implementado (3 políticas: login 5/min, escrita 10/min, geral 100/min) via `PerUserRateLimiterPolicy` + `DisableRateLimiting` attribute |
 | **Elevation of Privilege** | Usuário comum tenta criar evento (role ADMIN) | `RequireRole("ADMIN")` nos endpoints de criação |
