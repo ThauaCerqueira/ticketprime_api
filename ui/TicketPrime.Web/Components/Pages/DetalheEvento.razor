@@ -1,0 +1,832 @@
+@page "/evento/{id:int}"
+@using System.Net.Http.Json
+@using TicketPrime.Web.Models
+@inject HttpClient Http
+@inject SessionService Session
+@inject NavigationManager Navigation
+@inject ILogger<DetalheEvento> Logger
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
+@* ── Shared purchase modal ────────────────────────────────────── *@
+@using TicketPrime.Web.Components.Shared
+
+<PageTitle>@(evento?.Nome ?? "Carregando...") - TicketPrime</PageTitle>
+
+@* ── SEO / Open Graph para compartilhamento em redes sociais ────────── *@
+@* SeoMetaTags usa EventId para construir automaticamente a URL da imagem via /api/public/eventos/{id}/thumbnail *@
+<SeoMetaTags Title="@(evento?.Nome ?? "TicketPrime")"
+             Description="@ObterDescricaoParaOG()"
+             EventId="@(evento?.Id)"
+             PageUrl="@Navigation.Uri" />
+
+
+<div class="de-wrapper">
+    @if (carregando)
+    {
+        <div class="de-loading">
+            <div class="de-spinner"></div>
+            <p style="color:var(--tp-text-muted);">Carregando detalhes do evento...</p>
+        </div>
+    }
+    else if (erro != null)
+    {
+        <div class="de-error">
+            <div class="de-error-icon">😕</div>
+            <h2>@(erro == "404" ? "Evento não encontrado" : "Ops! Algo deu errado")</h2>
+            <p>
+                @if (erro == "404")
+                {
+                    <span>O evento que você procura não existe ou foi removido.</span>
+                }
+                else
+                {
+                    <span>Não foi possível carregar os detalhes deste evento. Tente novamente.</span>
+                }
+            </p>
+            <button class="de-error-btn" @onclick="VoltarParaVitrine" aria-label="Voltar para vitrine de eventos">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Ver todos os eventos
+            </button>
+        </div>
+    }
+    else if (evento != null)
+    {
+        <!-- Hero / Cover -->
+        <div class="de-hero">
+            @if (!string.IsNullOrEmpty(evento.FotoThumbnailBase64))
+            {
+                <img class="de-hero-img"
+                     src="data:image/jpeg;base64,@evento.FotoThumbnailBase64"
+                     alt="@evento.Nome" />
+            }
+            else
+            {
+                <div class="de-hero-placeholder">🎵</div>
+            }
+            <div class="de-hero-overlay"></div>
+        </div>
+
+        <div class="de-container">
+            <!-- Header Card -->
+            <div class="de-header-card">
+                <div class="de-header-top">
+                    <div class="de-header-info">
+                        <div class="de-header-badges">
+                            <span class="de-badge de-badge-genre">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                    <path d="M9 18V5l12-2v13"/>
+                                    <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                                </svg>
+                                @evento.GeneroMusical
+                            </span>
+                            <span class="de-badge @(evento.Status == "Cancelado" ? "de-badge-status-cancelado" : evento.Status == "Rascunho" ? "de-badge-status-rascunho" : "de-badge-status")">
+                                @(evento.Status == "Publicado" ? "✅ Ativo" : evento.Status == "Cancelado" ? "❌ Cancelado" : "📝 Rascunho")
+                            </span>
+                            @if (evento.TemMeiaEntrada && !evento.EventoGratuito)
+                            {
+                                <span class="de-badge" style="background:#FEF3C7;color:#92400E;">
+                                    🎫 Meia-entrada disponível
+                                </span>
+                            }
+                        </div>
+                        <h1>@evento.Nome</h1>
+                    </div>
+                    <div class="de-price-tag">
+                        @if (evento.EventoGratuito)
+                        {
+                            <div class="de-price-value">Grátis</div>
+                            <div class="de-price-label">Evento gratuito</div>
+                        }
+                        else
+                        {
+                            <div class="de-price-value">@evento.PrecoPadrao.ToString("C")</div>
+                            <div class="de-price-label">Preço do ingresso</div>
+                            @if (evento.TaxaServico > 0)
+                            {
+                                <div class="de-price-tax">+ @evento.TaxaServico.ToString("C") taxa de serviço</div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                <!-- Info Grid -->
+                <div class="de-info-grid">
+                    <div class="de-info-item">
+                        <div class="de-info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                        </div>
+                        <div class="de-info-text">
+                            <div class="de-info-label">Data & Horário</div>
+                            <div class="de-info-value">@evento.DataEvento.ToString("dddd, dd 'de' MMMM 'de' yyyy")</div>
+                            <div class="de-info-sub" style="font-size:0.8rem;font-weight:400;">
+                                @evento.DataEvento.ToString("HH:mm") — @((evento.DataTermino ?? evento.DataEvento.AddHours(4)).ToString("HH:mm"))
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="de-info-item">
+                        <div class="de-info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                            </svg>
+                        </div>
+                        <div class="de-info-text">
+                            <div class="de-info-label">Local</div>
+                            <div class="de-info-value">@evento.Local</div>
+                            <div>
+                                <a class="de-info-link"
+                                   href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(evento.Local)"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   style="font-size:0.8rem;font-weight:500;">
+                                    Ver no mapa →
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="de-info-item">
+                        <div class="de-info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <div class="de-info-text">
+                            <div class="de-info-label">Capacidade</div>
+                            <div class="de-info-value">
+                                @evento.VagasRestantes vagas restantes
+                            </div>
+                            <div class="de-info-sub" style="font-size:0.8rem;font-weight:400;">
+                                de @evento.CapacidadeTotal
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="de-info-item">
+                        <div class="de-info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
+                        </div>
+                        <div class="de-info-text">
+                            <div class="de-info-label">Limite por pessoa</div>
+                            <div class="de-info-value">@evento.LimiteIngressosPorUsuario ingresso(s)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="de-section">
+                <h3 class="de-section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    Sobre o evento
+                </h3>
+                <div class="de-descricao" style="white-space: pre-wrap;">
+                    @if (!string.IsNullOrWhiteSpace(evento.Descricao))
+                    {
+                        @evento.Descricao
+                    }
+                    else
+                    {
+                        <span class="de-descricao-empty">Nenhuma descrição disponível para este evento.</span>
+                    }
+                </div>
+            </div>
+
+            <!-- Photo Gallery -->
+            @if (evento.Fotos.Count > 0)
+            {
+                <div class="de-section">
+                    <h3 class="de-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        Galeria de fotos
+                    </h3>
+                    <div class="de-gallery">
+                        @foreach (var foto in evento.Fotos)
+                        {
+                            <div class="de-gallery-item" @onclick="() => AbrirLightbox(foto)" role="button" tabindex="0" aria-label="Ampliar foto do evento @evento.Nome">
+                                <img src="data:image/jpeg;base64,@foto"
+                                     alt="Foto do evento @evento.Nome"
+                                     loading="lazy" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Tipos de Ingresso (Setores) -->
+            @if (evento.TiposIngresso is { Count: > 0 })
+            {
+                <div class="de-section">
+                    <h3 class="de-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        Setores / Tipos de Ingresso
+                    </h3>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.8rem;">
+                        @foreach (var ti in evento.TiposIngresso.OrderBy(t => t.Ordem))
+                        {
+                            <div style="background:var(--tp-bg-card);border-radius:14px;border:1.5px solid var(--tp-border-card);padding:1.2rem 1.5rem;display:flex;flex-direction:column;gap:0.5rem;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;">
+                                    <strong style="font-size:1rem;color:var(--tp-text-heading);">@ti.Nome</strong>
+                                    @if (!string.IsNullOrEmpty(ti.Descricao))
+                                    {
+                                        <span style="font-size:0.78rem;color:var(--tp-text-light);">@ti.Descricao</span>
+                                    }
+                                </div>
+                                <div style="font-size:1.3rem;font-weight:800;color:var(--tp-primary);">
+                                    @ti.Preco.ToString("C")
+                                </div>
+                                @if (evento.TemMeiaEntrada)
+                                {
+                                    <div style="font-size:0.85rem;color:var(--tp-text-muted);">
+                                        Meia: <span style="font-weight:600;color:var(--tp-success-text);">@ti.PrecoMeiaEntrada.ToString("C")</span>
+                                    </div>
+                                }
+                                <div style="font-size:0.85rem;color:var(--tp-text-muted);">
+                                    @(ti.CapacidadeRestante > 0
+                                        ? $"{ti.CapacidadeRestante} de {ti.CapacidadeTotal} vagas"
+                                        : "Esgotado")
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Lotes Progressivos -->
+            @if (evento.Lotes is { Count: > 0 })
+            {
+                <div class="de-section">
+                    <h3 class="de-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                        Lotes Progressivos
+                    </h3>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.8rem;">
+                        @foreach (var lote in evento.Lotes)
+                        {
+                            <div style="background:var(--tp-bg-card);border-radius:14px;border:1.5px solid var(--tp-border-card);padding:1.2rem 1.5rem;display:flex;flex-direction:column;gap:0.5rem;
+                                        @(lote.Disponivel ? "" : "opacity:0.5;")">
+                                <div style="display:flex;align-items:center;justify-content:space-between;">
+                                    <strong style="font-size:1rem;color:var(--tp-text-heading);">@lote.Nome</strong>
+                                    <span style="font-size:0.78rem;font-weight:600;padding:0.2rem 0.5rem;border-radius:6px;
+                                        @(lote.Disponivel ? "background:#ECFDF5;color:#059669;" : "background:#FEF3C7;color:#92400E;")">
+                                        @(lote.Disponivel ? "Disponível" : "Esgotado")
+                                    </span>
+                                </div>
+                                <div style="font-size:1.3rem;font-weight:800;color:var(--tp-primary);">
+                                    @lote.Preco.ToString("C")
+                                </div>
+                                <div style="font-size:0.85rem;color:var(--tp-text-muted);">
+                                    @(lote.QuantidadeMaxima - lote.QuantidadeVendida) de @lote.QuantidadeMaxima restantes
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Refund Policy -->
+            <div class="de-section">
+                <h3 class="de-section-title">
+                    <svg class="de-reembolso-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                    </svg>
+                    Política de Reembolso
+                </h3>
+                <div class="de-reembolso">
+                    @evento.PoliticaReembolso
+                </div>
+            </div>
+
+            <!-- Buy Section -->
+            <div class="de-buy-section">
+                @if (evento.EventoGratuito)
+                {
+                    <div class="de-buy-price">Grátis</div>
+                    <div class="de-buy-tax">Evento gratuito — taxa de serviço não aplicada</div>
+                }
+                else
+                {
+                    <div class="de-buy-price">@evento.PrecoPadrao.ToString("C")</div>
+                    @if (evento.TemMeiaEntrada)
+                    {
+                        <div style="font-size:0.95rem;font-weight:600;color:var(--tp-text-muted);margin-bottom:0.3rem;">
+                            Meia-entrada: <span style="color:var(--tp-primary);font-weight:700;">@evento.PrecoMeiaEntrada.ToString("C")</span>
+                            &nbsp;(Lei 12.933/2013)
+                        </div>
+                    }
+                    @if (evento.TaxaServico > 0)
+                    {
+                        <div class="de-buy-tax">+ @evento.TaxaServico.ToString("C") taxa de serviço</div>
+                    }
+                    else
+                    {
+                        <div class="de-buy-tax">Sem taxa de serviço</div>
+                    }
+                }
+
+                @if (evento.VagasRestantes <= 0)
+                {
+                    <div style="margin-top:1rem;padding:0.8rem 1.5rem;background:var(--tp-error-bg);color:var(--tp-error-text);border-radius:12px;font-weight:600;display:inline-block;">
+                        🎫 Ingressos esgotados
+                    </div>
+
+                    @* ── Fila de Espera ──────────────────────────────────────── *@
+                    if (Session.EstaLogado)
+                    {
+                        if (estaNaFila is null && !processandoFila)
+                        {
+                            @* Ainda verificando se o usuário está na fila — mostra spinner *@
+                            <div style="margin-top:0.8rem;font-size:0.82rem;color:var(--tp-text-muted);display:flex;align-items:center;gap:0.4rem;">
+                                <div class="de-spinner" style="width:14px;height:14px;border-width:2px;"></div>
+                                Verificando fila de espera...
+                            </div>
+                        }
+                        else if (resultadoFila != null)
+                        {
+                            @* Já está na fila — mostra posição e botão de desistir *@
+                            <div class="de-waiting-info">
+                                <div class="de-waiting-icon">🕐</div>
+                                <div class="de-waiting-text">
+                                    <strong>Você está na fila de espera!</strong>
+                                    <span>Sua posição: <strong>@resultadoFila.Posicao°</strong> de @resultadoFila.TotalNaFila</span>
+                                    <span style="font-size:0.8rem;color:var(--tp-text-muted);">
+                                        @resultadoFila.Mensagem
+                                    </span>
+                                </div>
+                                <button class="de-waiting-leave-btn" @onclick="SairDaFila" disabled="@processandoFila" title="Sair da fila de espera">
+                                    @(processandoFila ? "Saindo..." : "✕ Desistir")
+                                </button>
+                            </div>
+                        }
+                        else if (erroFila != null)
+                        {
+                            @* Erro ao entrar/sair — mostra mensagem e botão de retry *@
+                            <div style="margin-top:1rem;padding:0.6rem 1rem;background:var(--tp-error-bg);color:var(--tp-error-text);border-radius:10px;font-size:0.85rem;">
+                                ⚠️ @erroFila
+                            </div>
+                            <div style="margin-top:0.5rem;">
+                                <button class="de-waiting-btn" @onclick="EntrarNaFila" disabled="@processandoFila">
+                                    @(processandoFila ? "Entrando..." : "🔄 Tentar novamente")
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            @* Não está na fila — mostra botão de entrada *@
+                            <div style="margin-top:1rem;">
+                                <button class="de-waiting-btn" @onclick="EntrarNaFila" disabled="@processandoFila">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                        <path d="M12 2v20M2 12h20"/>
+                                    </svg>
+                                    @(processandoFila ? "Entrando..." : "🎟️ Entrar na fila de espera")
+                                </button>
+                                <div style="margin-top:0.4rem;font-size:0.78rem;color:var(--tp-text-muted);">
+                                    Se alguém desistir, você será notificado por email.
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div style="margin-top:1rem;">
+                            <a class="de-waiting-login-link" href="/login">
+                                Faça login para entrar na fila de espera
+                            </a>
+                        </div>
+                    }
+                }
+                else if (evento.Status == "Cancelado")
+                {
+                    <div style="margin-top:1rem;padding:0.8rem 1.5rem;background:var(--tp-error-bg);color:var(--tp-error-text);border-radius:12px;font-weight:600;display:inline-block;">
+                        ⛔ Evento cancelado
+                    </div>
+                }
+                else if (Session.EstaLogado)
+                {
+                    <button class="de-buy-btn" @onclick="AbrirCompraModal" aria-label="Comprar ingresso para @evento.Nome">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                            <path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a2 2 0 0 0 0 4v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0 0-4z"/>
+                        </svg>
+                        Comprar ingresso
+                    </button>
+                }
+                else
+                {
+                    <a class="de-buy-login-link" href="/login">
+                        Faça login para comprar
+                    </a>
+                }
+
+                @if (evento.VagasRestantes > 0 && evento.VagasRestantes <= 20)
+                {
+                    <div class="de-vagas-restantes">
+                        ⚡ Apenas <strong>@evento.VagasRestantes</strong> vaga(s) restante(s) — garanta a sua!
+                    </div>
+                }
+                else if (evento.VagasRestantes > 0)
+                {
+                    <div class="de-vagas-restantes">
+                        <strong>@evento.VagasRestantes</strong> de @evento.CapacidadeTotal vagas disponíveis
+                    </div>
+                }
+            </div>
+
+            <!-- Add to Calendar -->
+            <div style="margin-top:1.5rem;text-align:center;">
+                <p style="font-size:0.82rem;color:var(--tp-text-muted);margin-bottom:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">
+                    Salvar no calendário
+                </p>
+                <div style="display:flex;justify-content:center;gap:0.7rem;flex-wrap:wrap;">
+                    <a href="@GoogleCalendarUrl"
+                       target="_blank" rel="noopener noreferrer"
+                       style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1rem;
+                              border:1.5px solid var(--tp-border-card);border-radius:10px;font-size:0.85rem;
+                              font-weight:600;color:var(--tp-text-body);text-decoration:none;background:var(--tp-bg-card);
+                              transition:border-color 0.2s,background 0.2s;"
+                       aria-label="Adicionar ao Google Calendar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Google Calendar
+                    </a>
+                    <a href="/api/public/eventos/@evento.Id/calendar.ics"
+                       download="@(evento.Nome.Replace(" ","_")).ics"
+                       style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1rem;
+                              border:1.5px solid var(--tp-border-card);border-radius:10px;font-size:0.85rem;
+                              font-weight:600;color:var(--tp-text-body);text-decoration:none;background:var(--tp-bg-card);
+                              transition:border-color 0.2s,background 0.2s;"
+                       aria-label="Baixar arquivo .ics para Apple Calendar ou Outlook">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Apple / Outlook (.ics)
+                    </a>
+                </div>
+            </div>
+
+            <!-- Back link -->
+            <div style="padding: 1.5rem 0 3rem 0;">
+                <a class="de-back" href="/vitrine">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                    ← Voltar para eventos
+                </a>
+            </div>
+
+            <!-- Reviews Section -->
+            <div class="de-section" style="margin-bottom:3rem;">
+                <h3 class="de-section-title" style="display:flex;align-items:center;gap:0.5rem;">
+                    ⭐ Avaliações
+                    @if (mediaAvaliacoes.HasValue)
+                    {
+                        <span style="font-size:0.9rem;font-weight:700;color:var(--tp-primary);">@mediaAvaliacoes.Value.ToString("0.0")/5</span>
+                    }
+                </h3>
+
+                @if (avaliacoes == null)
+                {
+                    <p style="color:var(--tp-text-muted);font-size:0.9rem;">Carregando avaliações...</p>
+                }
+                else if (!avaliacoes.Any())
+                {
+                    <p style="color:var(--tp-text-muted);font-size:0.9rem;">Ainda não há avaliações para este evento.</p>
+                }
+                else
+                {
+                    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                        @foreach (var av in avaliacoes)
+                        {
+                            <div style="background:var(--tp-bg-page);border:1.5px solid var(--tp-border-card);border-radius:12px;padding:1rem 1.25rem;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
+                                    <span style="font-size:0.85rem;font-weight:700;color:var(--tp-text-heading);">
+                                        @if (av.Anonima)
+                                        {
+                                            <span style="font-style:italic;color:var(--tp-text-muted);">Anônimo</span>
+                                        }
+                                        else
+                                        {
+                                            @av.NomeUsuario
+                                        }
+                                    </span>
+                                    <span style="font-size:0.9rem;">@(new string('⭐', av.Nota))</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(av.Comentario))
+                                {
+                                    <p style="font-size:0.85rem;color:var(--tp-text-body);margin:0;">@av.Comentario</p>
+                                }
+                                <div style="font-size:0.75rem;color:var(--tp-text-muted);margin-top:0.35rem;">@av.DataAvaliacao.ToString("dd/MM/yyyy")</div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Lightbox -->
+        @if (!string.IsNullOrEmpty(lightboxFoto))
+        {
+            <div class="de-lightbox" @onclick="FecharLightbox" role="button" tabindex="0" aria-label="Fechar visualização ampliada">
+                <img src="data:image/jpeg;base64,@lightboxFoto"
+                     alt="@evento.Nome — foto ampliada"
+                     @onclick:stopPropagation />
+            </div>
+        }
+
+        <!-- Shared Purchase Modal -->
+        <CompraModal Evento="@eventoParaCompra"
+                     Visible="@mostrarCompraModal"
+                     VisibleChanged="@OnCompraModalVisibilityChanged"
+                     OnCompraConcluida="@OnCompraConcluida" />
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private EventDetailDto? evento;
+    private bool carregando = true;
+    private string? erro;
+    private string? lightboxFoto;
+
+    // ── Shared purchase modal ─────────────────────────────────────────
+    private bool mostrarCompraModal;
+    private TicketEvent? eventoParaCompra;
+
+    // Reviews
+    private List<AvaliacaoDto>? avaliacoes;
+    private double? mediaAvaliacoes;
+
+    // ── Fila de Espera ──────────────────────────────────────────────
+    /// <summary>
+    /// null = ainda não verificou | false = não está na fila | true = já está na fila
+    /// </summary>
+    private bool? estaNaFila;
+    private WaitingQueueResponseDto? resultadoFila;
+    private string? erroFila;
+    private bool processandoFila;
+
+    private string GoogleCalendarUrl => evento == null ? "#" :
+        $"https://calendar.google.com/calendar/render?action=TEMPLATE" +
+        $"&text={Uri.EscapeDataString(evento.Nome)}" +
+        $"&dates={evento.DataEvento:yyyyMMdd'T'HHmmss}/{(evento.DataTermino ?? evento.DataEvento.AddHours(4)):yyyyMMdd'T'HHmmss}" +
+        $"&location={Uri.EscapeDataString(evento.Local)}" +
+        $"&details={Uri.EscapeDataString(evento.Descricao ?? evento.Nome)}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarDetalhes();
+    }
+
+    private async Task CarregarDetalhes()
+    {
+        carregando = true;
+        erro = null;
+        evento = null;
+
+        try
+        {
+            evento = await Http.GetFromJsonAsync<EventDetailDto>($"api/eventos/{Id}");
+            if (evento == null)
+                erro = "404";
+            else
+            {
+                // Load reviews in parallel
+                try
+                {
+                    var result = await Http.GetFromJsonAsync<AvaliacaoResultDto>($"api/eventos/{Id}/avaliacoes");
+                    avaliacoes = result?.Avaliacoes ?? [];
+                    mediaAvaliacoes = result?.Media;
+                }
+                catch { avaliacoes = []; }
+
+                // Se evento esgotado e usuário logado, verifica se já está na fila
+                if (evento.VagasRestantes <= 0 && Session.EstaLogado)
+                {
+                    await VerificarSeEstaNaFila();
+                }
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            erro = "404";
+        }
+        catch
+        {
+            erro = "erro";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    // ── Fila de Espera ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Verifica se o usuário logado já está na fila de espera deste evento.
+    /// </summary>
+    private async Task VerificarSeEstaNaFila()
+    {
+        try
+        {
+            var minhasFilas = await Http.GetFromJsonAsync<List<WaitingQueueDto>>("api/fila-espera/minhas-filas");
+            var entrada = minhasFilas?.FirstOrDefault(f => f.EventoId == Id && f.Status == "Aguardando");
+            if (entrada != null)
+            {
+                estaNaFila = true;
+                resultadoFila = new WaitingQueueResponseDto
+                {
+                    Mensagem = $"Você entrou em {entrada.DataEntrada:dd/MM/yyyy 'às' HH:mm}.",
+                    Posicao = entrada.Posicao,
+                    TotalNaFila = minhasFilas?.Count ?? 0
+                };
+            }
+            else
+            {
+                estaNaFila = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Erro ao verificar fila de espera para evento {EventoId}", Id);
+            estaNaFila = false;
+        }
+    }
+
+    /// <summary>
+    /// Entra na fila de espera do evento.
+    /// </summary>
+    private async Task EntrarNaFila()
+    {
+        if (processandoFila) return;
+        processandoFila = true;
+        erroFila = null;
+
+        try
+        {
+            var response = await Http.PostAsync($"api/fila-espera/entrar?eventoId={Id}", null);
+            if (response.IsSuccessStatusCode)
+            {
+                resultadoFila = await response.Content.ReadFromJsonAsync<WaitingQueueResponseDto>();
+                estaNaFila = true;
+            }
+            else
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var errorObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(errorBody);
+                    erroFila = errorObj?.GetValueOrDefault("mensagem") ?? "Não foi possível entrar na fila de espera.";
+                }
+                catch
+                {
+                    erroFila = "Não foi possível entrar na fila de espera.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Erro ao entrar na fila de espera do evento {EventoId}", Id);
+            erroFila = "Erro de conexão. Tente novamente.";
+        }
+        finally
+        {
+            processandoFila = false;
+        }
+    }
+
+    /// <summary>
+    /// Sai da fila de espera do evento.
+    /// </summary>
+    private async Task SairDaFila()
+    {
+        if (processandoFila) return;
+        processandoFila = true;
+
+        try
+        {
+            var response = await Http.PostAsync($"api/fila-espera/sair?eventoId={Id}", null);
+            if (response.IsSuccessStatusCode)
+            {
+                estaNaFila = false;
+                resultadoFila = null;
+                erroFila = null;
+            }
+            else
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var errorObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(errorBody);
+                    erroFila = errorObj?.GetValueOrDefault("mensagem") ?? "Não foi possível sair da fila.";
+                }
+                catch
+                {
+                    erroFila = "Não foi possível sair da fila.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Erro ao sair da fila de espera do evento {EventoId}", Id);
+            erroFila = "Erro de conexão. Tente novamente.";
+        }
+        finally
+        {
+            processandoFila = false;
+        }
+    }
+
+    private void AbrirCompraModal()
+    {
+        if (evento == null) return;
+
+        // Converte EventDetailDto → TicketEvent para o componente compartilhado
+        eventoParaCompra = new TicketEvent
+        {
+            Id = evento.Id,
+            Nome = evento.Nome,
+            CapacidadeTotal = evento.CapacidadeTotal,
+            DataEvento = evento.DataEvento,
+            PrecoPadrao = evento.PrecoPadrao,
+            LimiteIngressosPorUsuario = evento.LimiteIngressosPorUsuario,
+            Local = evento.Local,
+            Descricao = evento.Descricao,
+            GeneroMusical = evento.GeneroMusical,
+            EventoGratuito = evento.EventoGratuito,
+            Status = evento.Status,
+            TaxaServico = evento.TaxaServico,
+            TemMeiaEntrada = evento.TemMeiaEntrada,
+            FotoThumbnailBase64 = evento.FotoThumbnailBase64
+        };
+
+        mostrarCompraModal = true;
+    }
+
+    private async Task OnCompraModalVisibilityChanged(bool visible)
+    {
+        mostrarCompraModal = visible;
+        if (!visible)
+        {
+            // Recarrega os detalhes para atualizar vagas restantes após compra
+            await CarregarDetalhes();
+        }
+    }
+
+    private async Task OnCompraConcluida()
+    {
+        await CarregarDetalhes();
+    }
+
+    private void AbrirLightbox(string fotoBase64)
+    {
+        lightboxFoto = fotoBase64;
+    }
+
+    private void FecharLightbox()
+    {
+        lightboxFoto = null;
+    }
+
+    private void VoltarParaVitrine()
+    {
+        Navigation.NavigateTo("/vitrine");
+    }
+
+    // ⚠️ DTOs AvaliacaoDto e AvaliacaoResultDto foram movidos para TicketPrime.Web.Models (DtoModels.cs)
+    //    para evitar duplicação. Manter inline aqui quebra a centralização.
+
+    // ── SEO / Open Graph helpers ──────────────────────────────────────
+
+    /// <summary>
+    /// Retorna descrição truncada para OG:description (máx. 300 chars).
+    /// </summary>
+    private string ObterDescricaoParaOG()
+    {
+        if (evento == null) return "TicketPrime - Ingressos para eventos";
+        if (!string.IsNullOrEmpty(evento.Descricao))
+            return evento.Descricao.Length > 300 ? evento.Descricao[..297] + "..." : evento.Descricao;
+        return $"Compre ingressos para {evento.Nome} em {evento.Local}.";
+    }
+}

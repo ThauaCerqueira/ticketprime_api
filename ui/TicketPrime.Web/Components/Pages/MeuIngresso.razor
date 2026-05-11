@@ -1,0 +1,229 @@
+@page "/meu-ingresso/{id:int}"
+@using System.Net.Http.Json
+@using QRCoder
+@using TicketPrime.Web.Models
+@using TicketPrime.Web.Services
+@inject HttpClient Http
+@inject SessionService Session
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Meu Ingresso - TicketPrime</PageTitle>
+
+<div class="ti-wrapper">
+    <a class="ti-back" href="/perfil">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Meus ingressos
+    </a>
+
+    @if (carregando)
+    {
+        <div class="ti-loading">
+            <div class="ti-spinner"></div>
+            <p>Carregando ingresso...</p>
+        </div>
+    }
+    else if (erro != null || reserva == null)
+    {
+        <div class="ti-error">
+            <div style="font-size:3rem;margin-bottom:1rem;">🎫</div>
+            <h3>Ingresso não encontrado</h3>
+            <p>Este ingresso não existe ou não pertence à sua conta.</p>
+            <a class="ti-btn-voltar" href="/perfil">Ver meus ingressos</a>
+        </div>
+    }
+    else
+    {
+        <div class="ti-card">
+            <!-- Header -->
+            <div class="ti-header">
+                <div class="ti-header-label">TicketPrime — Ingresso Digital</div>
+                <div class="ti-header-name">@reserva.Nome</div>
+                <div class="ti-header-date">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    @reserva.DataEvento.ToString("dd/MM/yyyy 'às' HH:mm")
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="ti-body">
+                <!-- QR Code -->
+                <div class="ti-qr-section">
+                    @if (reserva.Status == "Cancelada")
+                    {
+                        <div style="width:200px;height:200px;display:flex;align-items:center;justify-content:center;
+                                    background:var(--tp-error-bg);border-radius:16px;border:3px solid var(--tp-border-card);">
+                            <span style="font-size:0.9rem;font-weight:600;color:var(--tp-error-text);text-align:center;padding:1rem;">
+                                ❌ Ingresso cancelado
+                            </span>
+                        </div>
+                    }
+                    else if (reserva.Status == "Usada")
+                    {
+                        <div style="width:200px;height:200px;display:flex;align-items:center;justify-content:center;
+                                    background:#DBEAFE;border-radius:16px;border:3px solid var(--tp-border-card);">
+                            <span style="font-size:0.9rem;font-weight:600;color:#1E40AF;text-align:center;padding:1rem;">
+                                ✅ Check-in realizado
+                            </span>
+                        </div>
+                    }
+                    else
+                    {
+                        <img class="ti-qr-img"
+                             src="data:image/png;base64,@qrCode"
+                             alt="QR Code do ingresso @reserva.CodigoIngresso"
+                             title="Apresente este QR Code na entrada do evento" />
+                    }
+                    <div class="ti-code">@reserva.CodigoIngresso</div>
+                </div>
+
+                <hr class="ti-divider-dashed" />
+
+                <!-- Details -->
+                <div class="ti-row">
+                    <span class="ti-row-label">Status</span>
+                    <span class="ti-badge-status @(reserva.Status == "Ativa" ? "ti-badge-ativa" : reserva.Status == "Usada" ? "ti-badge-usada" : "ti-badge-cancelada")">
+                        @reserva.Status
+                    </span>
+                </div>
+                <div class="ti-row">
+                    <span class="ti-row-label">Local</span>
+                    <span class="ti-row-value">@reserva.Local</span>
+                </div>
+                <div class="ti-row">
+                    <span class="ti-row-label">Data da compra</span>
+                    <span class="ti-row-value">@reserva.DataCompra.ToString("dd/MM/yyyy")</span>
+                </div>
+
+                <hr class="ti-divider-dashed" />
+
+                <div class="ti-row">
+                    <span class="ti-row-label">Valor pago</span>
+                    <span class="ti-row-value" style="color:var(--tp-primary);font-size:1.1rem;">@reserva.ValorFinalPago.ToString("C")</span>
+                </div>
+                @if (reserva.EhMeiaEntrada)
+                {
+                    <div class="ti-row">
+                        <span class="ti-row-label">Tipo</span>
+                        <span style="padding:0.2rem 0.6rem;background:#FEF3C7;color:#92400E;border-radius:20px;font-size:0.75rem;font-weight:700;">🎫 Meia-Entrada</span>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(reserva.CupomUtilizado))
+                {
+                    <div class="ti-row">
+                        <span class="ti-row-label">Cupom</span>
+                        <span class="ti-row-value" style="color:var(--tp-primary);">@reserva.CupomUtilizado</span>
+                    </div>
+                }
+                @if (reserva.TemSeguro)
+                {
+                    <div class="ti-row">
+                        <span class="ti-row-label">Seguro de devolução</span>
+                        <span class="ti-row-value">✅ Incluso</span>
+                    </div>
+                }
+
+                <!-- Calendar links (only for active tickets) -->
+                @if (reserva.Status == "Ativa" && !string.IsNullOrEmpty(reserva.Local))
+                {
+                    <div class="ti-calendar-section">
+                        <div class="ti-calendar-label">Salvar no calendário</div>
+                        <div class="ti-calendar-btns">
+                            <a href="@GoogleCalendarUrl" target="_blank" rel="noopener noreferrer" class="ti-calendar-btn"
+                               aria-label="Adicionar evento ao Google Calendar">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                Google Calendar
+                            </a>
+                            <a href="/api/public/eventos/@reserva.EventoId/calendar.ics"
+                               download="@(reserva.Nome.Replace(" ","_")).ics"
+                               class="ti-calendar-btn"
+                               aria-label="Baixar arquivo .ics para Apple Calendar ou Outlook">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Apple / Outlook (.ics)
+                            </a>
+                        </div>
+                    </div>
+                }
+
+                <!-- Print receipt button -->
+                <div style="margin-top:1.2rem;padding-top:1.2rem;border-top:1.5px solid var(--tp-border-card);display:flex;justify-content:center;">
+                    <button class="ti-btn-print" @onclick="ImprimirRecibo" aria-label="Imprimir ou salvar recibo como PDF">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                            <rect x="6" y="14" width="12" height="8"/>
+                        </svg>
+                        Imprimir recibo
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ReservationDetailDto? reserva;
+    private string? qrCode;
+    private bool carregando = true;
+    private string? erro;
+
+    private string GoogleCalendarUrl => reserva == null ? "#" :
+        $"https://calendar.google.com/calendar/render?action=TEMPLATE" +
+        $"&text={Uri.EscapeDataString(reserva.Nome)}" +
+        $"&dates={reserva.DataEvento:yyyyMMdd'T'HHmmss}/{(reserva.DataTermino ?? reserva.DataEvento.AddHours(4)):yyyyMMdd'T'HHmmss}" +
+        $"&location={Uri.EscapeDataString(reserva.Local ?? string.Empty)}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.EstaLogado)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        await CarregarIngresso();
+    }
+
+    private async Task CarregarIngresso()
+    {
+        carregando = true;
+        erro = null;
+
+        try
+        {
+            reserva = await Http.GetFromJsonAsync<ReservationDetailDto>($"api/reservas/{Id}");
+            if (reserva != null && reserva.Status != "Cancelada" && reserva.Status != "Usada")
+                qrCode = GerarQrCode(reserva.CodigoIngresso);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            erro = "404";
+        }
+        catch
+        {
+            erro = "Erro ao carregar ingresso.";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private static string GerarQrCode(string codigo)
+    {
+        using var generator = new QRCodeGenerator();
+        var data = generator.CreateQrCode(codigo, QRCodeGenerator.ECCLevel.M);
+        var qr = new PngByteQRCode(data);
+        return Convert.ToBase64String(qr.GetGraphic(4));
+    }
+
+    private async Task ImprimirRecibo()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+}

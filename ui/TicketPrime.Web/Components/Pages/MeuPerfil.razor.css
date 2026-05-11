@@ -1,0 +1,227 @@
+/* ── Meu Perfil (pf-*) ─────────────────────────────────────────── */
+.pf-wrapper {
+    min-height: 100vh;
+    background: var(--tp-bg-page);
+    padding: 2rem;
+}
+
+.pf-header { margin-bottom: 2rem; }
+.pf-header h2 { font-size: 1.6rem; font-weight: 700; color: var(--tp-text-heading); margin: 0 0 0.2rem 0; }
+.pf-header p { font-size: 0.875rem; color: var(--tp-text-muted); margin: 0; }
+
+.pf-profile-card {
+    background: var(--tp-bg-card);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1.5px solid var(--tp-border-card);
+    box-shadow: var(--tp-shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.pf-avatar {
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, var(--tp-primary), #7C7CE8);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: white;
+}
+
+.pf-profile-info { flex: 1; }
+.pf-profile-name { font-size: 1.3rem; font-weight: 700; color: var(--tp-text-heading); margin-bottom: 0.3rem; }
+
+.pf-profile-details { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+
+.pf-profile-detail {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.875rem; color: var(--tp-text-muted);
+}
+
+.pf-profile-detail svg { width: 15px; height: 15px; }
+
+.pf-badge-role { padding: 0.35rem 1rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+.pf-badge-admin { background: #EDE9FE; color: #7C3AED; }
+.pf-badge-cliente { background: var(--tp-success-bg); color: var(--tp-success-text); }
+
+.pf-section-title {
+    font-size: 1.1rem; font-weight: 700; color: var(--tp-text-heading);
+    margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.pf-section-title svg { width: 20px; height: 20px; stroke: var(--tp-primary); }
+
+.pf-alert { padding: 0.9rem 1.2rem; border-radius: 12px; font-size: 0.9rem; font-weight: 500; margin-bottom: 1.5rem; }
+.pf-alert-success { background: var(--tp-success-bg); color: var(--tp-success-text); }
+.pf-alert-error { background: var(--tp-error-bg); color: var(--tp-error-text); }
+
+.pf-ticket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.2rem; }
+
+.pf-ticket-card {
+    background: var(--tp-bg-card); border-radius: 18px;
+    border: 1.5px solid var(--tp-border-card);
+    box-shadow: var(--tp-shadow-sm);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.pf-ticket-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px color-mix(in srgb, var(--tp-primary) 10%, transparent); }
+
+.pf-ticket-top {
+    background: linear-gradient(135deg, var(--tp-primary), #7C7CE8);
+    padding: 1.2rem 1.5rem; color: white;
+}
+.pf-ticket-top h4 { font-size: 1rem; font-weight: 700; margin: 0 0 0.3rem 0; }
+.pf-ticket-top p { font-size: 0.8rem; opacity: 0.85; margin: 0; display: flex; align-items: center; gap: 0.4rem; }
+
+.pf-ticket-body { padding: 1.2rem 1.5rem; }
+
+.pf-price-section { margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.pf-price-final { font-size: 1.3rem; font-weight: 800; color: var(--tp-primary); }
+.pf-price-original { font-size: 0.9rem; color: var(--tp-text-light); text-decoration: line-through; }
+.pf-badge-desconto {
+    padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700;
+    background: #FEF3C7; color: #B45309;
+}
+
+.pf-badge-cupom {
+    padding: 0.2rem 0.7rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+    background: color-mix(in srgb, var(--tp-primary) 10%, transparent);
+    color: var(--tp-primary);
+    display: inline-flex; align-items: center; gap: 0.3rem;
+}
+.pf-badge-cupom svg { width: 12px; height: 12px; stroke: var(--tp-primary); }
+
+.pf-ticket-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.5rem; }
+.pf-ticket-row-label { color: var(--tp-text-muted); }
+.pf-ticket-row-value { font-weight: 600; color: var(--tp-text-heading); }
+
+.pf-ticket-divider { height: 1px; background: var(--tp-border-card); margin: 0.8rem 0; }
+
+.pf-btn-cancel {
+    width: 100%; padding: 0.65rem; background: var(--tp-error-bg); color: #DC2626;
+    border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+}
+.pf-btn-cancel:hover { background: #FECACA; }
+.pf-btn-cancel:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Refund modal */
+.pf-modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); display: flex; align-items: center;
+    justify-content: center; z-index: 1000; padding: 1rem;
+}
+.pf-modal-box {
+    background: var(--tp-bg-card);
+    border-radius: 20px; padding: 2rem;
+    max-width: 520px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.pf-modal-title { font-size: 1.2rem; font-weight: 700; color: var(--tp-text-heading); margin-bottom: 0.3rem; }
+.pf-modal-sub { font-size: 0.85rem; color: var(--tp-text-muted); margin-bottom: 1.5rem; }
+.pf-modal-refund-box {
+    background: color-mix(in srgb, var(--tp-primary) 10%, transparent);
+    border-radius: 12px; padding: 1.2rem; margin-bottom: 1.2rem;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.pf-modal-refund-label { font-size: 0.8rem; color: var(--tp-text-muted); }
+.pf-modal-refund-value { font-size: 1.5rem; font-weight: 800; color: var(--tp-primary); }
+.pf-modal-detail { display: flex; justify-content: space-between; font-size: 0.875rem; padding: 0.4rem 0; }
+.pf-modal-detail-label { color: var(--tp-text-muted); }
+.pf-modal-detail-value { font-weight: 600; color: var(--tp-text-heading); }
+.pf-modal-divider { height: 1px; background: var(--tp-border-card); margin: 0.6rem 0; }
+.pf-modal-rule {
+    background: #FFFBEB; border-radius: 10px; padding: 0.8rem 1rem;
+    font-size: 0.8rem; color: #92400E; margin-bottom: 1.2rem; line-height: 1.4;
+}
+.pf-modal-check {
+    display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 1.2rem;
+}
+.pf-modal-check input[type="checkbox"] {
+    margin-top: 2px; width: 16px; height: 16px; accent-color: var(--tp-primary); cursor: pointer;
+}
+.pf-modal-check label { font-size: 0.85rem; color: var(--tp-text-body); cursor: pointer; }
+.pf-modal-actions { display: flex; gap: 0.8rem; }
+.pf-modal-btn-confirm {
+    flex: 1; padding: 0.7rem; background: #DC2626; color: white; border: none;
+    border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+}
+.pf-modal-btn-confirm:hover { background: #B91C1C; }
+.pf-modal-btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+.pf-modal-btn-cancel {
+    padding: 0.7rem 1.2rem; background: transparent; color: var(--tp-text-muted);
+    border: 1.5px solid var(--tp-border);
+    border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.2s;
+}
+.pf-modal-btn-cancel:hover { background: var(--tp-border-card); }
+
+/* Admin eventos grid */
+.pf-evento-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+
+.pf-evento-card {
+    background: var(--tp-bg-card); border-radius: 18px; padding: 1.5rem;
+    border: 1.5px solid var(--tp-border-card);
+    box-shadow: var(--tp-shadow-sm);
+    transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden;
+}
+.pf-evento-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--tp-primary), #7C7CE8);
+}
+.pf-evento-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px color-mix(in srgb, var(--tp-primary) 10%, transparent); }
+
+.pf-evento-name { font-size: 1rem; font-weight: 700; color: var(--tp-text-heading); margin-bottom: 0.8rem; }
+.pf-evento-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--tp-text-muted); margin-bottom: 0.4rem; }
+.pf-evento-row svg { width: 15px; height: 15px; flex-shrink: 0; }
+.pf-evento-price { font-size: 1.2rem; font-weight: 800; color: var(--tp-primary); margin-top: 0.8rem; }
+
+.pf-badge-vagas { padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+.pf-badge-vagas-ok { background: var(--tp-success-bg); color: var(--tp-success-text); }
+.pf-badge-vagas-zero { background: var(--tp-error-bg); color: var(--tp-error-text); }
+
+.pf-empty {
+    text-align: center; padding: 3rem; background: var(--tp-bg-card);
+    border-radius: 18px; border: 1.5px solid var(--tp-border-card);
+    color: var(--tp-text-light);
+}
+.pf-empty svg { width: 48px; height: 48px; margin-bottom: 1rem; }
+.pf-empty h3 { font-size: 1rem; font-weight: 600; color: var(--tp-text-body); margin-bottom: 0.4rem; }
+
+.pf-btn-explore {
+    display: inline-block; margin-top: 1rem; padding: 0.65rem 1.4rem;
+    background: var(--tp-primary); color: white; border: none; border-radius: 10px;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none;
+    transition: background 0.2s;
+}
+.pf-btn-explore:hover { background: var(--tp-primary-hover); color: white; }
+
+.pf-loading { text-align: center; padding: 3rem; color: var(--tp-text-muted); }
+.pf-spinner {
+    width: 36px; height: 36px; border: 3px solid var(--tp-border);
+    border-top-color: var(--tp-primary); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+[data-theme="dark"] .pf-badge-admin {
+    background: #2D2D6B;
+    color: #A78BFA;
+}
+[data-theme="dark"] .pf-badge-desconto {
+    background: #3B3520;
+    color: #FDE68A;
+}
+[data-theme="dark"] .pf-modal-rule {
+    background: #3B3520;
+    color: #FDE68A;
+}

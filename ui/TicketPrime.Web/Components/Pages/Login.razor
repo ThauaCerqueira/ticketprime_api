@@ -1,194 +1,17 @@
 @page "/login"
-@using src.DTOs
-@using src.Service
+@using System.Net.Http.Json
+@using TicketPrime.Web.Models
 @using TicketPrime.Web.Services
-@rendermode InteractiveServer
-@inject AuthService Auth
+@inject HttpClient Http
 @inject NavigationManager Navigation
 @inject SessionService Session
-
-<style>
-    .login-wrapper {
-        min-height: 100vh;
-        background: linear-gradient(135deg, #dde1f5 0%, #f5d6e8 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .login-card {
-        background: #ffffff;
-        border-radius: 24px;
-        padding: 2.5rem 2.5rem;
-        width: 100%;
-        max-width: 420px;
-        box-shadow: 0 8px 40px rgba(99, 102, 241, 0.10);
-    }
-
-    .login-logo {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 1.5rem;
-    }
-
-    .login-logo-icon {
-        width: 56px;
-        height: 56px;
-        background: #5B5BD6;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 0.6rem;
-    }
-
-    .login-logo-icon svg {
-        width: 28px;
-        height: 28px;
-        fill: white;
-    }
-
-    .login-logo-name {
-        font-size: 1.3rem;
-        font-weight: 600;
-        color: #5B5BD6;
-        letter-spacing: -0.3px;
-    }
-
-    .login-title {
-        text-align: center;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #1a1a2e;
-        margin-bottom: 1.8rem;
-    }
-
-    .login-label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #374151;
-        margin-bottom: 0.4rem;
-        display: block;
-    }
-
-    .login-input-wrapper {
-        position: relative;
-        margin-bottom: 1.2rem;
-    }
-
-    .login-input-icon {
-        position: absolute;
-        left: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #9CA3AF;
-        width: 18px;
-        height: 18px;
-    }
-
-    .login-input {
-        width: 100%;
-        padding: 0.7rem 1rem 0.7rem 2.6rem;
-        border: 1.5px solid #E5E7EB;
-        border-radius: 10px;
-        font-size: 0.95rem;
-        color: #374151;
-        background: #fff;
-        outline: none;
-        transition: border-color 0.2s;
-        box-sizing: border-box;
-    }
-
-    .login-input:focus {
-        border-color: #5B5BD6;
-    }
-
-    .login-input::placeholder {
-        color: #9CA3AF;
-    }
-
-    .login-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1.4rem;
-    }
-
-    .login-remember {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.875rem;
-        color: #5B5BD6;
-        cursor: pointer;
-    }
-
-    .login-remember input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        accent-color: #5B5BD6;
-    }
-
-    .login-forgot {
-        font-size: 0.875rem;
-        color: #5B5BD6;
-        text-decoration: none;
-    }
-
-    .login-btn {
-        width: 100%;
-        padding: 0.85rem;
-        background: #5B5BD6;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s;
-        margin-bottom: 1.2rem;
-    }
-
-    .login-btn:hover {
-        background: #4949c4;
-    }
-
-    .login-btn:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-    }
-
-    .login-register {
-        text-align: center;
-        font-size: 0.875rem;
-        color: #6B7280;
-    }
-
-    .login-register a {
-        color: #5B5BD6;
-        text-decoration: none;
-        font-weight: 500;
-    }
-
-    .login-error {
-        background: #FEE2E2;
-        color: #DC2626;
-        border-radius: 8px;
-        padding: 0.6rem 1rem;
-        font-size: 0.875rem;
-        margin-bottom: 1rem;
-        text-align: center;
-    }
-</style>
 
 <div class="login-wrapper">
     <div class="login-card">
 
         <div class="login-logo">
             <div class="login-logo-icon">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logotipo TicketPrime">
                     <path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a2 2 0 0 0 0 4v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0 0-4zM12 17.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0-7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
                 </svg>
             </div>
@@ -204,7 +27,7 @@
 
         <label class="login-label">CPF</label>
         <div class="login-input-wrapper">
-            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="12" cy="7" r="4"/>
             </svg>
@@ -213,7 +36,7 @@
 
         <label class="login-label">Senha</label>
         <div class="login-input-wrapper">
-            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
@@ -221,10 +44,7 @@
         </div>
 
         <div class="login-row">
-            <label class="login-remember">
-                <input type="checkbox" /> Lembrar-me
-            </label>
-            <a href="#" class="login-forgot">Esqueceu a senha?</a>
+            <a class="login-forgot" href="/recuperar-senha">Esqueceu a senha?</a>
         </div>
 
         <button class="login-btn" @onclick="HandleLogin" disabled="@carregando">
@@ -261,22 +81,48 @@
 
     private async Task HandleLogin()
     {
+        cpf = new string(cpf.Where(char.IsDigit).ToArray());
         carregando = true;
         erro = "";
 
         try
         {
-            var dto = new LoginDTO { Cpf = cpf, Senha = senha };
-            var resultado = await Auth.LoginAsync(dto);
+            var dto = new LoginRequest { Cpf = cpf, Senha = senha };
+            var response = await Http.PostAsJsonAsync("api/auth/login", dto);
 
-            if (resultado != null)
+            if (response.IsSuccessStatusCode)
             {
-                Session.Logar(resultado.Cpf, resultado.Nome, resultado.Perfil, resultado.Token);
-                Navigation.NavigateTo("/eventos");
+                var resultado = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                if (resultado != null)
+                {
+                    await Session.LogarAsync(resultado.Cpf, resultado.Nome, resultado.Perfil, resultado.Token, resultado.RefreshToken);
+
+                    if (resultado.SenhaTemporaria)
+                    {
+                        Navigation.NavigateTo("/trocar-senha");
+                    }
+                    else
+                    {
+                        Navigation.NavigateTo("/eventos");
+                    }
+                }
+                else
+                {
+                    erro = "Resposta inválida do servidor.";
+                }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                erro = "CPF ou senha inválidos.";
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                erro = "Muitas tentativas. Aguarde um minuto e tente novamente.";
             }
             else
             {
-                erro = "CPF ou senha inválidos.";
+                var errorBody = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+                erro = errorBody?.Mensagem ?? "Erro ao realizar login.";
             }
         }
         catch (Exception ex)

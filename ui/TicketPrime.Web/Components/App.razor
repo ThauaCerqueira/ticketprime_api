@@ -14,14 +14,20 @@
     <!-- MudBlazor – fontes e estilos -->
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
-    <HeadOutlet />
+    <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
 <body>
-    <Routes />
+    <Routes @rendermode="InteractiveServer" />
     <ReconnectModal />
     <!-- Crypto E2E (Web Crypto API wrapper) -->
     <script src="js/crypto.js"></script>
+    <!-- Sessão persistente — refresh token no localStorage para reautenticação após F5 -->
+    <script src="js/session.js"></script>
+    <!-- Tema (Dark Mode) -->
+    <script src="js/theme.js"></script>
+    <!-- Mercado Pago — tokenização segura de cartão (iframes) -->
+    <script src="js/mercadopago.js"></script>
     <!-- MudBlazor JS -->
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>

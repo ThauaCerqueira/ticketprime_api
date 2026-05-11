@@ -1,11 +1,18 @@
 ﻿@inherits LayoutComponentBase
-
+@inject TicketPrime.Web.Services.SessionService Session
+@inject IJSRuntime JS
 <div class="app-layout">
     <NavMenu />
     <main class="app-main">
         @Body
     </main>
 </div>
+
+@* ═══════════════════════════════════════════════════════════════
+   Banner de saúde da API — exibe aviso amigável quando o backend
+   está offline, em vez de erros de conexão sem contexto.
+   ═══════════════════════════════════════════════════════════════ *@
+<ApiHealthBanner />
 
 <!-- Provedores MudBlazor: necessários para Snackbar, Popover e Dialog em toda a aplicação -->
 <MudPopoverProvider />
@@ -18,13 +25,26 @@
     <span class="dismiss">🗙</span>
 </div>
 
-<style>
-    .app-layout {
-        min-height: 100vh;
-        background: #F8FAFC;
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Session.CarregarAsync();
+            await InitThemeAsync();
+        }
     }
 
-    .app-main {
-        padding-top: 64px;
+    private async Task InitThemeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("ticketPrimeTheme.initTheme");
+        }
+        catch
+        {
+            // JS interop pode falhar durante pré-renderização — ignorar
+        }
     }
-</style>
+}
+

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.JSInterop;
 using System.Text.Json;
 using TicketPrime.Web.Models;
@@ -11,11 +12,16 @@ namespace TicketPrime.Web.Services;
 public sealed class CryptoService : IAsyncDisposable
 {
     private readonly IJSRuntime _js;
+    private readonly string _apiBaseUrl;
 
     private string? _organizerPublicKeyJwk;
     private bool    _initialized;
 
-    public CryptoService(IJSRuntime js) => _js = js;
+    public CryptoService(IJSRuntime js, IConfiguration configuration)
+    {
+        _js = js;
+        _apiBaseUrl = configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5164";
+    }
 
     /// <summary>Chave pública ECDH P-256 do organizador (JWK serializado), disponível após
     /// <see cref="InicializarAsync"/>.</summary>
@@ -36,7 +42,8 @@ public sealed class CryptoService : IAsyncDisposable
     {
         try
         {
-            var result = await _js.InvokeAsync<JsonElement>("ticketPrimeCrypto.init");
+            // Passa a URL base da API para que o JS busque a chave pública do servidor
+            var result = await _js.InvokeAsync<JsonElement>("ticketPrimeCrypto.init", _apiBaseUrl);
             _organizerPublicKeyJwk = result.GetProperty("organizerPublicKey").GetString();
             _initialized = true;
         }
@@ -61,8 +68,8 @@ public sealed class CryptoService : IAsyncDisposable
     /// <param name="mimeType">Tipo MIME (image/jpeg | image/png | image/webp).</param>
     /// <param name="nomeArquivo">Nome original do arquivo (usado para gerar o hash).</param>
     /// <param name="tamanhoBytes">Tamanho do arquivo original em bytes.</param>
-    /// <returns><see cref="FotoCriptografada"/> pronta para ser incluída no <see cref="PacoteImagem"/>.</returns>
-    public async Task<FotoCriptografada> CriptografarImagemAsync(
+    /// <returns><see cref="EncryptedPhoto"/> pronta para ser incluída no <see cref="ImagePackage"/>.</returns>
+    public async Task<EncryptedPhoto> CriptografarImagemAsync(
         string imageBase64,
         string mimeType,
         string nomeArquivo,
@@ -77,7 +84,7 @@ public sealed class CryptoService : IAsyncDisposable
             nomeArquivo,
             tamanhoBytes);
 
-        return new FotoCriptografada
+        return new EncryptedPhoto
         {
             CiphertextBase64      = result.GetProperty("ciphertextBase64").GetString()      ?? string.Empty,
             IvBase64              = result.GetProperty("ivBase64").GetString()              ?? string.Empty,

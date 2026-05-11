@@ -12,6 +12,10 @@ RUN dotnet restore ui/TicketPrime.Web/TicketPrime.Web.csproj
 # Copia o restante e publica
 COPY src/ src/
 COPY ui/TicketPrime.Web/ ui/TicketPrime.Web/
+
+# Remove appsettings duplicados da src/ (conflito com os da UI ao publicar)
+RUN rm -f src/appsettings.json src/appsettings.Development.json
+
 RUN dotnet publish ui/TicketPrime.Web/TicketPrime.Web.csproj -c Release -o /publish --no-restore
 
 # ── Estágio 2: runtime ────────────────────────────────────────────────────────

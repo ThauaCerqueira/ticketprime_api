@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\src.csproj" />
-  </ItemGroup>
+  <!-- ⚠️ NOTA: Projetos NÃO devem referenciar src/ diretamente.
+       Toda comunicação frontend → backend deve passar pela API REST
+       (autenticação JWT, rate limiting e logs são aplicados em Program.cs).
+  -->
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -14,9 +15,12 @@
   <!-- Pacotes adicionados para EventoCreate (criptografia E2E) -->
   <ItemGroup>
     <!-- Componentes visuais MudBlazor (tema escuro, formulários, ícones) -->
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
     <PackageReference Include="MudBlazor" Version="7.*" />
     <!-- Validação de formulários com mensagens em português -->
     <PackageReference Include="FluentValidation" Version="11.*" />
+    <!-- Geração de QR Code para ingressos -->
+    <PackageReference Include="QRCoder" Version="1.*" />
   </ItemGroup>
 
 </Project>

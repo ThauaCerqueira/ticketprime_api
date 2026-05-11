@@ -1,0 +1,320 @@
+@page "/trocar-senha"
+@using System.Net.Http.Json
+@using System.Text.RegularExpressions
+@using TicketPrime.Web.Models
+@using TicketPrime.Web.Services
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject SessionService Session
+
+<style>
+    .ts-wrapper {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #dde1f5 0%, #f5d6e8 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .ts-card {
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 2.5rem 2.5rem;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 8px 40px rgba(99, 102, 241, 0.10);
+    }
+
+    .ts-icon {
+        width: 56px;
+        height: 56px;
+        background: #5B5BD6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.6rem;
+    }
+
+    .ts-icon svg {
+        width: 28px;
+        height: 28px;
+        fill: white;
+    }
+
+    .ts-title {
+        text-align: center;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #1a1a2e;
+        margin-bottom: 0.3rem;
+    }
+
+    .ts-subtitle {
+        text-align: center;
+        font-size: 0.9rem;
+        color: #6B7280;
+        margin-bottom: 1.8rem;
+    }
+
+    .ts-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.4rem;
+        display: block;
+    }
+
+    .ts-input-wrapper {
+        position: relative;
+        margin-bottom: 1.2rem;
+    }
+
+    .ts-input {
+        width: 100%;
+        padding: 0.7rem 1rem;
+        border: 1.5px solid #E5E7EB;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        color: #374151;
+        background: #fff;
+        outline: none;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+    }
+
+    .ts-input:focus {
+        border-color: #5B5BD6;
+    }
+
+    .ts-input::placeholder {
+        color: #9CA3AF;
+    }
+
+    .ts-btn {
+        width: 100%;
+        padding: 0.85rem;
+        background: #5B5BD6;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-bottom: 1rem;
+    }
+
+    .ts-btn:hover {
+        background: #4949c4;
+    }
+
+    .ts-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .ts-error {
+        background: #FEE2E2;
+        color: #DC2626;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+
+    .ts-success {
+        background: #D1FAE5;
+        color: #065F46;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+
+    .ts-strength {
+        font-size: 0.8rem;
+        margin-top: -0.8rem;
+        margin-bottom: 1rem;
+        text-align: right;
+    }
+
+    .ts-strength.fraca { color: #DC2626; }
+    .ts-strength.media { color: #F59E0B; }
+    .ts-strength.forte { color: #059669; }
+</style>
+
+<div class="ts-wrapper">
+    <div class="ts-card">
+        <div class="ts-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ícone de segurança">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+            </svg>
+        </div>
+        <div class="ts-title">Trocar Senha</div>
+        <div class="ts-subtitle">Sua senha é temporária. Crie uma nova senha para continuar.</div>
+
+        @if (!string.IsNullOrEmpty(erro))
+        {
+            <div class="ts-error">@erro</div>
+        }
+
+        @if (sucesso)
+        {
+            <div class="ts-success">Senha alterada com sucesso! Redirecionando...</div>
+        }
+
+        <label class="ts-label">Senha Atual</label>
+        <div class="ts-input-wrapper">
+            <input class="ts-input" type="password" @bind="senhaAtual" placeholder="Digite sua senha atual" disabled="@sucesso" />
+        </div>
+
+        <label class="ts-label">Nova Senha</label>
+        <div class="ts-input-wrapper">
+            <input class="ts-input" type="password" @bind="senhaNova" placeholder="Mín. 8 caracteres, maiúscula, minúscula, número e especial" disabled="@sucesso" />
+        </div>
+        @if (!string.IsNullOrEmpty(senhaNova))
+        {
+            var forca = AvaliarForca(senhaNova);
+            <div class="ts-strength @forca.css">@forca.texto</div>
+        }
+
+        <label class="ts-label">Confirmar Nova Senha</label>
+        <div class="ts-input-wrapper">
+            <input class="ts-input" type="password" @bind="confirmarSenha" placeholder="Repita a nova senha" disabled="@sucesso" />
+        </div>
+
+        <button class="ts-btn" @onclick="HandleTrocarSenha" disabled="@(carregando || sucesso)">
+            @if (carregando)
+            {
+                <span>Alterando...</span>
+            }
+            else
+            {
+                <span>Alterar Senha</span>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    private string senhaAtual = "";
+    private string senhaNova = "";
+    private string confirmarSenha = "";
+    private string erro = "";
+    private bool carregando = false;
+    private bool sucesso = false;
+
+    private static readonly Regex SenhaForteRegex = new(
+        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$",
+        RegexOptions.Compiled);
+
+    protected override void OnInitialized()
+    {
+        if (!Session.EstaLogado)
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private (string css, string texto) AvaliarForca(string senha)
+    {
+        if (senha.Length < 8) return ("fraca", "Muito curta");
+        var pontos = 0;
+        if (Regex.IsMatch(senha, @"[a-z]")) pontos++;
+        if (Regex.IsMatch(senha, @"[A-Z]")) pontos++;
+        if (Regex.IsMatch(senha, @"\d")) pontos++;
+        if (Regex.IsMatch(senha, @"[^\da-zA-Z]")) pontos++;
+        if (senha.Length >= 12) pontos++;
+        return pontos switch
+        {
+            <= 2 => ("fraca", "Fraca"),
+            3 or 4 => ("media", "Média"),
+            _ => ("forte", "Forte")
+        };
+    }
+
+    private async Task HandleTrocarSenha()
+    {
+        erro = "";
+        carregando = true;
+
+        try
+        {
+            // Validações locais
+            if (string.IsNullOrWhiteSpace(senhaAtual))
+            {
+                erro = "Digite sua senha atual.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(senhaNova))
+            {
+                erro = "Digite a nova senha.";
+                return;
+            }
+
+            if (!SenhaForteRegex.IsMatch(senhaNova))
+            {
+                erro = "A nova senha deve ter no mínimo 8 caracteres, com pelo menos uma letra maiúscula, " +
+                       "uma minúscula, um número e um caractere especial.";
+                return;
+            }
+
+            if (senhaNova != confirmarSenha)
+            {
+                erro = "As senhas não conferem.";
+                return;
+            }
+
+            if (senhaNova == senhaAtual)
+            {
+                erro = "A nova senha deve ser diferente da senha atual.";
+                return;
+            }
+
+            var cpf = Session.Cpf;
+            if (string.IsNullOrEmpty(cpf))
+            {
+                erro = "Sessão expirada. Faça login novamente.";
+                return;
+            }
+
+            var dto = new ChangePasswordRequest
+            {
+                Cpf = cpf,
+                SenhaAtual = senhaAtual,
+                SenhaNova = senhaNova
+            };
+
+            var response = await Http.PostAsJsonAsync("api/auth/trocar-senha", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                sucesso = true;
+                await Task.Delay(1500);
+                Navigation.NavigateTo("/eventos");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                erro = "Senha atual inválida.";
+            }
+            else
+            {
+                var errorBody = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+                erro = errorBody?.Mensagem ?? "Erro ao alterar senha.";
+            }
+        }
+        catch (Exception ex)
+        {
+            erro = "Erro de conexão: " + ex.Message;
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+}

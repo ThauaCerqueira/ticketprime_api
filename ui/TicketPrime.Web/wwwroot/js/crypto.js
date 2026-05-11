@@ -21,7 +21,7 @@ window.ticketPrimeCrypto = (function () {
 
     // ── Estado do módulo ──────────────────────────────────────────────────────
     let _organizerKeyPair = null;   // Par ECDH P-256 do organizador (gerado ao carregar)
-    let _serverPublicKey  = null;   // Chave pública do servidor (demo: gerada localmente)
+    let _serverPublicKey  = null;   // Chave pública do servidor (buscada via API)
 
     // ── Utilitários de codificação ────────────────────────────────────────────
 
@@ -55,11 +55,14 @@ window.ticketPrimeCrypto = (function () {
     // ── Inicialização ─────────────────────────────────────────────────────────
 
     /**
-     * Gera o par de chaves ECDH P-256 do organizador e o par demo do servidor.
-     * Em produção: a chave pública do servidor seria buscada via /api/public-key.
+     * Gera o par de chaves ECDH P-256 do organizador e busca a chave pública
+     * do servidor via endpoint /api/crypto/chave-publica.
+     *
+     * @param {string} [apiBaseUrl=''] – URL base da API (ex.: "http://localhost:5164").
+     *        Se vazio, tenta resolver relativamente ao mesmo domínio.
      * @returns {{ organizerPublicKey: string, serverPublicKey: string }}
      */
-    async function init() {
+    async function init(apiBaseUrl) {
         // Par do organizador (mantido em memória durante a sessão)
         _organizerKeyPair = await crypto.subtle.generateKey(
             { name: 'ECDH', namedCurve: 'P-256' },
@@ -67,25 +70,47 @@ window.ticketPrimeCrypto = (function () {
             ['deriveKey', 'deriveBits']
         );
 
-        // Par demo do servidor (em produção, apenas a chave pública seria recebida)
-        const serverKeyPair = await crypto.subtle.generateKey(
+        // ── Busca chave pública do servidor via API ───────────────────────────
+        const baseUrl = (apiBaseUrl || '').replace(/\/+$/, '');
+        const cryptoUrl = baseUrl
+            ? baseUrl + '/api/crypto/chave-publica'
+            : '/api/crypto/chave-publica';
+
+        let srvJwk;
+        try {
+            const resp = await fetch(cryptoUrl, { method: 'GET', cache: 'no-cache' });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            srvJwk = JSON.parse(data.chavePublicaJwk);
+        } catch (err) {
+            console.error('[TicketPrime Crypto] ❌ Falha ao obter chave pública do servidor.', err);
+            console.error('[TicketPrime Crypto] A E2E encryption não pode funcionar sem a chave do servidor.');
+            console.error('[TicketPrime Crypto] Verifique se a API está rodando e o endpoint /api/crypto/chave-publica está acessível.');
+            throw new Error(
+                'Criptografia indisponível: não foi possível obter a chave pública do servidor. ' +
+                'Certifique-se de que a API está acessível e tente recarregar a página.'
+            );
+        }
+
+        // Importa a chave pública do servidor a partir do JWK
+        _serverPublicKey = await crypto.subtle.importKey(
+            'jwk',
+            srvJwk,
             { name: 'ECDH', namedCurve: 'P-256' },
             true,
-            ['deriveKey', 'deriveBits']
+            []
         );
-        _serverPublicKey = serverKeyPair.publicKey;
 
         const orgPubJwk = await crypto.subtle.exportKey('jwk', _organizerKeyPair.publicKey);
-        const srvPubJwk = await crypto.subtle.exportKey('jwk', _serverPublicKey);
 
         console.group('[TicketPrime Crypto] Inicializado com sucesso');
         console.log('Chave pública do organizador (P-256):', orgPubJwk);
-        console.log('Chave pública do servidor (demo P-256):', srvPubJwk);
+        console.log('Chave pública do servidor:', srvJwk);
         console.groupEnd();
 
         return {
             organizerPublicKey: JSON.stringify(orgPubJwk),
-            serverPublicKey:    JSON.stringify(srvPubJwk)
+            serverPublicKey:    JSON.stringify(srvJwk)
         };
     }
 
@@ -291,7 +316,54 @@ window.ticketPrimeCrypto = (function () {
         });
     }
 
-    // ── API pública ───────────────────────────────────────────────────────────
-    return { init, encryptImage, initDropZone, clickFileInput, hashImageContent, getImageDimensions };
+    // ── Geração de thumbnail (vitrine pública) ──────────────────────────────────
 
+    /**
+     * Redimensiona uma imagem para uma largura máxima (mantendo proporção)
+     * e retorna o thumbnail como Base64 (JPEG com qualidade 0.7).
+     * Usado para gerar a miniatura que será exibida na vitrine de eventos.
+     *
+     * @param {string} imageBase64   – Bytes da imagem original em Base64 (sem prefixo data:...)
+     * @param {string} mimeType      – Ex.: "image/jpeg"
+     * @param {number} [maxWidth=400] – Largura máxima do thumbnail
+     * @returns {Promise<string>}    – Base64 do thumbnail (sem prefixo data:...)
+     */
+    function generateThumbnail(imageBase64, mimeType, maxWidth) {
+        maxWidth = maxWidth || 400;
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = function () {
+                // Calcula altura proporcional
+                let width  = img.naturalWidth;
+                let height = img.naturalHeight;
+                if (width > maxWidth) {
+                    height = Math.round(height * (maxWidth / width));
+                    width  = maxWidth;
+                }
+
+                // Desenha no canvas e exporta como JPEG base64 (qualidade 0.7)
+                const canvas = document.createElement('canvas');
+                canvas.width  = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Canvas 2D não disponível para geração de thumbnail.'));
+                    return;
+                }
+                // Usa imagemEncoding="john" para melhor compressão em fotos
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Usa image/jpeg para garantir tamanho reduzido (qualidade 0.7)
+                const thumbnailBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                // Remove prefixo "data:image/jpeg;base64,"
+                const comma = thumbnailBase64.indexOf(',');
+                resolve(comma >= 0 ? thumbnailBase64.slice(comma + 1) : thumbnailBase64);
+            };
+            img.onerror = () => reject(new Error('Falha ao carregar imagem para geração de thumbnail.'));
+            img.src = `data:${mimeType};base64,${imageBase64}`;
+        });
+    }
+
+    // ── API pública ───────────────────────────────────────────────────────────
+    return { init, encryptImage, initDropZone, clickFileInput, hashImageContent, getImageDimensions, generateThumbnail };
 })();

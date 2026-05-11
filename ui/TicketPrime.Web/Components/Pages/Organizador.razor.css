@@ -1,0 +1,74 @@
+/* ── Organizador (org-*) ──────────────────────────────────────── */
+.org-wrapper {
+    min-height: 100vh;
+    background: var(--tp-bg-page);
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.org-card {
+    background: var(--tp-bg-card);
+    border-radius: 20px;
+    border: 1.5px solid var(--tp-border-card);
+    box-shadow: var(--tp-shadow-sm);
+    width: 100%;
+    max-width: 640px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+.org-header {
+    background: linear-gradient(135deg, var(--tp-primary), #7C7CE8);
+    padding: 2rem;
+    color: white;
+    text-align: center;
+}
+.org-avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem; font-weight: 700;
+    margin: 0 auto 1rem;
+    border: 2px solid rgba(255,255,255,0.4);
+}
+.org-name { font-size: 1.4rem; font-weight: 800; margin: 0 0 0.3rem; }
+.org-sub  { font-size: 0.85rem; opacity: 0.85; }
+.org-body { padding: 2rem; }
+.org-section-title {
+    font-size: 0.78rem; font-weight: 700; color: var(--tp-text-muted);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+.org-event-card {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.9rem 1rem;
+    background: var(--tp-bg-page);
+    border-radius: 12px;
+    margin-bottom: 0.6rem;
+    border: 1.5px solid var(--tp-border-card);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s;
+}
+.org-event-card:hover { border-color: var(--tp-primary); }
+.org-event-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--tp-primary-light), #C7D2FE);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; flex-shrink: 0;
+}
+.org-event-name { font-size: 0.9rem; font-weight: 700; color: var(--tp-text-heading); }
+.org-event-meta { font-size: 0.78rem; color: var(--tp-text-muted); margin-top: 0.15rem; }
+.org-empty { text-align: center; color: var(--tp-text-muted); padding: 1.5rem 0; font-size: 0.9rem; }
+.org-back {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.55rem 1rem; margin-bottom: 1.5rem;
+    color: var(--tp-text-muted); font-size: 0.875rem; font-weight: 500;
+    text-decoration: none; border-radius: 8px;
+    transition: background 0.2s; align-self: flex-start;
+}
+.org-back:hover { background: var(--tp-bg-input); color: var(--tp-primary); }
+
+/* ── Loading spinner ─────────────────────────────────────────── */
+@keyframes org-spin { to { transform: rotate(360deg); } }

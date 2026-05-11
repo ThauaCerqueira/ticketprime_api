@@ -1,8 +1,13 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Components;
+using Severity = MudBlazor.Severity;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 using MudBlazor;
+using System.Globalization;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using TicketPrime.Web.Models;
 using TicketPrime.Web.Validators;
 
@@ -11,6 +16,8 @@ namespace TicketPrime.Web.Components.Pages;
 public partial class EventoCreate : IAsyncDisposable
 {
     [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private IValidator<EventoCreateDto> Validator { get; set; } = default!;
+    [Inject] private HttpClient Http { get; set; } = default!;
     // ─────────────────────────────────────────────────────────────────────────
     // Constantes de negócio
     // ─────────────────────────────────────────────────────────────────────────
@@ -27,9 +34,30 @@ public partial class EventoCreate : IAsyncDisposable
     // Estado do formulário
     // ─────────────────────────────────────────────────────────────────────────
     private EventoCreateDto          _evento    = new();
-    private EventoCreateDtoValidator  _validator = new();
-    private MudForm?                  _form;
-    private bool                     _formValido;
+
+    // Erros de validação inline
+    private Dictionary<string, string> _erros    = new();
+    private string?                    _erroGeral;
+
+    // ── Estado do formulário de setores e lotes ─────────────────────────────
+    // Estes campos auxiliares permitem adicionar itens às listas de TiposIngresso e Lotes
+    private string _novoSetorNome        = string.Empty;
+    private string? _novoSetorDescricao;
+    private string _novoSetorPreco       = string.Empty;
+    private string _novoSetorCapacidade  = string.Empty;
+
+    private string _novoLoteNome         = string.Empty;
+    private string _novoLotePreco        = string.Empty;
+    private string _novoLoteQtd          = string.Empty;
+    private int?   _novoLoteTicketTypeIndex;
+    private string _novoLoteDataInicio   = string.Empty;
+    private string _novoLoteDataFim      = string.Empty;
+
+    /// <summary>Se true, usa o modelo de setores (múltiplos tipos de ingresso).</summary>
+    private bool _usarSetores;
+
+    private string Erro(string campo) =>
+        _erros.TryGetValue(campo, out var e) ? e : "";
 
     // ─────────────────────────────────────────────────────────────────────────
     // Estado de fotos
@@ -44,45 +72,14 @@ public partial class EventoCreate : IAsyncDisposable
     private bool    _carregando          = false;
     private bool    _criptografandoFotos = false;
     private bool    _isDragOver          = false;
+    // Crypto gerenciado internamente – não exposto na UI
     private bool    _cryptoInicializado  = false;
     private string? _cryptoErro          = null;
 
     private DotNetObjectReference<EventoCreate>? _dotNetRef;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Tema MudBlazor – dark
-    // ─────────────────────────────────────────────────────────────────────────
-    private readonly MudTheme _tema = new()
-    {
-        PaletteDark = new PaletteDark
-        {
-            Primary           = "#7C3AED",
-            PrimaryDarken     = "#6D28D9",
-            PrimaryLighten    = "#8B5CF6",
-            Secondary         = "#5B5BD6",
-            Tertiary          = "#0EA5E9",
-            Background        = "#0D1117",
-            BackgroundGray    = "#161B22",
-            Surface           = "#161B22",
-            DrawerBackground  = "#0D1117",
-            AppbarBackground  = "#0D1117",
-            TextPrimary       = "#E6EDF3",
-            TextSecondary     = "#8B949E",
-            ActionDefault     = "#8B949E",
-            ActionDisabled    = "#30363D",
-            ActionDisabledBackground = "#21262D",
-            Divider           = "#30363D",
-            LinesDefault      = "#30363D",
-            TableLines        = "#21262D",
-            Info              = "#58A6FF",
-            Success           = "#3FB950",
-            Warning           = "#D29922",
-            Error             = "#F85149",
-        }
-    };
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Gêneros musicais disponíveis
+    // Gêneros disponíveis
     // ─────────────────────────────────────────────────────────────────────────
     private static readonly string[] _generosMusicas =
         ["Rock", "Pop", "Sertanejo", "Eletrônico", "Forró", "MPB", "Outro"];
@@ -90,17 +87,43 @@ public partial class EventoCreate : IAsyncDisposable
     // Campos auxiliares para separar data e hora antes de combinar em DataHora
     private DateTime? _dataEvento;
     private TimeSpan? _horaEvento;
+    private DateTime? _dataEventoTermino;
+    private TimeSpan? _horaEventoTermino;
 
-    private void OnDataChanged(DateTime? val)
+    private string _dataStr
     {
-        _dataEvento = val;
-        AtualizarDataHora();
+        get => _dataEvento?.ToString("yyyy-MM-dd") ?? "";
+        set { _dataEvento = DateTime.TryParse(value, out var d) ? d : null; AtualizarDataHora(); }
     }
 
-    private void OnHoraChanged(TimeSpan? val)
+    private string _horaStr
     {
-        _horaEvento = val;
-        AtualizarDataHora();
+        get => _horaEvento?.ToString(@"hh\:mm") ?? "";
+        set { _horaEvento = TimeSpan.TryParse(value, out var t) ? t : null; AtualizarDataHora(); }
+    }
+
+    private string _precoStr
+    {
+        get => _evento.Preco.HasValue ? _evento.Preco.Value.ToString("F2", CultureInfo.InvariantCulture) : "";
+        set => _evento.Preco = decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : null;
+    }
+
+    private string _taxaStr
+    {
+        get => _evento.TaxaServico.HasValue ? _evento.TaxaServico.Value.ToString("F2", CultureInfo.InvariantCulture) : "";
+        set => _evento.TaxaServico = decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : null;
+    }
+
+    private string _dataTerminoStr
+    {
+        get => _dataEventoTermino?.ToString("yyyy-MM-dd") ?? "";
+        set { _dataEventoTermino = DateTime.TryParse(value, out var d) ? d : null; AtualizarDataHoraTermino(); }
+    }
+
+    private string _horaTerminoStr
+    {
+        get => _horaEventoTermino?.ToString(@"hh\:mm") ?? "";
+        set { _horaEventoTermino = TimeSpan.TryParse(value, out var t) ? t : null; AtualizarDataHoraTermino(); }
     }
 
     private void AtualizarDataHora()
@@ -111,32 +134,13 @@ public partial class EventoCreate : IAsyncDisposable
             _evento.DataHora = null;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Delegates de validação MudBlazor ↔ FluentValidation
-    // ─────────────────────────────────────────────────────────────────────────
-    private Func<string?, IEnumerable<string>> _validarNome =>
-        _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.Nome));
-
-    private Func<DateTime?, IEnumerable<string>> _validarDataHora =>
-        _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.DataHora));
-
-    private Func<string?, IEnumerable<string>> _validarGenero =>
-        _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.GeneroMusical));
-
-    private Func<string?, IEnumerable<string>> _validarLocal =>
-        _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.Local));
-
-    private Func<string?, IEnumerable<string>> _validarDescricao =>
-        _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.Descricao));
-
-    private Func<decimal?, IEnumerable<string>> _validarPreco =>
-        _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.Preco));
-
-    private Func<decimal?, IEnumerable<string>> _validarTaxaServico =>
-        _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.TaxaServico));
-
-    private Func<int, IEnumerable<string>> _validarCapacidade =>
-        _ => _validator.ValidarCampo(_evento, nameof(EventoCreateDto.CapacidadeMaxima));
+    private void AtualizarDataHoraTermino()
+    {
+        if (_dataEventoTermino.HasValue)
+            _evento.DataHoraTermino = _dataEventoTermino.Value.Date + (_horaEventoTermino ?? TimeSpan.Zero);
+        else
+            _evento.DataHoraTermino = null;
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Ciclo de vida
@@ -272,7 +276,7 @@ public partial class EventoCreate : IAsyncDisposable
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Adicionar foto + criptografar
+    // Adicionar foto + gerar thumbnail + criptografar
     // ─────────────────────────────────────────────────────────────────────────
 
     private async Task AdicionarFotoAsync(string base64, string mimeType, string nome, long tamanho)
@@ -316,9 +320,22 @@ public partial class EventoCreate : IAsyncDisposable
             return;
         }
 
+        // ── Gera thumbnail (JPEG, 400px max) para exibição na vitrine ───────────
+        string thumbnailBase64;
+        try
+        {
+            thumbnailBase64 = await JS.InvokeAsync<string>("ticketPrimeCrypto.generateThumbnail", base64, mimeType, 400);
+        }
+        catch
+        {
+            thumbnailBase64 = string.Empty;
+            Console.Error.WriteLine($"[EventoCreate] Falha ao gerar thumbnail para \"{nome}\".");
+        }
+
         var foto = new FotoItem
         {
             ThumbnailDataUrl = $"data:{mimeType};base64,{base64}",
+            ThumbnailBase64  = thumbnailBase64,
             MimeType         = mimeType,
             NomeArquivo      = nome,
             Tamanho          = tamanho,
@@ -387,15 +404,98 @@ public partial class EventoCreate : IAsyncDisposable
     // Criar evento – submit
     // ─────────────────────────────────────────────────────────────────────────
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Métodos para gerenciar Tipos de Ingresso (Setores)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void AdicionarSetor()
+    {
+        if (string.IsNullOrWhiteSpace(_novoSetorNome)) return;
+        if (!decimal.TryParse(_novoSetorPreco, NumberStyles.Any, CultureInfo.InvariantCulture, out var preco)) return;
+        if (!int.TryParse(_novoSetorCapacidade, out var capacidade) || capacidade <= 0) return;
+
+        _evento.TiposIngresso.Add(new TicketTypeFormItem
+        {
+            Nome = _novoSetorNome.Trim(),
+            Descricao = string.IsNullOrWhiteSpace(_novoSetorDescricao) ? null : _novoSetorDescricao.Trim(),
+            Preco = preco,
+            CapacidadeTotal = capacidade,
+            Ordem = _evento.TiposIngresso.Count + 1
+        });
+
+        // Limpa campos
+        _novoSetorNome = string.Empty;
+        _novoSetorDescricao = null;
+        _novoSetorPreco = string.Empty;
+        _novoSetorCapacidade = string.Empty;
+    }
+
+    private void RemoverSetor(TicketTypeFormItem item)
+    {
+        _evento.TiposIngresso.Remove(item);
+        // Reordena
+        for (int i = 0; i < _evento.TiposIngresso.Count; i++)
+            _evento.TiposIngresso[i].Ordem = i + 1;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Métodos para gerenciar Lotes Progressivos
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void AdicionarLote()
+    {
+        if (string.IsNullOrWhiteSpace(_novoLoteNome)) return;
+        if (!decimal.TryParse(_novoLotePreco, NumberStyles.Any, CultureInfo.InvariantCulture, out var preco)) return;
+        if (!int.TryParse(_novoLoteQtd, out var qtd) || qtd <= 0) return;
+
+        DateTime? dataInicio = null;
+        if (DateTime.TryParse(_novoLoteDataInicio, out var di)) dataInicio = di;
+
+        DateTime? dataFim = null;
+        if (DateTime.TryParse(_novoLoteDataFim, out var df)) dataFim = df;
+
+        _evento.Lotes.Add(new LoteFormItem
+        {
+            Nome = _novoLoteNome.Trim(),
+            TicketTypeIndex = _novoLoteTicketTypeIndex,
+            Preco = preco,
+            QuantidadeMaxima = qtd,
+            DataInicio = dataInicio,
+            DataFim = dataFim
+        });
+
+        // Limpa campos
+        _novoLoteNome = string.Empty;
+        _novoLotePreco = string.Empty;
+        _novoLoteQtd = string.Empty;
+        _novoLoteTicketTypeIndex = null;
+        _novoLoteDataInicio = string.Empty;
+        _novoLoteDataFim = string.Empty;
+    }
+
+    private void RemoverLote(LoteFormItem item)
+    {
+        _evento.Lotes.Remove(item);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Criar evento – submit
+    // ─────────────────────────────────────────────────────────────────────────
+
     private async Task CriarEventoAsync()
     {
-        if (_form is null) return;
+        _erros.Clear();
+        _erroGeral = null;
+        StateHasChanged();
 
-        await _form.Validate();
-
-        if (!_formValido)
+        var resultado = Validator.Validate(_evento);
+        if (!resultado.IsValid)
         {
-            Snackbar.Add("Corrija os erros no formulário antes de continuar.", Severity.Warning);
+            foreach (var erro in resultado.Errors)
+                _erros.TryAdd(erro.PropertyName, erro.ErrorMessage);
+
+            _erroGeral = "Corrija os erros destacados antes de continuar.";
+            StateHasChanged();
             return;
         }
 
@@ -424,53 +524,101 @@ public partial class EventoCreate : IAsyncDisposable
 
         try
         {
-            // ── Regra: limite de eventos ativos por organizador ─────────────────
-            // Em produção: GET /api/eventos?organizador={cpf}&status=Publicado
-            var eventosAtivos = await SimularBuscarEventosAtivosAsync();
-            if (eventosAtivos >= MaxEventosAtivosOrg)
-            {
-                Snackbar.Add(
-                    $"Você já possui {eventosAtivos} eventos ativos. " +
-                    $"O limite é {MaxEventosAtivosOrg}. Encerre ou cancele um evento antes de criar outro.",
-                    Severity.Error);
-                return;
-            }
-
-            // ── Regra: conflito de local + horário ─────────────────────────────
-            // Em produção: GET /api/eventos?local={local}&dataHora={dataHora}
-            var temConflito = await SimularVerificarConflitoAsync(_evento.Local, _evento.DataHora);
-            if (temConflito)
-            {
-                Snackbar.Add(
-                    $"Já existe um evento no mesmo local e horário ({_evento.DataHora:dd/MM/yyyy HH:mm}). " +
-                    "Escolha outra data, hora ou local.",
-                    Severity.Error);
-                return;
-            }
-
             // ── Status inicial: Rascunho ────────────────────────────────────────
-            _evento.Status = EventoStatus.Rascunho;
+            _evento.Status = EventStatus.Rascunho;
 
-            var pacote = new PacoteImagem
+            // ── Mapeia EventoCreateDto → CreateEventDto ─────────────────────────
+            var dto = new CreateEventDto
             {
-                Evento             = _evento,
-                Fotos              = _fotos.Select(f => f.DadosCriptografados!).ToList(),
-                ChavePublicaOrgJwk = CryptoSvc.OrganizadorChavePublica ?? string.Empty,
-                Timestamp          = DateTime.UtcNow
+                Nome = _evento.Nome,
+                CapacidadeTotal = _evento.CapacidadeMaxima,
+                DataEvento = _evento.DataHora ?? DateTime.Now.AddDays(1),
+                DataTermino = _evento.DataHoraTermino,
+                PrecoPadrao = _evento.EventoGratuito ? 0 : (_evento.Preco ?? 0),
+                LimiteIngressosPorUsuario = 6,
+                TaxaServico = _evento.TaxaServico ?? 0,
+                Local = _evento.Local,
+                Descricao = _evento.Descricao,
+                GeneroMusical = _evento.GeneroMusical,
+                EventoGratuito = _evento.EventoGratuito,
+                TemMeiaEntrada = _evento.TemMeiaEntrada,
+                Status = _evento.Status,
+                // ── Mapeia Tipos de Ingresso (Setores) ─────────────────────────
+                TiposIngresso = _usarSetores && _evento.TiposIngresso.Count > 0
+                    ? _evento.TiposIngresso.Select(t => new TicketTypeDto
+                    {
+                        Nome = t.Nome,
+                        Descricao = t.Descricao,
+                        Preco = t.Preco,
+                        CapacidadeTotal = t.CapacidadeTotal,
+                        Ordem = t.Ordem
+                    }).ToList()
+                    : null,
+                // ── Mapeia Lotes Progressivos ──────────────────────────────────
+                Lotes = _evento.Lotes.Count > 0
+                    ? _evento.Lotes.Select(l => new LoteDto
+                    {
+                        Nome = l.Nome,
+                        // TicketTypeId é 1-based index quando usando setores
+                        TicketTypeId = l.TicketTypeIndex.HasValue ? l.TicketTypeIndex.Value + 1 : null,
+                        Preco = l.Preco,
+                        QuantidadeMaxima = l.QuantidadeMaxima,
+                        DataInicio = l.DataInicio,
+                        DataFim = l.DataFim
+                    }).ToList()
+                    : null,
+                // ── Inclui fotos criptografadas (E2E) + thumbnail (vitrine) ────
+                Fotos = _fotos
+                    .Where(f => f.DadosCriptografados is { Criptografada: true })
+                    .Select(f => new EncryptedPhotoDto
+                    {
+                        CiphertextBase64      = f.DadosCriptografados!.CiphertextBase64,
+                        IvBase64              = f.DadosCriptografados!.IvBase64,
+                        ChaveAesCifradaBase64 = f.DadosCriptografados!.ChaveAesCifradaBase64,
+                        ChavePublicaOrgJwk    = f.DadosCriptografados!.ChavePublicaOrgJwk,
+                        HashNomeOriginal      = f.DadosCriptografados!.HashNomeOriginal,
+                        TipoMime              = f.DadosCriptografados!.TipoMime,
+                        TamanhoBytes          = f.DadosCriptografados!.TamanhoBytes,
+                        Criptografada         = f.DadosCriptografados!.Criptografada,
+                        ThumbnailBase64       = string.IsNullOrEmpty(f.ThumbnailBase64) ? null : f.ThumbnailBase64
+                    })
+                    .ToList()
             };
 
-            // ── Simulação de chamada HTTP POST ──────────────────────────────
-            // Em produção: var response = await Http.PostAsJsonAsync("/api/eventos", pacote);
-            // O servidor recebe o pacote SEM descriptografar as imagens.
-            // A descriptografia ocorreria separadamente com a chave privada do servidor.
-            await Task.Delay(1800);   // Simula latência de rede
+            Console.WriteLine($"[DEBUG] Enviando POST /api/eventos com {dto.Fotos?.Count ?? 0} foto(s) criptografada(s)");
+            var response = await Http.PostAsJsonAsync("api/eventos", dto);
 
-            // Simulação bem-sucedida
-            Snackbar.Add("Evento criado com sucesso! As fotos foram enviadas de forma criptografada. 🎉",
-                         Severity.Success, config => config.VisibleStateDuration = 6000);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Evento criado com sucesso! 🎉",
+                             Severity.Success, config => config.VisibleStateDuration = 4000);
 
-            await Task.Delay(800);
-            Navigation.NavigateTo("/");
+                await Task.Delay(800);
+                Navigation.NavigateTo("/eventos");
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var err = JsonSerializer.Deserialize<JsonElement>(body);
+                    var msg = err.TryGetProperty("mensagem", out var m) ? m.GetString() : "Erro ao criar evento.";
+                    Snackbar.Add(msg ?? "Erro desconhecido.", Severity.Error);
+                }
+                catch
+                {
+                    Snackbar.Add($"Erro ao criar evento (código {(int)response.StatusCode}).", Severity.Error);
+                }
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Snackbar.Add("❌ Erro de conexão com o servidor. Verifique se a API está rodando.", Severity.Error);
+            Console.WriteLine($"[DEBUG] HttpRequestException: {ex.Message}");
+        }
+        catch (TaskCanceledException)
+        {
+            Snackbar.Add("❌ A requisição excedeu o tempo limite. Tente novamente.", Severity.Error);
         }
         catch (Exception ex)
         {
@@ -494,30 +642,6 @@ public partial class EventoCreate : IAsyncDisposable
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Simulações de chamadas de API (substituir por Http.GetFromJsonAsync em produção)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Simula GET /api/eventos?organizador={cpf}&amp;status=Publicado,Rascunho
-    /// Em produção: retorna o número de eventos ativos do organizador logado.
-    /// </summary>
-    private static async Task<int> SimularBuscarEventosAtivosAsync()
-    {
-        await Task.Delay(300);   // latência simulada
-        return 0;                // demo: organizador não tem eventos ativos
-    }
-
-    /// <summary>
-    /// Simula GET /api/eventos/conflito?local={local}&amp;dataHora={dt}
-    /// Em produção: retorna true se já houver outro evento no mesmo local ±1h do horário.
-    /// </summary>
-    private static async Task<bool> SimularVerificarConflitoAsync(string local, DateTime? dataHora)
-    {
-        await Task.Delay(300);
-        return false;   // demo: sem conflito
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
     // Tipos internos
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -534,10 +658,15 @@ public partial class EventoCreate : IAsyncDisposable
         public long               Tamanho                  { get; set; }
         /// <summary>SHA-256 do conteúdo bruto da imagem (deduplicação).</summary>
         public string             HashConteudo             { get; set; } = string.Empty;
-        public FotoCriptografada? DadosCriptografados      { get; set; }
+        public EncryptedPhoto? DadosCriptografados      { get; set; }
+        /// <summary>
+        /// Thumbnail redimensionado (JPEG, max 400px largura) em Base64 (sem prefixo).
+        /// Armazenado sem criptografia para exibição na vitrine pública.
+        /// </summary>
+        public string             ThumbnailBase64          { get; set; } = string.Empty;
     }
 
-    /// <summary>DTO para arquivos recebidos via drag &amp; drop do JavaScript.</summary>
+    /// <summary>DTO para arquivos recebidos via drag & drop do JavaScript.</summary>
     public sealed class DroppedFileData
     {
         public string Name       { get; set; } = string.Empty;
