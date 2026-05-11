@@ -136,7 +136,7 @@ public class EventController : ControllerBase
     }
 
     /// <summary>
-    /// Busca/filtro de eventos disponíveis: ?nome=rock&genero=Rock&dataMin=2026-01-01&dataMax=2026-12-31
+    /// Busca/filtro de eventos disponíveis: ?nome=rock&amp;genero=Rock&amp;dataMin=2026-01-01&amp;dataMax=2026-12-31
     /// Utiliza SQL Server Full-Text Search com ranking por relevância quando ?nome= é informado.
     /// </summary>
     [HttpGet("disponiveis")]
@@ -154,7 +154,7 @@ public class EventController : ControllerBase
     }
 
     /// <summary>
-    /// Sugestões de busca (autocomplete) usando full-text search: ?q=rock&limite=5
+    /// Sugestões de busca (autocomplete) usando full-text search: ?q=rock&amp;limite=5
     /// Retorna eventos ordenados por relevância. Ideal para combo/search box no frontend.
     /// </summary>
     [HttpGet("sugestoes")]
