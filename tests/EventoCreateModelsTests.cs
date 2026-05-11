@@ -4,49 +4,49 @@ namespace TicketPrime.Tests.Models;
 
 /// <summary>
 /// Testes unitários para os modelos do EventoCreate:
-///   EventoStatus   – constantes de ciclo de vida do evento
+///   EventStatus   – constantes de ciclo de vida do evento
 ///   EventoCreateDto – valores padrão e integridade do DTO
-///   FotoCriptografada – estrutura e defaults do pacote cifrado
-///   PacoteImagem    – defaults e integridade do payload de envio
+///   EncryptedPhoto – estrutura e defaults do pacote cifrado
+///   ImagePackage    – defaults e integridade do payload de envio
 /// </summary>
 public class EventoCreateModelsTests
 {
     // ═══════════════════════════════════════════════════════════════════════════
-    // EventoStatus – constantes
+    // EventStatus – constantes
     // ═══════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void EventoStatus_Rascunho_DeveTerValorCorreto()
+    public void EventStatus_Rascunho_DeveTerValorCorreto()
     {
-        Assert.Equal("Rascunho", EventoStatus.Rascunho);
+        Assert.Equal("Rascunho", EventStatus.Rascunho);
     }
 
     [Fact]
-    public void EventoStatus_Publicado_DeveTerValorCorreto()
+    public void EventStatus_Publicado_DeveTerValorCorreto()
     {
-        Assert.Equal("Publicado", EventoStatus.Publicado);
+        Assert.Equal("Publicado", EventStatus.Publicado);
     }
 
     [Fact]
-    public void EventoStatus_Encerrado_DeveTerValorCorreto()
+    public void EventStatus_Encerrado_DeveTerValorCorreto()
     {
-        Assert.Equal("Encerrado", EventoStatus.Encerrado);
+        Assert.Equal("Encerrado", EventStatus.Encerrado);
     }
 
     [Fact]
-    public void EventoStatus_Cancelado_DeveTerValorCorreto()
+    public void EventStatus_Cancelado_DeveTerValorCorreto()
     {
-        Assert.Equal("Cancelado", EventoStatus.Cancelado);
+        Assert.Equal("Cancelado", EventStatus.Cancelado);
     }
 
     [Fact]
-    public void EventoStatus_TodosOsValores_DevemSerDistintos()
+    public void EventStatus_TodosOsValores_DevemSerDistintos()
     {
         var valores = new[] {
-            EventoStatus.Rascunho,
-            EventoStatus.Publicado,
-            EventoStatus.Encerrado,
-            EventoStatus.Cancelado
+            EventStatus.Rascunho,
+            EventStatus.Publicado,
+            EventStatus.Encerrado,
+            EventStatus.Cancelado
         };
 
         // Todos distintos (sem duplicatas)
@@ -62,7 +62,7 @@ public class EventoCreateModelsTests
     {
         var dto = new EventoCreateDto();
 
-        Assert.Equal(EventoStatus.Rascunho, dto.Status);
+        Assert.Equal(EventStatus.Rascunho, dto.Status);
     }
 
     [Fact]
@@ -114,37 +114,37 @@ public class EventoCreateModelsTests
     {
         var dto = new EventoCreateDto();
 
-        dto.Status = EventoStatus.Publicado;
-        Assert.Equal(EventoStatus.Publicado, dto.Status);
+        dto.Status = EventStatus.Publicado;
+        Assert.Equal(EventStatus.Publicado, dto.Status);
 
-        dto.Status = EventoStatus.Cancelado;
-        Assert.Equal(EventoStatus.Cancelado, dto.Status);
+        dto.Status = EventStatus.Cancelado;
+        Assert.Equal(EventStatus.Cancelado, dto.Status);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // FotoCriptografada – estrutura e defaults
+    // EncryptedPhoto – estrutura e defaults
     // ═══════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void FotoCriptografada_NovaCriada_CriptografadaDeveSerFalse()
+    public void EncryptedPhoto_NovaCriada_CriptografadaDeveSerFalse()
     {
-        var foto = new FotoCriptografada();
+        var foto = new EncryptedPhoto();
 
         Assert.False(foto.Criptografada);
     }
 
     [Fact]
-    public void FotoCriptografada_NovaCriada_TamanhoBytesDeveSerZero()
+    public void EncryptedPhoto_NovaCriada_TamanhoBytesDeveSerZero()
     {
-        var foto = new FotoCriptografada();
+        var foto = new EncryptedPhoto();
 
         Assert.Equal(0L, foto.TamanhoBytes);
     }
 
     [Fact]
-    public void FotoCriptografada_NovaCriada_StringsDevemSerVazias()
+    public void EncryptedPhoto_NovaCriada_StringsDevemSerVazias()
     {
-        var foto = new FotoCriptografada();
+        var foto = new EncryptedPhoto();
 
         Assert.Equal(string.Empty, foto.CiphertextBase64);
         Assert.Equal(string.Empty, foto.IvBase64);
@@ -155,9 +155,9 @@ public class EventoCreateModelsTests
     }
 
     [Fact]
-    public void FotoCriptografada_Preenchida_DevePersistirDados()
+    public void EncryptedPhoto_Preenchida_DevePersistirDados()
     {
-        var foto = new FotoCriptografada
+        var foto = new EncryptedPhoto
         {
             CiphertextBase64      = "abc123==",
             IvBase64              = "iv==",
@@ -177,30 +177,30 @@ public class EventoCreateModelsTests
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PacoteImagem – defaults e integridade do payload
+    // ImagePackage – defaults e integridade do payload
     // ═══════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void PacoteImagem_NovoCriado_DeveConterEventoIniciado()
+    public void ImagePackage_NovoCriado_DeveConterEventoIniciado()
     {
-        var pacote = new PacoteImagem();
+        var pacote = new ImagePackage();
 
         Assert.NotNull(pacote.Evento);
     }
 
     [Fact]
-    public void PacoteImagem_NovoCriado_ListaDeFotosDeveEstarVaziaENaoNula()
+    public void ImagePackage_NovoCriado_ListaDeFotosDeveEstarVaziaENaoNula()
     {
-        var pacote = new PacoteImagem();
+        var pacote = new ImagePackage();
 
         Assert.NotNull(pacote.Fotos);
         Assert.Empty(pacote.Fotos);
     }
 
     [Fact]
-    public void PacoteImagem_NovoCriado_VersaoProtocoloDeveEstarPreenchida()
+    public void ImagePackage_NovoCriado_VersaoProtocoloDeveEstarPreenchida()
     {
-        var pacote = new PacoteImagem();
+        var pacote = new ImagePackage();
 
         Assert.False(string.IsNullOrEmpty(pacote.VersaoProtocolo));
         Assert.Contains("aesgcm256", pacote.VersaoProtocolo);
@@ -208,43 +208,43 @@ public class EventoCreateModelsTests
     }
 
     [Fact]
-    public void PacoteImagem_NovoCriado_TimestampDeveSerProximoDoUtcNow()
+    public void ImagePackage_NovoCriado_TimestampDeveSerProximoDoUtcNow()
     {
         var antes  = DateTime.UtcNow;
-        var pacote = new PacoteImagem();
+        var pacote = new ImagePackage();
         var depois = DateTime.UtcNow;
 
         Assert.InRange(pacote.Timestamp, antes, depois);
     }
 
     [Fact]
-    public void PacoteImagem_AdicionarFotos_DeveRefletirNaLista()
+    public void ImagePackage_AdicionarFotos_DeveRefletirNaLista()
     {
-        var pacote = new PacoteImagem();
-        pacote.Fotos.Add(new FotoCriptografada { TipoMime = "image/png", Criptografada = true });
-        pacote.Fotos.Add(new FotoCriptografada { TipoMime = "image/jpeg", Criptografada = true });
+        var pacote = new ImagePackage();
+        pacote.Fotos.Add(new EncryptedPhoto { TipoMime = "image/png", Criptografada = true });
+        pacote.Fotos.Add(new EncryptedPhoto { TipoMime = "image/jpeg", Criptografada = true });
 
         Assert.Equal(2, pacote.Fotos.Count);
         Assert.All(pacote.Fotos, f => Assert.True(f.Criptografada));
     }
 
     [Fact]
-    public void PacoteImagem_ComEventoPreenchido_DeveRetornarDadosCorretamente()
+    public void ImagePackage_ComEventoPreenchido_DeveRetornarDadosCorretamente()
     {
         var dto = new EventoCreateDto
         {
             Nome           = "Show Teste",
             GeneroMusical  = "MPB",
             CapacidadeMaxima = 200,
-            Status         = EventoStatus.Rascunho
+            Status         = EventStatus.Rascunho
         };
 
-        var pacote = new PacoteImagem { Evento = dto };
+        var pacote = new ImagePackage { Evento = dto };
 
         Assert.Equal("Show Teste",          pacote.Evento.Nome);
         Assert.Equal("MPB",                 pacote.Evento.GeneroMusical);
         Assert.Equal(200,                   pacote.Evento.CapacidadeMaxima);
-        Assert.Equal(EventoStatus.Rascunho, pacote.Evento.Status);
+        Assert.Equal(EventStatus.Rascunho, pacote.Evento.Status);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -258,7 +258,7 @@ public class EventoCreateModelsTests
         // nunca como Publicado (requer revisão do sistema)
         var dto = new EventoCreateDto();
 
-        Assert.NotEqual(EventoStatus.Publicado, dto.Status);
+        Assert.NotEqual(EventStatus.Publicado, dto.Status);
     }
 
     [Fact]
@@ -266,6 +266,6 @@ public class EventoCreateModelsTests
     {
         var dto = new EventoCreateDto();
 
-        Assert.NotEqual(EventoStatus.Cancelado, dto.Status);
+        Assert.NotEqual(EventStatus.Cancelado, dto.Status);
     }
 }

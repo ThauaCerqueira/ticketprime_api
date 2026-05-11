@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="E2E\**" />
+    <EmbeddedResource Remove="E2E\**" />
+    <None Remove="E2E\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
@@ -18,10 +24,17 @@
     </PackageReference>
     <!-- FluentValidation: necessário para testar EventoCreateDtoValidator -->
     <PackageReference Include="FluentValidation" Version="11.*" />
+    <!-- TestContainers: SQL Server container para testes de integração isolados -->
+    <PackageReference Include="Testcontainers.MsSql" Version="4.*" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Necessário para testar controllers que retornam IResult / HttpResults -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>

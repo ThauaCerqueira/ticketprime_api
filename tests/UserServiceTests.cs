@@ -5,17 +5,17 @@ using src.Service;
 
 namespace tests;
 
-public class UnitTest1
+public class UserServiceTests
 {
     [Fact]
     public void TestarCriacaoDeObjetoUsuario()
     {
-        var usuario = new Usuario 
-        { 
-            Cpf = "12345678901", 
-            Nome = "Teste", 
-            Email = "teste@email.com", 
-            Senha = "123" 
+        var usuario = new User
+        {
+            Cpf = "12345678901",
+            Nome = "Teste",
+            Email = "teste@email.com",
+            Senha = "123"
         };
 
         var cpfEsperado = "12345678901";
@@ -28,11 +28,13 @@ public class UnitTest1
     public async Task CadastrarUsuario_DeveRetornarErro_QuandoCpfJaCadastrado()
     {
         var repoMock = new Mock<IUsuarioRepository>();
-        var service = new UsuarioService(repoMock.Object);
+        var emailMock = new Mock<IEmailService>();
+        var service = new UserService(repoMock.Object, emailMock.Object);
         
-        var cpfDuplicado = "12345678901";
-        var usuarioNoBanco = new Usuario { Cpf = cpfDuplicado, Nome = "Usuario Antigo" };
-        var novaTentativa = new Usuario { Cpf = cpfDuplicado, Nome = "Usuario Novo" };
+        // CPF válido com dígitos verificadores corretos
+        var cpfDuplicado = "52998224725";
+        var usuarioNoBanco = new User { Cpf = cpfDuplicado, Nome = "Usuario Antigo" };
+        var novaTentativa = new User { Cpf = cpfDuplicado, Nome = "Usuario Novo", Email = "novo@test.com", Senha = "Str0ng!Pass" };
 
         repoMock.Setup(r => r.ObterPorCpf(cpfDuplicado))
                 .ReturnsAsync(usuarioNoBanco);

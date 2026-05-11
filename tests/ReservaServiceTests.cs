@@ -1,10 +1,11 @@
+using Microsoft.Extensions.Logging;
 using Moq;
+using src.Infrastructure;
 using src.Models;
 using src.DTOs;
-using src.Service;
 using src.Infrastructure.IRepository;
+using src.Service;
 using Xunit;
-
 namespace TicketPrime.Tests.Service
 {
     public class ReservaServiceTests
@@ -13,14 +14,19 @@ namespace TicketPrime.Tests.Service
         private readonly Mock<IEventoRepository> _eventoRepoMock;
         private readonly Mock<IUsuarioRepository> _usuarioRepoMock;
         private readonly Mock<ICupomRepository> _cupomRepoMock;
-        private readonly ReservaService _reservaService;
+        private readonly Mock<ITransacaoCompraExecutor> _transacaoMock;
+        private readonly Mock<EmailTemplateService> _emailTemplateMock;
+        private readonly Mock<ILogger<ReservationService>> _loggerMock;
+        private readonly Mock<IWaitingQueueService> _filaEsperaServiceMock;
+        private readonly Mock<IPaymentGateway> _paymentGatewayMock;
+        private readonly ReservationService _reservaService;
 
-        private readonly Usuario _usuarioValido;
-        private readonly Evento _eventoValido;
-        private readonly Evento _eventoPassado;
-        private readonly Evento _eventoLotado;
-        private readonly Cupom _cupomValido;
-        private readonly Cupom _cupomValorAlto;
+        private readonly User _usuarioValido;
+        private readonly TicketEvent _eventoValido;
+        private readonly TicketEvent _eventoPassado;
+        private readonly TicketEvent _eventoLotado;
+        private readonly Coupon _cupomValido;
+        private readonly Coupon _cupomValorAlto;
 
         public ReservaServiceTests()
         {
@@ -28,31 +34,57 @@ namespace TicketPrime.Tests.Service
             _eventoRepoMock = new Mock<IEventoRepository>();
             _usuarioRepoMock = new Mock<IUsuarioRepository>();
             _cupomRepoMock = new Mock<ICupomRepository>();
+            _transacaoMock = new Mock<ITransacaoCompraExecutor>();
+            _emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!);
+            _loggerMock = new Mock<ILogger<ReservationService>>();
+            _filaEsperaServiceMock = new Mock<IWaitingQueueService>();
+            _paymentGatewayMock = new Mock<IPaymentGateway>();
+            // Default: payment always succeeds in unit tests
+            _paymentGatewayMock
+                .Setup(g => g.ProcessarAsync(It.IsAny<PaymentRequest>()))
+                .ReturnsAsync(PaymentResult.Ok("TEST-TX-001"));
 
-            _reservaService = new ReservaService(
+            var auditLogRepoMock = new Mock<IAuditLogRepository>();
+            var auditLoggerMock = new Mock<ILogger<AuditLogService>>();
+            var auditLogService = new AuditLogService(auditLogRepoMock.Object, auditLoggerMock.Object);
+            _reservaService = new ReservationService(
                 _reservaRepoMock.Object,
                 _eventoRepoMock.Object,
                 _usuarioRepoMock.Object,
-                _cupomRepoMock.Object
+                _cupomRepoMock.Object,
+                _transacaoMock.Object,
+                new DbConnectionFactory(
+                    Environment.GetEnvironmentVariable("TEST_DB_CONNECTION")
+                    ?? "Server=.;Database=TicketPrime_UnitTest;Trusted_Connection=true;TrustServerCertificate=True;"
+                ),
+                _emailTemplateMock.Object,
+                _loggerMock.Object,
+                _filaEsperaServiceMock.Object,
+                auditLogService,
+                _paymentGatewayMock.Object,
+                new Mock<IMeiaEntradaRepository>().Object,
+                new Mock<IMeiaEntradaStorageService>().Object
             );
 
-            _usuarioValido = new Usuario
+            _usuarioValido = new User
             {
                 Cpf = "12345678901",
                 Nome = "João Silva",
                 Email = "joao@email.com",
                 Senha = "senha123",
-                Perfil = "CLIENTE"
+                Perfil = "CLIENTE",
+                EmailVerificado = true
             };
 
-            _eventoValido = new Evento(
+            _eventoValido = new TicketEvent(
                 nome: "Show de Rock",
                 capacidadeTotal: 100,
                 dataEvento: DateTime.Now.AddDays(30),
-                precoPadrao: 150.00m
+                precoPadrao: 150.00m,
+                limiteIngressosPorUsuario: 2
             );
 
-            _eventoPassado = new Evento
+            _eventoPassado = new TicketEvent
             {
                 Id = 99,
                 Nome = "Evento Antigo",
@@ -61,21 +93,33 @@ namespace TicketPrime.Tests.Service
                 PrecoPadrao = 50.00m
             };
 
-            _eventoLotado = new Evento(
+            _eventoLotado = new TicketEvent(
                 nome: "Evento Lotado",
                 capacidadeTotal: 1,
                 dataEvento: DateTime.Now.AddDays(15),
                 precoPadrao: 200.00m
             );
 
-            _cupomValido = new Cupom
+            // Mock padrão do TicketType para testes que precisam passar pela validação R1a
+            _eventoRepoMock.Setup(r => r.ObterTipoIngressoPorIdAsync(It.IsAny<int>()))
+                .ReturnsAsync(new src.Models.TicketType
+                {
+                    Id = 1,
+                    EventoId = _eventoValido.Id,
+                    Nome = "Pista",
+                    Preco = _eventoValido.PrecoPadrao,
+                    CapacidadeTotal = 100,
+                    CapacidadeRestante = 100
+                });
+
+            _cupomValido = new Coupon
             {
                 Codigo = "PRIME10",
                 PorcentagemDesconto = 10,
                 ValorMinimoRegra = 50.00m
             };
 
-            _cupomValorAlto = new Cupom
+            _cupomValorAlto = new Coupon
             {
                 Codigo = "SUPER50",
                 PorcentagemDesconto = 50,
@@ -92,11 +136,11 @@ namespace TicketPrime.Tests.Service
         {
             // Arrange
             _usuarioRepoMock.Setup(r => r.ObterPorCpf("00000000000"))
-                            .ReturnsAsync((Usuario?)null);
+                            .ReturnsAsync((User?)null);
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _reservaService.ComprarIngressoAsync("00000000000", _eventoValido.Id));
+                () => _reservaService.ComprarIngressoAsync("00000000000", _eventoValido.Id, 1));
 
             Assert.Equal("Usuário não encontrado.", ex.Message);
         }
@@ -109,11 +153,11 @@ namespace TicketPrime.Tests.Service
                             .ReturnsAsync(_usuarioValido);
 
             _eventoRepoMock.Setup(r => r.ObterPorIdAsync(99999))
-                           .ReturnsAsync((Evento?)null);
+                           .ReturnsAsync((TicketEvent?)null);
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, 99999));
+                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, 99999, 1));
 
             Assert.Equal("Evento não encontrado.", ex.Message);
         }
@@ -130,7 +174,7 @@ namespace TicketPrime.Tests.Service
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, _eventoPassado.Id));
+                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, _eventoPassado.Id, 1));
 
             Assert.Equal("Este evento já aconteceu.", ex.Message);
         }
@@ -154,13 +198,13 @@ namespace TicketPrime.Tests.Service
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, _eventoValido.Id));
+                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, _eventoValido.Id, 1));
 
             Assert.Equal("Você já atingiu o limite de 2 reservas para este evento.", ex.Message);
         }
 
         // ============================
-        // REGRA R3 — CONTROLE DE ESTOQUE
+        // REGRA R3 — CONTROLE DE ESTOQUE (atômico)
         // ============================
 
         [Fact]
@@ -174,14 +218,18 @@ namespace TicketPrime.Tests.Service
                            .ReturnsAsync(_eventoLotado);
 
             _reservaRepoMock.Setup(r => r.ContarReservasUsuarioPorEventoAsync(_usuarioValido.Cpf, _eventoLotado.Id))
-                            .ReturnsAsync(0); // Não atingiu limite de CPF
+                            .ReturnsAsync(0);
 
-            _reservaRepoMock.Setup(r => r.ContarReservasPorEventoAsync(_eventoLotado.Id))
-                            .ReturnsAsync(1); // CapacidadeTotal = 1, já tem 1 reserva => lotado
+            // Mock do executor transacional para simular R3 - capacidade esgotada
+            _transacaoMock
+                .Setup(t => t.ExecutarTransacaoAsync(
+                    It.IsAny<Reservation>(), It.IsAny<TicketEvent>(), It.IsAny<string?>(), It.IsAny<bool>(),
+                    It.IsAny<int>(), It.IsAny<int?>()))
+                .ThrowsAsync(new InvalidOperationException("Não há mais vagas disponíveis para este evento."));
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, _eventoLotado.Id));
+                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, _eventoLotado.Id, 1));
 
             Assert.Equal("Não há mais vagas disponíveis para este evento.", ex.Message);
         }
@@ -203,36 +251,37 @@ namespace TicketPrime.Tests.Service
             _reservaRepoMock.Setup(r => r.ContarReservasUsuarioPorEventoAsync(_usuarioValido.Cpf, _eventoValido.Id))
                             .ReturnsAsync(0);
 
-            _reservaRepoMock.Setup(r => r.ContarReservasPorEventoAsync(_eventoValido.Id))
-                            .ReturnsAsync(0);
-
             _cupomRepoMock.Setup(r => r.ObterPorCodigoAsync("PRIME10"))
                           .ReturnsAsync(_cupomValido);
 
-            var reservaEsperada = new Reserva
-            {
-                Id = 1,
-                UsuarioCpf = _usuarioValido.Cpf,
-                EventoId = _eventoValido.Id,
-                CupomUtilizado = "PRIME10",
-                ValorFinalPago = 135.00m // 150 - 10% = 135
-            };
-
-            _reservaRepoMock.Setup(r => r.CriarAsync(It.IsAny<Reserva>()))
-                            .ReturnsAsync(reservaEsperada);
+            // Capturar a reserva que será passada para o executor para validar o cálculo
+            _transacaoMock
+                .Setup(t => t.ExecutarTransacaoAsync(
+                    It.IsAny<Reservation>(), It.IsAny<TicketEvent>(), It.IsAny<string?>(), It.IsAny<bool>(),
+                    It.IsAny<int>(), It.IsAny<int?>()))
+                .ReturnsAsync((Reservation r, TicketEvent e, string? c, bool a, int t, int? l) =>
+                {
+                    r.Id = 1;
+                    return r;
+                });
 
             // Act
             var resultado = await _reservaService.ComprarIngressoAsync(
-                _usuarioValido.Cpf, _eventoValido.Id, "PRIME10");
+                _usuarioValido.Cpf, _eventoValido.Id, 1, "PRIME10");
 
             // Assert
             Assert.NotNull(resultado);
-            Assert.Equal(135.00m, resultado.ValorFinalPago);
+            Assert.Equal(135.00m, resultado.ValorFinalPago); // 150 - 10% = 135
             Assert.Equal("PRIME10", resultado.CupomUtilizado);
 
-            _reservaRepoMock.Verify(r => r.CriarAsync(It.Is<Reserva>(
-                res => res.ValorFinalPago == 135.00m && res.CupomUtilizado == "PRIME10"
-            )), Times.Once);
+            // Verificar que o executor foi chamado com a reserva calculada corretamente
+            _transacaoMock.Verify(t => t.ExecutarTransacaoAsync(
+                It.Is<Reservation>(r => r.ValorFinalPago == 135.00m && r.CupomUtilizado == "PRIME10"),
+                It.IsAny<TicketEvent>(),
+                "PRIME10",
+                true,
+                It.IsAny<int>(),
+                It.IsAny<int?>()), Times.Once);
         }
 
         [Fact]
@@ -248,33 +297,37 @@ namespace TicketPrime.Tests.Service
             _reservaRepoMock.Setup(r => r.ContarReservasUsuarioPorEventoAsync(_usuarioValido.Cpf, _eventoValido.Id))
                             .ReturnsAsync(0);
 
-            _reservaRepoMock.Setup(r => r.ContarReservasPorEventoAsync(_eventoValido.Id))
-                            .ReturnsAsync(0);
-
             // Cupom com ValorMinimoRegra = 500, mas evento custa 150
             _cupomRepoMock.Setup(r => r.ObterPorCodigoAsync("SUPER50"))
                           .ReturnsAsync(_cupomValorAlto);
 
-            var reservaEsperada = new Reserva
-            {
-                Id = 2,
-                UsuarioCpf = _usuarioValido.Cpf,
-                EventoId = _eventoValido.Id,
-                CupomUtilizado = "SUPER50",
-                ValorFinalPago = 150.00m // Preço cheio pois 150 < 500 (ValorMinimoRegra)
-            };
-
-            _reservaRepoMock.Setup(r => r.CriarAsync(It.IsAny<Reserva>()))
-                            .ReturnsAsync(reservaEsperada);
+            _transacaoMock
+                .Setup(t => t.ExecutarTransacaoAsync(
+                    It.IsAny<Reservation>(), It.IsAny<TicketEvent>(), It.IsAny<string?>(), It.IsAny<bool>(),
+                    It.IsAny<int>(), It.IsAny<int?>()))
+                .ReturnsAsync((Reservation r, TicketEvent e, string? c, bool a, int t, int? l) =>
+                {
+                    r.Id = 2;
+                    return r;
+                });
 
             // Act
             var resultado = await _reservaService.ComprarIngressoAsync(
-                _usuarioValido.Cpf, _eventoValido.Id, "SUPER50");
+                _usuarioValido.Cpf, _eventoValido.Id, 1, "SUPER50");
 
             // Assert
             Assert.NotNull(resultado);
             Assert.Equal(150.00m, resultado.ValorFinalPago); // Preço cheio sem desconto
             Assert.Equal("SUPER50", resultado.CupomUtilizado);
+
+            // Verificar que o executor foi chamado com aplicarDesconto=false
+            _transacaoMock.Verify(t => t.ExecutarTransacaoAsync(
+                It.Is<Reservation>(r => r.ValorFinalPago == 150.00m),
+                It.IsAny<TicketEvent>(),
+                "SUPER50",
+                false,
+                It.IsAny<int>(),
+                It.IsAny<int?>()), Times.Once);
         }
 
         [Fact]
@@ -290,15 +343,12 @@ namespace TicketPrime.Tests.Service
             _reservaRepoMock.Setup(r => r.ContarReservasUsuarioPorEventoAsync(_usuarioValido.Cpf, _eventoValido.Id))
                             .ReturnsAsync(0);
 
-            _reservaRepoMock.Setup(r => r.ContarReservasPorEventoAsync(_eventoValido.Id))
-                            .ReturnsAsync(0);
-
             _cupomRepoMock.Setup(r => r.ObterPorCodigoAsync("INVALIDO"))
-                          .ReturnsAsync((Cupom?)null);
+                          .ReturnsAsync((Coupon?)null);
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, _eventoValido.Id, "INVALIDO"));
+                () => _reservaService.ComprarIngressoAsync(_usuarioValido.Cpf, _eventoValido.Id, 1, "INVALIDO"));
 
             Assert.Equal("Cupom inválido ou inexistente.", ex.Message);
         }
@@ -320,10 +370,7 @@ namespace TicketPrime.Tests.Service
             _reservaRepoMock.Setup(r => r.ContarReservasUsuarioPorEventoAsync(_usuarioValido.Cpf, _eventoValido.Id))
                             .ReturnsAsync(0);
 
-            _reservaRepoMock.Setup(r => r.ContarReservasPorEventoAsync(_eventoValido.Id))
-                            .ReturnsAsync(0);
-
-            var reservaEsperada = new Reserva
+            var reservaEsperada = new Reservation
             {
                 Id = 3,
                 UsuarioCpf = _usuarioValido.Cpf,
@@ -331,19 +378,24 @@ namespace TicketPrime.Tests.Service
                 ValorFinalPago = 150.00m
             };
 
-            _reservaRepoMock.Setup(r => r.CriarAsync(It.IsAny<Reserva>()))
-                            .ReturnsAsync(reservaEsperada);
+            _transacaoMock
+                .Setup(t => t.ExecutarTransacaoAsync(
+                    It.IsAny<Reservation>(), It.IsAny<TicketEvent>(), It.IsAny<string?>(), It.IsAny<bool>(),
+                    It.IsAny<int>(), It.IsAny<int?>()))
+                .ReturnsAsync(reservaEsperada);
 
             // Act
             var resultado = await _reservaService.ComprarIngressoAsync(
-                _usuarioValido.Cpf, _eventoValido.Id);
+                _usuarioValido.Cpf, _eventoValido.Id, 1);
 
             // Assert
             Assert.NotNull(resultado);
             Assert.Equal(150.00m, resultado.ValorFinalPago);
             Assert.Null(resultado.CupomUtilizado);
 
-            _reservaRepoMock.Verify(r => r.CriarAsync(It.IsAny<Reserva>()), Times.Once);
+            _transacaoMock.Verify(t => t.ExecutarTransacaoAsync(
+                It.IsAny<Reservation>(), It.IsAny<TicketEvent>(), null, false,
+                It.IsAny<int>(), It.IsAny<int?>()), Times.Once);
         }
 
         // ============================
@@ -354,9 +406,9 @@ namespace TicketPrime.Tests.Service
         public async Task ListarReservas_DeveRetornarLista_QuandoUsuarioPossuiReservas()
         {
             // Arrange
-            var reservasFake = new List<ReservaDetalhadaDTO>
+            var reservasFake = new List<ReservationDetailDto>
             {
-                new ReservaDetalhadaDTO
+                new ReservationDetailDto
                 {
                     Id = 1,
                     Nome = "Show de Rock",
@@ -366,7 +418,7 @@ namespace TicketPrime.Tests.Service
                     CupomUtilizado = "PRIME10",
                     DataCompra = DateTime.Now
                 },
-                new ReservaDetalhadaDTO
+                new ReservationDetailDto
                 {
                     Id = 2,
                     Nome = "Teatro",
@@ -403,7 +455,7 @@ namespace TicketPrime.Tests.Service
         {
             // Arrange
             _reservaRepoMock.Setup(r => r.ListarPorUsuarioAsync("00000000000"))
-                            .ReturnsAsync(new List<ReservaDetalhadaDTO>());
+                            .ReturnsAsync(new List<ReservationDetailDto>());
 
             // Act
             var resultado = await _reservaService.ListarReservasUsuarioAsync("00000000000");

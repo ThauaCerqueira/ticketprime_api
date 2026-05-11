@@ -1,4 +1,5 @@
 using FluentValidation;
+using FluentValidation.TestHelper;
 using TicketPrime.Web.Models;
 using TicketPrime.Web.Validators;
 
@@ -22,35 +23,65 @@ public class EventoDtoValidatorTests
 {
     private readonly EventoCreateDtoValidator _sut = new();
 
-    // ── Fábrica de modelos válidos ──────────────────────────────────────────────
-    /// <summary>Retorna um DTO completamente válido para ser mutado nos testes.</summary>
+    // ── Fábrica de modelo válido ──────────────────────────────────────────────
     private static EventoCreateDto ModeloValido() => new()
     {
-        Nome           = "Rock na Praça 2026",
-        DataHora       = DateTime.Now.AddHours(25),
-        Local          = "Parque Ibirapuera, São Paulo – SP",
-        Descricao      = "Festival de rock ao ar livre com bandas locais.",
-        GeneroMusical  = "Rock",
-        Preco          = 80m,
-        EventoGratuito = false,
+        Nome            = "Rock na Praça 2026",
+        DataHora        = DateTime.Now.AddHours(25),
+        Local           = "Parque Ibirapuera, São Paulo – SP",
+        Descricao       = "Festival de rock ao ar livre com bandas locais.",
+        GeneroMusical   = "Rock",
+        Preco           = 80m,
+        EventoGratuito  = false,
         CapacidadeMaxima = 500
     };
+
+    // ── Dados compartilhados para Theory ──────────────────────────────────────
+    public static TheoryData<string, string, string> CamposObrigatorios => new()
+    {
+        { nameof(EventoCreateDto.Nome),         "",       "O nome do evento é obrigatório." },
+        { nameof(EventoCreateDto.Local),        "",       "O local do evento é obrigatório." },
+        { nameof(EventoCreateDto.GeneroMusical), "",       "Selecione o gênero musical do evento." },
+    };
+
+    public static TheoryData<string, int, string> CamposComMaximoCaracteres => new()
+    {
+        { nameof(EventoCreateDto.Nome),         201, "O nome não pode exceder 200 caracteres." },
+        { nameof(EventoCreateDto.Local),        501, "O local não pode exceder 500 caracteres." },
+        { nameof(EventoCreateDto.Descricao),   2001, "A descrição não pode exceder 2000 caracteres." },
+    };
+
+    public static TheoryData<string, IEnumerable<string>> TermosSpam => new()
+    {
+        { "Evento especial! Clique aqui para saber mais.",       new[] { "clique aqui" } },
+        { "ganhe dinheiro fácil participando!",                  new[] { "ganhe dinheiro" } },
+        { "Renda extra garantida neste show.",                   new[] { "renda extra" } },
+        { "Investimento garantido em diversão!",                  new[] { "investimento garantido" } },
+        { "Oportunidade única de ver sua banda favorita!",        new[] { "oportunidade única" } },
+        { "Não perca essa chance imperdível!",                    new[] { "não perca" } },
+        { "Promoção imperdível, faça agora!",                     new[] { "promoção imperdível", "faça agora" } },
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CAMPOS OBRIGATÓRIOS (Nome, Local, GeneroMusical)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Theory]
+    [MemberData(nameof(CamposObrigatorios))]
+    public void CampoObrigatorio_Vazio_DeveRetornarErro(string campo, string valor, string mensagem)
+    {
+        var modelo = ModeloValido();
+        var prop = typeof(EventoCreateDto).GetProperty(campo)!;
+        prop.SetValue(modelo, valor);
+
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(campo)
+              .WithErrorMessage(mensagem);
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // CAMPO: Nome
     // ═══════════════════════════════════════════════════════════════════════════
-
-    [Fact]
-    public void Nome_Vazio_DeveRetornarErro()
-    {
-        var modelo = ModeloValido();
-        modelo.Nome = string.Empty;
-
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Nome)
-            && e.ErrorMessage == "O nome do evento é obrigatório.");
-    }
 
     [Theory]
     [InlineData("AB")]   // 2 chars – abaixo do mínimo
@@ -60,22 +91,9 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.Nome = nome;
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Nome)
-            && e.ErrorMessage == "O nome deve ter pelo menos 3 caracteres.");
-    }
-
-    [Fact]
-    public void Nome_Com201Chars_DeveRetornarErro()
-    {
-        var modelo = ModeloValido();
-        modelo.Nome = new string('X', 201);
-
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Nome)
-            && e.ErrorMessage == "O nome não pode exceder 200 caracteres.");
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.Nome)
+              .WithErrorMessage("O nome deve ter pelo menos 3 caracteres.");
     }
 
     [Theory]
@@ -86,10 +104,8 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.Nome = nome;
 
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.Nome));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldNotHaveValidationErrorFor(x => x.Nome);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -102,21 +118,20 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.DataHora = null;
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.DataHora)
-            && e.ErrorMessage == "A data e hora são obrigatórias.");
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.DataHora)
+              .WithErrorMessage("A data e hora são obrigatórias.");
     }
 
     [Fact]
     public void DataHora_MenosDe24HorasNaFrente_DeveRetornarErro()
     {
         var modelo = ModeloValido();
-        modelo.DataHora = DateTime.Now.AddHours(23);   // menos de 24 h de antecedência
+        modelo.DataHora = DateTime.Now.AddHours(23);
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.DataHora)
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.DataHora);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(EventoCreateDto.DataHora)
             && e.ErrorMessage.Contains("24 horas de antecedência"));
     }
 
@@ -126,9 +141,8 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.DataHora = DateTime.Now.AddDays(-1);
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.DataHora));
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.DataHora);
     }
 
     [Fact]
@@ -137,10 +151,8 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.DataHora = DateTime.Now.AddHours(25);
 
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.DataHora));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldNotHaveValidationErrorFor(x => x.DataHora);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -148,56 +160,18 @@ public class EventoDtoValidatorTests
     // ═══════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void Local_Vazio_DeveRetornarErro()
-    {
-        var modelo = ModeloValido();
-        modelo.Local = string.Empty;
-
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Local)
-            && e.ErrorMessage == "O local do evento é obrigatório.");
-    }
-
-    [Fact]
-    public void Local_Com501Chars_DeveRetornarErro()
-    {
-        var modelo = ModeloValido();
-        modelo.Local = new string('R', 501);
-
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Local)
-            && e.ErrorMessage == "O local não pode exceder 500 caracteres.");
-    }
-
-    [Fact]
     public void Local_ComLinkGoogleMaps_NaoDeveRetornarErro()
     {
         var modelo = ModeloValido();
         modelo.Local = "https://maps.google.com/?q=Ibirapuera";
 
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.Local));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldNotHaveValidationErrorFor(x => x.Local);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // CAMPO: Descrição – limite de caracteres
+    // CAMPO: Descrição
     // ═══════════════════════════════════════════════════════════════════════════
-
-    [Fact]
-    public void Descricao_Com2001Chars_DeveRetornarErro()
-    {
-        var modelo = ModeloValido();
-        modelo.Descricao = new string('D', 2001);
-
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Descricao)
-            && e.ErrorMessage == "A descrição não pode exceder 2000 caracteres.");
-    }
 
     [Fact]
     public void Descricao_Nula_NaoDeveRetornarErro()
@@ -205,31 +179,20 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.Descricao = null;
 
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.Descricao));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldNotHaveValidationErrorFor(x => x.Descricao);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // CAMPO: Descrição – filtro de spam
-    // ═══════════════════════════════════════════════════════════════════════════
-
     [Theory]
-    [InlineData("Evento especial! Clique aqui para saber mais.")]
-    [InlineData("ganhe dinheiro fácil participando!")]
-    [InlineData("Renda extra garantida neste show.")]
-    [InlineData("Investimento garantido em diversão!")]
-    [InlineData("Oportunidade única de ver sua banda favorita!")]
-    public void Descricao_ComTermoSpam_DeveRetornarErro(string descricaoComSpam)
+    [MemberData(nameof(TermosSpam))]
+    public void Descricao_ComTermoSpam_DeveRetornarErro(string descricao, IEnumerable<string> _)
     {
         var modelo = ModeloValido();
-        modelo.Descricao = descricaoComSpam;
+        modelo.Descricao = descricao;
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Descricao)
-            && e.ErrorMessage == "A descrição contém termos não permitidos. Revise o conteúdo.");
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.Descricao)
+              .WithErrorMessage("A descrição contém termos não permitidos. Revise o conteúdo.");
     }
 
     [Fact]
@@ -238,42 +201,25 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.Descricao = "Show de rock ao ar livre com três bandas locais. Traz sua cadeira e bebida.";
 
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.Descricao));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldNotHaveValidationErrorFor(x => x.Descricao);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // CAMPO: GeneroMusical
+    // CAMPOS COM MÁXIMO DE CARACTERES (Nome:200, Local:500, Descricao:2000)
     // ═══════════════════════════════════════════════════════════════════════════
-
-    [Fact]
-    public void GeneroMusical_Vazio_DeveRetornarErro()
-    {
-        var modelo = ModeloValido();
-        modelo.GeneroMusical = string.Empty;
-
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.GeneroMusical)
-            && e.ErrorMessage == "Selecione o gênero musical do evento.");
-    }
 
     [Theory]
-    [InlineData("Rock")]
-    [InlineData("MPB")]
-    [InlineData("Forró")]
-    [InlineData("Eletrônico")]
-    public void GeneroMusical_Preenchido_NaoDeveRetornarErro(string genero)
+    [MemberData(nameof(CamposComMaximoCaracteres))]
+    public void Campo_ExcedeMaximoCaracteres_DeveRetornarErro(string campo, int tamanho, string mensagem)
     {
         var modelo = ModeloValido();
-        modelo.GeneroMusical = genero;
+        var prop = typeof(EventoCreateDto).GetProperty(campo)!;
+        prop.SetValue(modelo, new string('X', tamanho));
 
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.GeneroMusical));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(campo)
+              .WithErrorMessage(mensagem);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -287,10 +233,9 @@ public class EventoDtoValidatorTests
         modelo.EventoGratuito = false;
         modelo.Preco = null;
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Preco)
-            && e.ErrorMessage == "Informe o preço do ingresso ou marque 'Evento gratuito'.");
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.Preco)
+              .WithErrorMessage("Informe o preço do ingresso ou marque 'Evento gratuito'.");
     }
 
     [Fact]
@@ -299,10 +244,9 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.Preco = -1m;
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Preco)
-            && e.ErrorMessage == "O preço não pode ser negativo.");
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.Preco)
+              .WithErrorMessage("O preço não pode ser negativo.");
     }
 
     [Theory]
@@ -313,9 +257,9 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.Preco = preco;
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Preco)
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.Preco);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(EventoCreateDto.Preco)
             && e.ErrorMessage.Contains("50.000"));
     }
 
@@ -329,10 +273,8 @@ public class EventoDtoValidatorTests
         modelo.EventoGratuito = false;
         modelo.Preco = preco;
 
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.Preco));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldNotHaveValidationErrorFor(x => x.Preco);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -343,16 +285,15 @@ public class EventoDtoValidatorTests
     [InlineData(1)]
     [InlineData(100)]
     [InlineData(0.01)]
-    public void Preco_DifferenteDezeroQuandoGratuito_DeveRetornarErro(decimal preco)
+    public void Preco_DiferenteDeZeroQuandoGratuito_DeveRetornarErro(decimal preco)
     {
         var modelo = ModeloValido();
         modelo.EventoGratuito = true;
         modelo.Preco = preco;
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.Preco)
-            && e.ErrorMessage == "Evento gratuito não pode ter preço diferente de zero.");
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.Preco)
+              .WithErrorMessage("Evento gratuito não pode ter preço diferente de zero.");
     }
 
     [Fact]
@@ -362,10 +303,8 @@ public class EventoDtoValidatorTests
         modelo.EventoGratuito = true;
         modelo.Preco = 0;
 
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.Preco));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldNotHaveValidationErrorFor(x => x.Preco);
     }
 
     [Fact]
@@ -375,12 +314,8 @@ public class EventoDtoValidatorTests
         modelo.EventoGratuito = true;
         modelo.Preco = null;
 
-        // Regra de preço obrigatório NÃO se aplica quando gratuito
-        // Regra de preço != zero também NÃO dispara (Preco é null)
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.Preco));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldNotHaveValidationErrorFor(x => x.Preco);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -396,9 +331,9 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.CapacidadeMaxima = capacidade;
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.CapacidadeMaxima)
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.CapacidadeMaxima);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(EventoCreateDto.CapacidadeMaxima)
             && e.ErrorMessage.Contains("mínima é de 1"));
     }
 
@@ -408,9 +343,9 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.CapacidadeMaxima = 100_001;
 
-        var resultado = _sut.Validate(modelo);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(EventoCreateDto.CapacidadeMaxima)
+        var result = _sut.TestValidate(modelo);
+        result.ShouldHaveValidationErrorFor(x => x.CapacidadeMaxima);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(EventoCreateDto.CapacidadeMaxima)
             && e.ErrorMessage.Contains("100.000"));
     }
 
@@ -423,10 +358,8 @@ public class EventoDtoValidatorTests
         var modelo = ModeloValido();
         modelo.CapacidadeMaxima = capacidade;
 
-        var erros = _sut.Validate(modelo).Errors
-            .Where(e => e.PropertyName == nameof(EventoCreateDto.CapacidadeMaxima));
-
-        Assert.Empty(erros);
+        var result = _sut.TestValidate(modelo);
+        result.ShouldNotHaveValidationErrorFor(x => x.CapacidadeMaxima);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -438,47 +371,46 @@ public class EventoDtoValidatorTests
     {
         var modelo = ModeloValido();
 
-        var resultado = _sut.Validate(modelo);
+        var result = _sut.TestValidate(modelo);
 
-        Assert.True(resultado.IsValid,
-            "Erros inesperados: " + string.Join(", ", resultado.Errors.Select(e => e.ErrorMessage)));
+        Assert.True(result.IsValid,
+            "Erros inesperados: " + string.Join(", ", result.Errors.Select(e => e.ErrorMessage)));
     }
 
     [Fact]
     public void ModeloCompleto_Invalido_DeveRetornarMultiplosErros()
     {
-        // DTO totalmente inválido: todos os campos obrigatórios ausentes/errados
         var modelo = new EventoCreateDto
         {
-            Nome             = "AB",          // muito curto
-            DataHora         = DateTime.Now.AddHours(1),  // menos de 24 h
-            Local            = string.Empty,  // obrigatório
-            Descricao        = "Clique aqui", // spam
-            GeneroMusical    = string.Empty,  // obrigatório
-            Preco            = -5m,           // negativo
+            Nome             = "AB",                            // muito curto
+            DataHora         = DateTime.Now.AddHours(1),        // menos de 24 h
+            Local            = string.Empty,                    // obrigatório
+            Descricao        = "Clique aqui",                   // spam
+            GeneroMusical    = string.Empty,                    // obrigatório
+            Preco            = -5m,                             // negativo
             EventoGratuito   = false,
-            CapacidadeMaxima = 0              // abaixo do mínimo
+            CapacidadeMaxima = 0                                // abaixo do mínimo
         };
 
-        var resultado = _sut.Validate(modelo);
+        var result = _sut.TestValidate(modelo);
 
-        Assert.False(resultado.IsValid);
-        Assert.True(resultado.Errors.Count >= 5,
-            $"Esperava pelo menos 5 erros, obteve {resultado.Errors.Count}.");
+        Assert.False(result.IsValid);
+        Assert.True(result.Errors.Count >= 5,
+            $"Esperava pelo menos 5 erros, obteve {result.Errors.Count}.");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // ValidarCampo – helper específico por campo
+    // ValidarCampo – método auxiliar do validator (usado pelo MudBlazor)
     // ═══════════════════════════════════════════════════════════════════════════
 
     [Fact]
     public void ValidarCampo_Nome_DeveRetornarApenasErrosDoCampoNome()
     {
-        var modelo = new EventoCreateDto { Nome = "X" };   // inválido
+        var modelo = new EventoCreateDto { Nome = "X" };
 
         var erros = _sut.ValidarCampo(modelo, nameof(EventoCreateDto.Nome));
 
-        Assert.Single(erros);   // apenas "mínimo 3 chars" deve aparecer
+        Assert.Single(erros);
         Assert.Contains("3 caracteres", erros.First());
     }
 
