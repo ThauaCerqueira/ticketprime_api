@@ -1,0 +1,26 @@
+services:
+
+  # ── SQL Server para testes de integração ──────────────────────────────
+  # ATENÇÃO: Esta senha é usada APENAS em ambiente de testes isolado (porta 1434).
+  # Em produção, sempre use a variável de ambiente SA_PASSWORD.
+  sqlserver-test:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ticketprime_sqlserver_test
+    environment:
+      SA_PASSWORD: "${SA_PASSWORD_TEST:-TicketPrime@2024!}"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Express"
+    ports:
+      - "1434:1433"                        # porta diferente para não conflitar com dev
+    volumes:
+      - ./db/script.sql:/scripts/init.sql:ro
+      - ./docker/init-db.sh:/init-db.sh:ro
+    entrypoint: ["/bin/bash", "/init-db.sh"]
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd",
+             "-S", "localhost", "-U", "sa", "-P", "${SA_PASSWORD_TEST:-TicketPrime@2024!}",
+             "-Q", "SELECT 1", "-C"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s

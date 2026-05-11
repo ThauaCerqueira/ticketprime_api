@@ -5,9 +5,12 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: ticketprime_sqlserver
     environment:
-      SA_PASSWORD: "TicketPrime@2024!"
+      SA_PASSWORD: "${SA_PASSWORD:?SA_PASSWORD environment variable is required}"
       ACCEPT_EULA: "Y"
-      MSSQL_PID: "Express"
+      # ⚠ Importante: Express NÃO suporta Full-Text Search.
+      # Developer (gratuito para dev) ou Standard+ são necessários.
+      # Veja: https://learn.microsoftpt-br/sql/sql-server/editions-and-components
+      MSSQL_PID: "${MSSQL_PID:-Developer}"
     ports:
       - "1433:1433"
     volumes:
@@ -16,9 +19,8 @@ services:
       - sqlserver_data:/var/opt/mssql
     entrypoint: ["/bin/bash", "/init-db.sh"]
     healthcheck:
-      # sqlcmd 18 + flag -C (trust cert) para SQL Server 2022
       test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd",
-             "-S", "localhost", "-U", "sa", "-P", "TicketPrime@2024!",
+             "-S", "localhost", "-U", "sa", "-P", "${SA_PASSWORD:?SA_PASSWORD is required}",
              "-Q", "SELECT 1", "-C"]
       interval: 10s
       timeout: 5s
@@ -28,35 +30,127 @@ services:
   # ── API (backend) ─────────────────────────────────────────────────────────────
   api:
     build:
-      context: .                      # raiz do repositório
+      context: .
       dockerfile: src/Dockerfile
     container_name: ticketprime_api
+    expose:
+      - "8080"
     ports:
       - "5164:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      # Sobrescreve a connection string para apontar ao container do SQL Server
+      ASPNETCORE_URLS: http://+:8080
+      Jwt__Key: "${JWT_KEY:?JWT_KEY environment variable is required}"
+      Jwt__ExpireMinutes: "30"
       ConnectionStrings__DefaultConnection: >-
         Server=sqlserver,1433;Database=TicketPrime;
-        User Id=sa;Password=TicketPrime@2024!;TrustServerCertificate=True;
+        User Id=sa;Password=${SA_PASSWORD:?SA_PASSWORD environment variable is required};TrustServerCertificate=True;
+      # ── Email Settings (opcional — se omitido, usa ConsoleEmailService em dev) ──
+      EmailSettings__SmtpHost: "${SMTP_HOST:-}"
+      EmailSettings__SmtpPort: "${SMTP_PORT:-587}"
+      EmailSettings__SmtpUsername: "${SMTP_USERNAME:-}"
+      EmailSettings__SmtpPassword: "${SMTP_PASSWORD:-}"
+      EmailSettings__FromEmail: "${SMTP_FROM_EMAIL:-}"
+      EmailSettings__FromName: "${SMTP_FROM_NAME:-Ticket Prime}"
+      EmailSettings__UseSsl: "${SMTP_USE_SSL:-true}"
     depends_on:
       sqlserver:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-  # ── UI (Blazor Server) ────────────────────────────────────────────────────────
+  # ── UI (Blazor Server) ────────────────────────────────────────────────────────────────────
   frontend:
     build:
-      context: .                      # raiz do repositório (UI referencia src/)
+      context: .
       dockerfile: ui/TicketPrime.Web/Dockerfile
     container_name: ticketprime_frontend
-    ports:
-      - "5194:8080"
+    expose:
+      - "8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      # Aponta para o serviço "api" na rede interna do Docker
+      ASPNETCORE_URLS: http://+:8080
       ApiSettings__BaseUrl: http://api:8080
     depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Reverse Proxy (nginx com TLS termination) ─────────────────────────────────
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    container_name: ticketprime_proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
+      # Let's Encrypt certificates (production) override the self-signed certs above.
+      # Run `scripts/certbot-init.sh` once to obtain the first certificate.
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot:ro
+    depends_on:
       - api
+      - frontend
+
+  # ── Let's Encrypt certificate renewal ────────────────────────────────────────
+  # First-run: docker compose run --rm certbot certonly --webroot \
+  #   --webroot-path /var/www/certbot -d yourdomain.com --email you@email.com --agree-tos
+  # Renewal runs automatically every 12 h; nginx reloads on success.
+  certbot:
+    image: certbot/certbot:latest
+    container_name: ticketprime_certbot
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "trap exit TERM;
+                  while :; do
+                    certbot renew --quiet --webroot --webroot-path /var/www/certbot
+                    sleep 43200;
+                  done"
+    profiles: ["production"]
+
+  # ── Automated database backup ─────────────────────────────────────────────────
+  # Backs up the database daily; retains 7 days of .bak files.
+  # Start with: docker compose --profile backup up -d backup
+  backup:
+    image: mcr.microsoft.com/mssql-tools:latest
+    container_name: ticketprime_backup
+    environment:
+      SA_PASSWORD: "${SA_PASSWORD:?SA_PASSWORD is required}"
+      DB_HOST: sqlserver
+      DB_NAME: TicketPrime
+      RETENTION_DAYS: "7"
+    volumes:
+      - ./docker/backup.sh:/backup.sh:ro
+      - backups:/backups
+    entrypoint: >
+      /bin/bash -c "
+        chmod +x /backup.sh;
+        trap exit TERM;
+        while :; do
+          /backup.sh;
+          sleep 86400;
+        done"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    profiles: ["backup"]
 
 volumes:
   sqlserver_data:
+  certbot_certs:
+  certbot_webroot:
+  backups:
