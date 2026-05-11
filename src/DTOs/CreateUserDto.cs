@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-public class UsuarioDTO
+namespace src.DTOs;
+
+public class CreateUserDto
 {
     [Required]
     [StringLength(11, MinimumLength = 11)]
