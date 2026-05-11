@@ -14,54 +14,55 @@ public class CupomRepository : ICupomRepository
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<int> CriarAsync(Cupom cupom)
+    public async Task<int> CriarAsync(Coupon cupom)
     {
         using var connection = _connectionFactory.CreateConnection();
-
         var sql = @"
-            INSERT INTO Cupons (Codigo, PorcentagemDesconto, ValorMinimoRegra)
-            VALUES (@Codigo, @PorcentagemDesconto, @ValorMinimoRegra);
-        ";
-
+            INSERT INTO Cupons (Codigo, TipoDesconto, PorcentagemDesconto, ValorDescontoFixo,
+                                ValorMinimoRegra, DataExpiracao, LimiteUsos, TotalUsado,
+                                CategoriaEvento, PrimeiroAcesso)
+            VALUES (@Codigo, @TipoDesconto, @PorcentagemDesconto, @ValorDescontoFixo,
+                    @ValorMinimoRegra, @DataExpiracao, @LimiteUsos, 0,
+                    @CategoriaEvento, @PrimeiroAcesso);";
         return await connection.ExecuteAsync(sql, cupom);
     }
 
-    public async Task<Cupom?> ObterPorCodigoAsync(string codigo)
+    public async Task<Coupon?> ObterPorCodigoAsync(string codigo)
     {
         using var connection = _connectionFactory.CreateConnection();
-
         var sql = @"
-            SELECT Codigo, PorcentagemDesconto, ValorMinimoRegra
-            FROM Cupons
-            WHERE Codigo = @Codigo;
-        ";
-
-        return await connection.QueryFirstOrDefaultAsync<Cupom>(sql, new { Codigo = codigo });
+            SELECT Codigo, TipoDesconto, PorcentagemDesconto, ValorDescontoFixo,
+                   ValorMinimoRegra, DataExpiracao, LimiteUsos, TotalUsado,
+                   CategoriaEvento, PrimeiroAcesso
+            FROM Cupons WHERE Codigo = @Codigo;";
+        return await connection.QueryFirstOrDefaultAsync<Coupon>(sql, new { Codigo = codigo });
     }
 
-    public async Task<IEnumerable<Cupom>> ListarAsync()
+    public async Task<IEnumerable<Coupon>> ListarAsync()
     {
         using var connection = _connectionFactory.CreateConnection();
-
         var sql = @"
-            SELECT Codigo, PorcentagemDesconto, ValorMinimoRegra
-            FROM Cupons;
-        ";
+            SELECT Codigo, TipoDesconto, PorcentagemDesconto, ValorDescontoFixo,
+                   ValorMinimoRegra, DataExpiracao, LimiteUsos, TotalUsado,
+                   CategoriaEvento, PrimeiroAcesso
+            FROM Cupons ORDER BY Codigo;";
+        return await connection.QueryAsync<Coupon>(sql);
+    }
 
-        return await connection.QueryAsync<Cupom>(sql);
+    public async Task IncrementarUsoAsync(string codigo)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        await connection.ExecuteAsync(
+            "UPDATE Cupons SET TotalUsado = TotalUsado + 1 WHERE Codigo = @Codigo",
+            new { Codigo = codigo });
     }
 
     public async Task<bool> DeletarAsync(string codigo)
     {
         using var connection = _connectionFactory.CreateConnection();
-
-        var sql = @"
-            DELETE FROM Cupons
-            WHERE Codigo = @Codigo;
-        ";
-
-        var rows = await connection.ExecuteAsync(sql, new { Codigo = codigo });
-
+        var rows = await connection.ExecuteAsync(
+            "DELETE FROM Cupons WHERE Codigo = @Codigo;",
+            new { Codigo = codigo });
         return rows > 0;
     }
 }
