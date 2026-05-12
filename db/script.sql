@@ -272,12 +272,34 @@ END
 GO
 
 -- Adiciona índice UNIQUE em Email (garante unicidade de e-mail por usuário)
+-- ⚠ Antes de criar o índice, renomeia e-mails duplicados que possam ter sido
+--   inseridos antes da existência da constraint. Usamos UPDATE em vez de DELETE
+--   para evitar violações de FK (RefreshTokens, Reservas etc. referenciam Usuarios).
+--   A prioridade é:
+--     1. Manter o admin padrão (Cpf = '00000000191') com o e-mail original
+--     2. Renomear os demais registros com e-mail duplicado
 IF NOT EXISTS (
     SELECT 1 FROM sys.indexes
     WHERE object_id = OBJECT_ID(N'[dbo].[Usuarios]')
       AND name = 'UX_Usuarios_Email'
 )
 BEGIN
+    -- Renomeia e-mails duplicados: mantém a primeira ocorrência (admin primeiro),
+    -- as demais recebem um sufixo único baseado no CPF para preservar a integridade
+    -- referencial.
+    WITH Duplicatas AS (
+        SELECT Cpf, Email,
+               ROW_NUMBER() OVER (
+                   PARTITION BY Email
+                   ORDER BY CASE WHEN Cpf = '00000000191' THEN 0 ELSE 1 END, Cpf
+               ) AS rn
+        FROM Usuarios
+        WHERE Email IS NOT NULL
+    )
+    UPDATE Duplicatas
+    SET Email = Email + '_dup_' + Cpf
+    WHERE rn > 1;
+
     CREATE UNIQUE INDEX [UX_Usuarios_Email] ON [dbo].[Usuarios]([Email]);
 END
 GO
@@ -1075,7 +1097,11 @@ IF NOT EXISTS (
 BEGIN
     ALTER TABLE [dbo].[Eventos] ADD [CapacidadeRestante] INT NOT NULL DEFAULT 0;
     -- Backfill: eventos existentes começam com CapacidadeRestante = CapacidadeTotal
-    UPDATE [dbo].[Eventos] SET [CapacidadeRestante] = [CapacidadeTotal]
-    WHERE [CapacidadeRestante] = 0;
+    -- ⚠ Use dynamic SQL because the column doesn't exist at batch compile time
+    --   on existing databases, causing "Invalid column name" at parse time.
+    EXEC sp_executesql N'
+        UPDATE [dbo].[Eventos] SET [CapacidadeRestante] = [CapacidadeTotal]
+        WHERE [CapacidadeRestante] = 0;
+    ';
 END
 GO

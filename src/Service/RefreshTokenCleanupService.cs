@@ -23,13 +23,23 @@ public sealed class RefreshTokenCleanupService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Stagger the first run to avoid hitting the DB at startup under load.
-        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
-
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            await PurgeExpiredTokensAsync(stoppingToken);
-            await Task.Delay(Interval, stoppingToken);
+            // Stagger the first run to avoid hitting the DB at startup under load.
+            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                await PurgeExpiredTokensAsync(stoppingToken);
+                await Task.Delay(Interval, stoppingToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Graceful shutdown — the host is stopping (e.g. due to port bind failure
+            // or normal application termination). This is expected and should not
+            // propagate as an unhandled exception.
+            _logger.LogDebug("RefreshTokenCleanupService stopped gracefully.");
         }
     }
 

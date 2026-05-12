@@ -81,7 +81,7 @@ public class PublicController : ControllerBase
             SUMMARY:{summary}
             LOCATION:{location}
             DESCRIPTION:{descricao}
-            URL:https://ticketprime.local/evento/{evento.Id}
+            URL:https://{Request.Host}/evento/{evento.Id}
             STATUS:CONFIRMED
             END:VEVENT
             END:VCALENDAR

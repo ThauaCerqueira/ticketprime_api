@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -202,6 +203,7 @@ public class Program
             builder.Services.AddHttpClient("MercadoPago", c =>
             {
                 c.BaseAddress = new Uri("https://api.mercadopago.com/");
+                c.Timeout = TimeSpan.FromSeconds(30);
                 c.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", mpToken);
             });
@@ -351,9 +353,16 @@ public class Program
         try
         {
             var sqlScript = File.ReadAllText(scriptPath);
-            var statements = sqlScript.Split(
-                ["\nGO\n", "\nGO\r\n", "\r\nGO\r\n", "\nGO\r", "\nGO"],
-                StringSplitOptions.RemoveEmptyEntries);
+
+            // Split on lines that contain only "GO" (case-insensitive, with optional whitespace/semicolons).
+            // This is far more robust than hardcoding newline variants and catches edge cases like
+            // trailing whitespace, mixed line endings, or blank lines between GO and the next statement.
+            var statements = Regex.Split(
+                sqlScript,
+                @"^\s*GO\s*$",
+                RegexOptions.Multiline | RegexOptions.IgnoreCase)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToArray();
 
             // Change connection string to use master database for initial setup
             var masterConnectionString = connectionString.Replace("Database=TicketPrime", "Database=master");
@@ -366,6 +375,14 @@ public class Program
             {
                 var trimmedStatement = statement.Trim();
                 if (trimmedStatement.Length == 0)
+                    continue;
+
+                // ── Skip standalone "GO" statements that the regex split didn't catch ──
+                // Edge cases like trailing "GO" at end-of-file or "GO" inside dynamic SQL
+                // can leave a stray "GO" token. Sending it to SQL Server would cause:
+                //   "Could not find stored procedure 'GO'".
+                if (string.Equals(trimmedStatement, "GO", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(trimmedStatement.TrimEnd(';'), "GO", StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 using var command = connection.CreateCommand();

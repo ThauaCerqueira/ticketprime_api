@@ -22,6 +22,7 @@ public static class PerUserRateLimiterPolicy
     /// - Usuários não autenticados: particiona por IP (ex: "ip_192.168.1.1")
     /// - Admins: recebem um limite mais alto automaticamente
     /// </summary>
+    /// <param name="options">O objeto <see cref="RateLimiterOptions"/> ao qual a política será adicionada (método de extensão).</param>
     /// <param name="name">Nome da política (ex: "escrita", "compra-ingresso")</param>
     /// <param name="anonymousLimit">Limite de requisições por janela para não autenticados</param>
     /// <param name="authenticatedLimit">Limite de requisições por janela para usuários comuns</param>
@@ -69,7 +70,14 @@ public static class PerUserRateLimiterPolicy
 
     /// <summary>
     /// Versão simplificada com limites padrão para endpoints sensíveis (compra de ingressos).
+    ///
+    /// Aplica os seguintes limites:
+    /// - Autenticado: 3 requisições por minuto
+    /// - Anônimo: 1 requisição por minuto
+    /// - Admin: 30 requisições por minuto
     /// </summary>
+    /// <param name="options">O objeto <see cref="RateLimiterOptions"/> ao qual a política será adicionada (método de extensão).</param>
+    /// <param name="name">Nome da política (ex: "compra-ingresso")</param>
     public static void AddPerUserCompraPolicy(this RateLimiterOptions options, string name)
     {
         // Compra de ingresso: 3/min autenticado, 1/min anônimo (impossível comprar sem login),
