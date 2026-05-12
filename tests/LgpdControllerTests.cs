@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using src.Controllers;
 using src.Infrastructure;
@@ -37,7 +38,7 @@ public class LgpdControllerTests
         var connFactory = new DbConnectionFactory(
             "Server=.;Database=LGPD_Test;Trusted_Connection=true;TrustServerCertificate=True;Connect Timeout=1;");
 
-        var controller = new UserController(userService, connFactory);
+        var controller = new UserController(userService, connFactory, NullLogger<UserController>.Instance);
 
         if (cpfClaim != null)
         {

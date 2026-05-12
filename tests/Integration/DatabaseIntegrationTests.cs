@@ -10,6 +10,8 @@ namespace TicketPrime.Tests.Integration;
 ///   1. docker compose up -d sqlserver   (sobe o banco)
 ///   2. dotnet test --filter "Category=Integration"
 ///
+/// Quando o banco não está disponível os testes são ignorados (Skip)
+/// automaticamente, sem causar falha no pipeline.
 /// Cada teste roda dentro de uma transação que é revertida ao final,
 /// garantindo isolamento total entre os testes.
 /// </summary>
@@ -22,6 +24,16 @@ public class DatabaseIntegrationTests
     public DatabaseIntegrationTests(IntegrationTestFixture fixture)
     {
         _fixture = fixture;
+    }
+
+    /// <summary>
+    /// Pula o teste com mensagem explicativa quando o SQL Server não está
+    /// acessível no ambiente atual (e.g., CI sem container de banco).
+    /// </summary>
+    private void IgnorarSeDBIndisponivel()
+    {
+        Skip.If(!_fixture.DatabaseAvailable,
+            "SQL Server não disponível. Execute 'docker compose up -d' para rodar os testes de integração.");
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -44,9 +56,10 @@ public class DatabaseIntegrationTests
         };
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Usuario_CriarEObterPorCpf_DeveRetornarUsuario()
     {
+        IgnorarSeDBIndisponivel();
         var usuario = CriarUsuarioTeste();
 
         var cpfCriado = await _fixture.UsuarioRepository.CriarUsuario(usuario);
@@ -59,9 +72,10 @@ public class DatabaseIntegrationTests
         Assert.Equal("CLIENTE", obtido.Perfil);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Usuario_ObterPorEmail_DeveRetornarUsuario()
     {
+        IgnorarSeDBIndisponivel();
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
 
@@ -71,17 +85,19 @@ public class DatabaseIntegrationTests
         Assert.Equal(usuario.Cpf, obtido.Cpf);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Usuario_ObterPorEmailInexistente_DeveRetornarNull()
     {
+        IgnorarSeDBIndisponivel();
         var obtido = await _fixture.UsuarioRepository.ObterPorEmail("naoexiste@teste.com");
 
         Assert.Null(obtido);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Usuario_AtualizarSenha_DevePersistirNovaSenha()
     {
+        IgnorarSeDBIndisponivel();
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
         var novaSenhaHash = BCrypt.Net.BCrypt.HashPassword("NovaSenha@456", workFactor: 11);
@@ -93,9 +109,10 @@ public class DatabaseIntegrationTests
         Assert.Equal(novaSenhaHash, obtido.Senha);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Usuario_ConfirmarEmail_DeveMarcarComoVerificado()
     {
+        IgnorarSeDBIndisponivel();
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
 
@@ -106,9 +123,10 @@ public class DatabaseIntegrationTests
         Assert.True(obtido.EmailVerificado);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Usuario_SalvarTokenVerificacaoEmail_DevePersistirToken()
     {
+        IgnorarSeDBIndisponivel();
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
         var token = "tokenteste123";
@@ -141,9 +159,10 @@ public class DatabaseIntegrationTests
         LimiteIngressosPorUsuario = 6
     };
 
-    [Fact]
+    [SkippableFact]
     public async Task Evento_CriarEObterPorId_DeveRetornarEvento()
     {
+        IgnorarSeDBIndisponivel();
         var evento = CriarEventoTeste();
 
         var id = await _fixture.EventoRepository.AdicionarAsync(evento);
@@ -157,9 +176,10 @@ public class DatabaseIntegrationTests
         Assert.Equal("Rascunho", obtido.Status);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Evento_ObterTodos_DeveRetornarPaginatedResult()
     {
+        IgnorarSeDBIndisponivel();
         var evento1 = CriarEventoTeste();
         evento1.Nome = "Evento Teste 1";
         var evento2 = CriarEventoTeste();
@@ -176,9 +196,10 @@ public class DatabaseIntegrationTests
         Assert.Contains(resultado.Itens, e => e.Nome == "Evento Teste 2");
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Evento_DiminuirCapacidade_DeveReduzirCapacidade()
     {
+        IgnorarSeDBIndisponivel();
         var evento = CriarEventoTeste();
         var id = await _fixture.EventoRepository.AdicionarAsync(evento);
 
@@ -190,9 +211,10 @@ public class DatabaseIntegrationTests
         Assert.Equal(evento.CapacidadeTotal - 1, obtido.CapacidadeTotal);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Evento_DiminuirCapacidadeAteZero_DeveRetornarFalso()
     {
+        IgnorarSeDBIndisponivel();
         var evento = CriarEventoTeste();
         evento.CapacidadeTotal = 1;
         var id = await _fixture.EventoRepository.AdicionarAsync(evento);
@@ -204,9 +226,10 @@ public class DatabaseIntegrationTests
         Assert.False(segundo);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Evento_AumentarCapacidade_DeveIncrementar()
     {
+        IgnorarSeDBIndisponivel();
         var evento = CriarEventoTeste();
         var id = await _fixture.EventoRepository.AdicionarAsync(evento);
         await _fixture.EventoRepository.DiminuirCapacidadeAsync(id);
@@ -220,9 +243,10 @@ public class DatabaseIntegrationTests
         Assert.Equal(antes.CapacidadeTotal + 1, depois.CapacidadeTotal);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Evento_AtualizarStatus_DeveAlterarStatus()
     {
+        IgnorarSeDBIndisponivel();
         var evento = CriarEventoTeste();
         var id = await _fixture.EventoRepository.AdicionarAsync(evento);
 
@@ -233,9 +257,10 @@ public class DatabaseIntegrationTests
         Assert.Equal("Publicado", obtido.Status);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Evento_BuscarDisponiveis_DeveFiltrarPorNome()
     {
+        IgnorarSeDBIndisponivel();
         var evento = CriarEventoTeste();
         evento.Nome = "Rock in Rio Teste";
         var id = await _fixture.EventoRepository.AdicionarAsync(evento);
@@ -248,9 +273,10 @@ public class DatabaseIntegrationTests
         Assert.Contains(resultado.Itens, e => e.Nome.Contains("Rock"));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Evento_Deletar_DeveRemoverEvento()
     {
+        IgnorarSeDBIndisponivel();
         var evento = CriarEventoTeste();
         var id = await _fixture.EventoRepository.AdicionarAsync(evento);
 
@@ -275,9 +301,10 @@ public class DatabaseIntegrationTests
         TotalUsado = 0
     };
 
-    [Fact]
+    [SkippableFact]
     public async Task Cupom_CriarEObterPorCodigo_DeveRetornarCupom()
     {
+        IgnorarSeDBIndisponivel();
         var cupom = CriarCupomTeste();
 
         var id = await _fixture.CupomRepository.CriarAsync(cupom);
@@ -289,9 +316,10 @@ public class DatabaseIntegrationTests
         Assert.Equal(cupom.PorcentagemDesconto, obtido.PorcentagemDesconto);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Cupom_IncrementarUso_DeveAumentarTotalUsado()
     {
+        IgnorarSeDBIndisponivel();
         var cupom = CriarCupomTeste();
         await _fixture.CupomRepository.CriarAsync(cupom);
 
@@ -302,9 +330,10 @@ public class DatabaseIntegrationTests
         Assert.Equal(1, obtido.TotalUsado);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Cupom_Listar_DeveRetornarTodos()
     {
+        IgnorarSeDBIndisponivel();
         var cupom1 = CriarCupomTeste();
         var cupom2 = CriarCupomTeste();
 
@@ -318,9 +347,10 @@ public class DatabaseIntegrationTests
         Assert.Contains(lista, c => c.Codigo == cupom2.Codigo);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Cupom_Deletar_DeveRemoverCupom()
     {
+        IgnorarSeDBIndisponivel();
         var cupom = CriarCupomTeste();
         await _fixture.CupomRepository.CriarAsync(cupom);
 
@@ -335,9 +365,10 @@ public class DatabaseIntegrationTests
     // RESERVAS (FLUXO COMPLETO)
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [SkippableFact]
     public async Task Reserva_FluxoCompleto_CriarEObter()
     {
+        IgnorarSeDBIndisponivel();
         // Arrange
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
@@ -376,9 +407,10 @@ public class DatabaseIntegrationTests
         Assert.Equal(evento.Nome, detalhada.Nome);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Reserva_Cancelar_DeveMarcarComoCancelada()
     {
+        IgnorarSeDBIndisponivel();
         // Arrange
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
@@ -410,9 +442,10 @@ public class DatabaseIntegrationTests
         Assert.Contains(listaArr, r => r.Id == criada.Id && r.Status == "Cancelada");
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Reserva_CancelarDeOutroUsuario_DeveFalhar()
     {
+        IgnorarSeDBIndisponivel();
         // Arrange
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
@@ -444,9 +477,10 @@ public class DatabaseIntegrationTests
         Assert.False(cancelado);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Reserva_ContarReservasPorEvento_DeveRetornarTotal()
     {
+        IgnorarSeDBIndisponivel();
         // Arrange
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
@@ -477,9 +511,10 @@ public class DatabaseIntegrationTests
         Assert.True(totalUsuario > 0);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Reserva_ObterPorCodigoIngresso_DeveFuncionar()
     {
+        IgnorarSeDBIndisponivel();
         // Arrange
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
@@ -514,9 +549,10 @@ public class DatabaseIntegrationTests
     // FLUXO TRANSACIONAL — COMPRA COM CUPOM
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [SkippableFact]
     public async Task FluxoCompleto_CompraComCupom_DeveCalcularDesconto()
     {
+        IgnorarSeDBIndisponivel();
         // Arrange
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
@@ -568,9 +604,10 @@ public class DatabaseIntegrationTests
         Assert.Equal(evento.CapacidadeTotal - 1, eventoObtido.CapacidadeTotal);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task FluxoCompleto_CancelarCompra_DeveRestaurarCapacidade()
     {
+        IgnorarSeDBIndisponivel();
         // Arrange
         var usuario = CriarUsuarioTeste();
         await _fixture.UsuarioRepository.CriarUsuario(usuario);
@@ -610,9 +647,10 @@ public class DatabaseIntegrationTests
     // HEALTH CHECK — BANCO ACESSÍVEL
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [SkippableFact]
     public async Task Database_DeveEstarAcessivel()
     {
+        IgnorarSeDBIndisponivel();
         using var connection = new Microsoft.Data.SqlClient.SqlConnection(
             IntegrationTestFixture.ObterConnectionString());
 
@@ -625,9 +663,10 @@ public class DatabaseIntegrationTests
         Assert.Equal(1, result);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Database_TabelaUsuarios_DeveExistir()
     {
+        IgnorarSeDBIndisponivel();
         using var connection = new Microsoft.Data.SqlClient.SqlConnection(
             IntegrationTestFixture.ObterConnectionString());
         await connection.OpenAsync();
@@ -641,3 +680,4 @@ public class DatabaseIntegrationTests
         Assert.True(count > 0, "Tabela Usuarios não encontrada no banco.");
     }
 }
+

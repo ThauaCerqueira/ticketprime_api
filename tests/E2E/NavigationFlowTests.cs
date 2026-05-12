@@ -8,7 +8,7 @@ namespace TicketPrime.E2E;
 /// </summary>
 [Parallelizable(ParallelScope.Self)]
 [TestFixture]
-public class NavigationFlowTests : PageTest
+public class NavigationFlowTests : PlaywrightTestBase
 {
     private static string BaseUrl =>
         Environment.GetEnvironmentVariable("TICKETPRIME_BASE_URL") ?? "https://localhost";

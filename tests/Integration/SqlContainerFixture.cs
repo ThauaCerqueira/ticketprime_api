@@ -60,7 +60,17 @@ public sealed class SqlContainerFixture : IAsyncLifetime
             cmd.CommandText = trimmed;
             cmd.CommandTimeout = 60;
             try { await cmd.ExecuteNonQueryAsync(); }
-            catch { /* Ignore individual batch errors (e.g. already-exists) */ }
+            catch (SqlException ex) when (ex.Number is 2714 or 1913 or 2760 or 15233)
+            {
+                // Ignora erros de "objeto já existe" (tabelas, índices, constraints)
+                // Código 2714 = objeto já existe, 1913 = índice já existe,
+                // 2760 = constraint já existe, 15233 = propriedade já existe
+            }
+            catch (SqlException ex)
+            {
+                Console.WriteLine($"[SqlContainerFixture] Falha no batch: {ex.Message}\nBatch:\n{trimmed[..Math.Min(200, trimmed.Length)]}");
+                // Continua para os próximos batches — um erro não deve abortar todo o schema
+            }
         }
     }
 

@@ -25,6 +25,12 @@ public class IntegrationTestFixture : IAsyncLifetime
     private SqlConnection? _connection;
     private SqlTransaction? _transaction;
 
+    /// <summary>
+    /// Indica se a conexão com o banco foi estabelecida com sucesso.
+    /// Quando false, todos os testes de integração são ignorados (skip).
+    /// </summary>
+    public bool DatabaseAvailable { get; private set; } = false;
+
     public DbConnectionFactory DbFactory { get; private set; } = null!;
     public IUsuarioRepository UsuarioRepository { get; private set; } = null!;
     public IEventoRepository EventoRepository { get; private set; } = null!;
@@ -34,43 +40,70 @@ public class IntegrationTestFixture : IAsyncLifetime
     /// <summary>
     /// Obtém a connection string da env var TEST_CONNECTION_STRING ou usa
     /// a default que aponta para o SQL Server do docker-compose.
+    /// Um timeout curto é aplicado para falhar rapidamente quando o banco
+    /// não está disponível (evita aguardar 30s por teste).
     /// </summary>
     public static string ObterConnectionString()
     {
-        return Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING")
+        var raw = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING")
             ?? "Server=localhost,1433;Database=TicketPrime;User Id=sa;Password=TicketPrime@2024!;TrustServerCertificate=True;";
+
+        // Aplica timeout curto para detecção rápida de banco indisponível
+        var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(raw);
+        if (builder.ConnectTimeout > 5 || builder.ConnectTimeout == 0)
+            builder.ConnectTimeout = 5;
+
+        return builder.ConnectionString;
     }
 
     public async Task InitializeAsync()
     {
         var connectionString = ObterConnectionString();
 
-        // Cria a fábrica de conexões
-        DbFactory = new DbConnectionFactory(connectionString);
+        try
+        {
+            // Cria a fábrica de conexões
+            DbFactory = new DbConnectionFactory(connectionString);
 
-        // Abre conexão real com o banco
-        _connection = new SqlConnection(connectionString);
-        await _connection.OpenAsync();
+            // Abre conexão real com o banco
+            _connection = new SqlConnection(connectionString);
+            await _connection.OpenAsync();
 
-        // Inicia transação que será revertida no DisposeAsync
-        _transaction = (SqlTransaction)await _connection.BeginTransactionAsync();
+            // Inicia transação que será revertida no DisposeAsync
+            _transaction = (SqlTransaction)await _connection.BeginTransactionAsync();
 
-        // Cria os repositórios injetando a factory — eles abrirão suas
-        // PRÓPRIAS conexões. Para testes integrados reais com transação
-        // compartilhada, usaríamos um UnitOfWork. Por ora testamos cada
-        // repositório individualmente (cada um abre sua própria conexão).
-        UsuarioRepository = new UsuarioRepository(DbFactory);
-        EventoRepository = new EventoRepository(DbFactory, NullLogger<EventoRepository>.Instance);
-        ReservaRepository = new ReservaRepository(DbFactory);
-        CupomRepository = new CupomRepository(DbFactory);
+            // Cria os repositórios injetando a factory — eles abrirão suas
+            // PRÓPRIAS conexões. Para testes integrados reais com transação
+            // compartilhada, usaríamos um UnitOfWork. Por ora testamos cada
+            // repositório individualmente (cada um abre sua própria conexão).
+            UsuarioRepository = new UsuarioRepository(DbFactory);
+            EventoRepository = new EventoRepository(DbFactory, NullLogger<EventoRepository>.Instance);
+            ReservaRepository = new ReservaRepository(DbFactory);
+            CupomRepository = new CupomRepository(DbFactory);
+
+            DatabaseAvailable = true;
+        }
+        catch (SqlException)
+        {
+            // Banco não disponível — testes serão ignorados (skip) via IgnorarSeDBIndisponivel()
+            DatabaseAvailable = false;
+        }
+        catch (InvalidOperationException)
+        {
+            // Falha de inicialização do repositório quando o banco não está pronto
+            DatabaseAvailable = false;
+        }
     }
 
     public Task DisposeAsync()
     {
-        _transaction?.Rollback();
-        _transaction?.Dispose();
-        _connection?.Close();
-        _connection?.Dispose();
+        if (DatabaseAvailable)
+        {
+            _transaction?.Rollback();
+            _transaction?.Dispose();
+            _connection?.Close();
+            _connection?.Dispose();
+        }
         return Task.CompletedTask;
     }
 }
