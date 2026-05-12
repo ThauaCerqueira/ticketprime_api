@@ -18,19 +18,22 @@ public class AuthController : ControllerBase
     private readonly UserService _userService;
     private readonly IConfiguration _configuration;
     private readonly AuditLogService _auditLog;
+    private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         AuthService authService,
         IUsuarioRepository usuarioRepo,
         UserService userService,
         IConfiguration configuration,
-        AuditLogService auditLog)
+        AuditLogService auditLog,
+        ILogger<AuthController> logger)
     {
         _authService = authService;
         _usuarioRepo = usuarioRepo;
         _userService = userService;
         _configuration = configuration;
         _auditLog = auditLog;
+        _logger = logger;
     }
 
     /// <summary>
@@ -294,8 +297,9 @@ public class AuthController : ControllerBase
         {
             return Results.BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao redefinir senha");
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }

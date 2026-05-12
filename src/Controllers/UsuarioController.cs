@@ -15,11 +15,13 @@ public class UserController : ControllerBase
 {
     private readonly UserService _userService;
     private readonly DbConnectionFactory _connectionFactory;
+    private readonly ILogger<UserController> _logger;
 
-    public UserController(UserService userService, DbConnectionFactory connectionFactory)
+    public UserController(UserService userService, DbConnectionFactory connectionFactory, ILogger<UserController> logger)
     {
         _userService = userService;
         _connectionFactory = connectionFactory;
+        _logger = logger;
     }
 
     /// <summary>
@@ -48,8 +50,9 @@ public class UserController : ControllerBase
         {
             return Results.BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao cadastrar usuário");
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }
@@ -99,8 +102,9 @@ public class UserController : ControllerBase
                 geradoEm = DateTime.UtcNow
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao obter dados do usuário {Cpf}", cpf);
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }
@@ -133,7 +137,7 @@ public class UserController : ControllerBase
                 });
 
             // Anonimização (não deleção física) — mantém histórico financeiro para obrigações legais
-            await conn.ExecuteAsync(
+            var linhasAfetadas = await conn.ExecuteAsync(
                 @"UPDATE Usuarios
                   SET Nome     = 'Usuário Removido',
                       Email    = CONCAT('removido_', Cpf, '@anonimizado.local'),
@@ -146,6 +150,12 @@ public class UserController : ControllerBase
                   WHERE Cpf = @Cpf",
                 new { Cpf = cpf });
 
+            if (linhasAfetadas == 0)
+            {
+                _logger.LogWarning("LGPD anonimização: nenhuma linha afetada para CPF {Cpf}", cpf);
+                return Results.NotFound(new { mensagem = "Usuário não encontrado." });
+            }
+
             // Invalida todos os refresh tokens do usuário
             await conn.ExecuteAsync(
                 "UPDATE RefreshTokens SET RevokedAt = GETUTCDATE() WHERE UsuarioCpf = @Cpf AND RevokedAt IS NULL",
@@ -153,8 +163,9 @@ public class UserController : ControllerBase
 
             return Results.Ok(new { mensagem = "Seus dados pessoais foram anonimizados conforme a LGPD. O histórico financeiro é mantido por obrigação legal." });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao excluir conta do usuário {Cpf}", cpf);
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }

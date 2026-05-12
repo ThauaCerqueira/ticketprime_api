@@ -14,11 +14,13 @@ public class AvaliacaoController : ControllerBase
 {
     private readonly AvaliacaoService _avaliacaoService;
     private readonly IAvaliacaoRepository _avaliacaoRepo;
+    private readonly ILogger<AvaliacaoController> _logger;
 
-    public AvaliacaoController(AvaliacaoService avaliacaoService, IAvaliacaoRepository avaliacaoRepo)
+    public AvaliacaoController(AvaliacaoService avaliacaoService, IAvaliacaoRepository avaliacaoRepo, ILogger<AvaliacaoController> logger)
     {
         _avaliacaoService = avaliacaoService;
         _avaliacaoRepo = avaliacaoRepo;
+        _logger = logger;
     }
 
     /// <summary>
@@ -57,8 +59,9 @@ public class AvaliacaoController : ControllerBase
         {
             return Results.BadRequest(new { mensagem = ex.Message });
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao registrar avaliação no evento {EventoId}", eventoId);
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }

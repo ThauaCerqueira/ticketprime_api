@@ -12,10 +12,12 @@ namespace src.Controllers;
 public class CouponController : ControllerBase
 {
     private readonly CouponService _couponService;
+    private readonly ILogger<CouponController> _logger;
 
-    public CouponController(CouponService couponService)
+    public CouponController(CouponService couponService, ILogger<CouponController> logger)
     {
         _couponService = couponService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -42,8 +44,9 @@ public class CouponController : ControllerBase
         {
             return Results.Conflict(new { mensagem = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao criar cupôm {Codigo}", dto.Codigo);
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }

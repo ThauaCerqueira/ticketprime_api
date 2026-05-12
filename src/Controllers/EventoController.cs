@@ -15,12 +15,14 @@ public class EventController : ControllerBase
     private readonly EventService _eventService;
     private readonly IEventoRepository _eventoRepository;
     private readonly IStorageService _storage;
+    private readonly ILogger<EventController> _logger;
 
-    public EventController(EventService eventService, IEventoRepository eventoRepository, IStorageService storage)
+    public EventController(EventService eventService, IEventoRepository eventoRepository, IStorageService storage, ILogger<EventController> logger)
     {
         _eventService = eventService;
         _eventoRepository = eventoRepository;
         _storage = storage;
+        _logger = logger;
     }
 
     /// <summary>
@@ -48,8 +50,9 @@ public class EventController : ControllerBase
         {
             return Results.BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao criar evento");
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }
@@ -198,8 +201,9 @@ public class EventController : ControllerBase
         {
             return Results.BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao publicar evento {EventoId}", id);
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }
@@ -221,8 +225,9 @@ public class EventController : ControllerBase
         {
             return Results.BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao excluir evento {EventoId}", id);
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }
@@ -244,8 +249,9 @@ public class EventController : ControllerBase
         {
             return Results.BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao cancelar evento {EventoId}", id);
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }
@@ -267,8 +273,9 @@ public class EventController : ControllerBase
         {
             return Results.BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao notificar alteração do evento {EventoId}", id);
             return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
         }
     }
@@ -305,8 +312,9 @@ public class EventController : ControllerBase
         {
             return Results.BadRequest(new { mensagem = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro inesperado ao fazer upload de imagem do evento {EventoId}", id);
             return Results.Json(new { mensagem = "Erro interno ao salvar a imagem." }, statusCode: 500);
         }
     }
