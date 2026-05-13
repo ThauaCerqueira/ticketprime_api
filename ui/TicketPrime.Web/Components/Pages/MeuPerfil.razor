@@ -653,8 +653,8 @@
         erroEventos = null;
         try
         {
-            eventos = await Http.GetFromJsonAsync<List<TicketEvent>>("api/eventos");
-            eventos ??= new List<TicketEvent>();
+            var result = await Http.GetFromJsonAsync<PaginatedResult<TicketEvent>>("api/eventos");
+            eventos = result?.Itens ?? [];
         }
         catch (HttpRequestException)
         {
@@ -678,29 +678,28 @@
         erroReservas = null;
         try
         {
-            if (string.IsNullOrEmpty(Session.Cpf))
+            var response = await Http.GetAsync("api/reservas");
+            if (response.IsSuccessStatusCode)
             {
-                erroReservas = "Sessao sem CPF. Faca login novamente.";
+                reservas = await response.Content.ReadFromJsonAsync<List<ReservationDetailDto>>();
+                reservas ??= new List<ReservationDetailDto>();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // API retorna 404 quando não há ingressos — tratar como lista vazia
                 reservas = new List<ReservationDetailDto>();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                // Token expirado — redireciona para login
+                await Session.DeslogarAsync();
+                Navigation.NavigateTo("/login");
+                return;
             }
             else
             {
-                var response = await Http.GetAsync($"api/reservas/{Session.Cpf}");
-                if (response.IsSuccessStatusCode)
-                {
-                    reservas = await response.Content.ReadFromJsonAsync<List<ReservationDetailDto>>();
-                    reservas ??= new List<ReservationDetailDto>();
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    // API retorna 404 quando não há ingressos — tratar como lista vazia
-                    reservas = new List<ReservationDetailDto>();
-                }
-                else
-                {
-                    erroReservas = $"Erro ao carregar ingressos (código {(int)response.StatusCode}).";
-                    reservas = new List<ReservationDetailDto>();
-                }
+                erroReservas = $"Erro ao carregar ingressos (código {(int)response.StatusCode}).";
+                reservas = new List<ReservationDetailDto>();
             }
         }
         catch (HttpRequestException)

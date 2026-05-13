@@ -28,6 +28,15 @@ public class SessionService
     public bool EstaLogado => !string.IsNullOrEmpty(Token);
     public bool EhAdmin => Perfil == "ADMIN";
 
+    /// <summary>
+    /// Indica que o usuário está autenticado com senha temporária e DEVE trocar a senha
+    /// antes de acessar qualquer outra funcionalidade.
+    /// </summary>
+    public bool DeveTrocarSenha { get; private set; }
+
+    public void MarcarSenhaTemporaria() => DeveTrocarSenha = true;
+    public void LimparSenhaTemporaria() => DeveTrocarSenha = false;
+
     public event Action? OnChange;
 
     public SessionService(ProtectedLocalStorage protectedStorage, IHttpClientFactory httpClientFactory)
@@ -73,6 +82,10 @@ public class SessionService
                     Cpf    = userInfo.Cpf;
                     Nome   = userInfo.Nome;
                     Perfil = userInfo.Perfil;
+
+                    // Mantém a flag de senha temporária mesmo após F5
+                    if (result.SenhaTemporaria)
+                        DeveTrocarSenha = true;
 
                     if (!string.IsNullOrEmpty(result.RefreshToken))
                         await _protectedStorage.SetAsync(KeyRefreshToken, result.RefreshToken);
@@ -190,5 +203,6 @@ public class SessionService
         public string Token        { get; set; } = "";
         public string RefreshToken { get; set; } = "";
         public int ExpiresInMinutes { get; set; }
+        public bool SenhaTemporaria { get; set; } = false;
     }
 }

@@ -294,6 +294,7 @@
 
             if (response.IsSuccessStatusCode)
             {
+                Session.LimparSenhaTemporaria();
                 sucesso = true;
                 await Task.Delay(1500);
                 Navigation.NavigateTo("/eventos");

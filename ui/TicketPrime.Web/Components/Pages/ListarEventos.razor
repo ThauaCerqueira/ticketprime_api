@@ -466,7 +466,9 @@
 
         try
         {
-            var result = await Http.GetFromJsonAsync<PaginatedResult<TicketEvent>>("api/eventos");
+            // Admin vê todos os eventos (incluindo rascunhos); cliente vê apenas publicados
+            var url = Session.EhAdmin ? "api/eventos" : "api/eventos/disponiveis";
+            var result = await Http.GetFromJsonAsync<PaginatedResult<TicketEvent>>(url);
             eventos = result?.Itens ?? [];
         }
         catch (HttpRequestException)

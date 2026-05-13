@@ -120,7 +120,8 @@ public class AuthService
         {
             Token = novoToken,
             RefreshToken = novoRefreshToken,
-            ExpiresInMinutes = expireMinutes
+            ExpiresInMinutes = expireMinutes,
+            SenhaTemporaria = usuario.SenhaTemporaria
         };
     }
 

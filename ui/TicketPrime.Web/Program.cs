@@ -78,19 +78,41 @@ builder.Services.AddHttpClient("TicketPrimeApi", client =>
 {
     // ════════════════════════════════════════════════════════════
     //  RETRY POLICY — tentativas com backoff exponencial
+    //  429 (TooManyRequests) NÃO é retentado: re-tentar esgota
+    //  imediatamente a cota e dispara o circuit breaker.
     // ════════════════════════════════════════════════════════════
     options.Retry.MaxRetryAttempts = 3;
     options.Retry.Delay = TimeSpan.FromMilliseconds(400);
     options.Retry.BackoffType = Polly.DelayBackoffType.Exponential;
     options.Retry.UseJitter = true; // evita thundering herd
+    options.Retry.ShouldHandle = static args =>
+    {
+        if (args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            return ValueTask.FromResult(false); // não retentar 429
+        if (args.Outcome.Exception != null)
+            return ValueTask.FromResult(true);
+        var code = (int?)args.Outcome.Result?.StatusCode;
+        return ValueTask.FromResult(code >= 500 || code == 408);
+    };
 
     // ════════════════════════════════════════════════════════════
     //  CIRCUIT BREAKER — desarma rapidamente se API estiver fora
+    //  429 não conta como falha: é throttling intencional, não
+    //  indisponibilidade de serviço.
     // ════════════════════════════════════════════════════════════
     options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
     options.CircuitBreaker.FailureRatio = 0.5;
     options.CircuitBreaker.MinimumThroughput = 8;
     options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(15);
+    options.CircuitBreaker.ShouldHandle = static args =>
+    {
+        if (args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            return ValueTask.FromResult(false); // 429 não dispara o circuit breaker
+        if (args.Outcome.Exception != null)
+            return ValueTask.FromResult(true);
+        var code = (int?)args.Outcome.Result?.StatusCode;
+        return ValueTask.FromResult(code >= 500 || code == 408);
+    };
 
     // ════════════════════════════════════════════════════════════
     //  TIMEOUT — limite total por requisição

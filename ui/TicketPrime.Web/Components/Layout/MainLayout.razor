@@ -1,6 +1,8 @@
 ﻿@inherits LayoutComponentBase
 @inject TicketPrime.Web.Services.SessionService Session
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
+@implements IDisposable
 <div class="app-layout">
     <NavMenu />
     <main class="app-main">
@@ -32,7 +34,30 @@
         {
             await Session.CarregarAsync();
             await InitThemeAsync();
+            GuardarSenhaTemporaria();
+            Session.OnChange += OnSessionChanged;
         }
+    }
+
+    private void GuardarSenhaTemporaria()
+    {
+        if (Session.DeveTrocarSenha && Session.EstaLogado)
+        {
+            var uri = new Uri(Navigation.Uri);
+            if (!uri.AbsolutePath.Equals("/trocar-senha", StringComparison.OrdinalIgnoreCase))
+                Navigation.NavigateTo("/trocar-senha");
+        }
+    }
+
+    private void OnSessionChanged()
+    {
+        GuardarSenhaTemporaria();
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Session.OnChange -= OnSessionChanged;
     }
 
     private async Task InitThemeAsync()

@@ -99,6 +99,7 @@
 
                     if (resultado.SenhaTemporaria)
                     {
+                        Session.MarcarSenhaTemporaria();
                         Navigation.NavigateTo("/trocar-senha");
                     }
                     else
