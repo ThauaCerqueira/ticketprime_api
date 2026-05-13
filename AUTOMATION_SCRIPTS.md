@@ -96,10 +96,12 @@ $env:DB_PASSWORD = "TicketPrime@2024!"
 
 ## 🔐 Credenciais de Teste
 
-| Campo | Valor |
-|-------|-------|
-| CPF | `00000000000` |
-| Senha | `admin123` |
+| Perfil | Campo | Valor |
+|--------|-------|-------|
+| 👑 Administrador | CPF | `00000000191` |
+| 👑 Administrador | Senha | `admin123` (temporária — trocar no 1º login) |
+| 🧑 Cliente teste | CPF | `66301020022` |
+| 🧑 Cliente teste | Senha | `Test@1234` |
 
 ---
 

@@ -65,8 +65,8 @@ Write-Host "   🔌 API Swagger:   http://localhost:5164/swagger" @green
 Write-Host "   💾 SQL Server:    localhost:1433" @green
 Write-Host ""
 Write-Host "🧪 Credenciais de Teste:" @yellow
-Write-Host "   CPF: 00000000000" @green
-Write-Host "   Senha: admin123" @green
+Write-Host "   👑 Admin:    CPF 00000000191 / senha admin123 (temporária)" @green
+Write-Host "   🧑 Cliente:  CPF 66301020022 / senha Test@1234" @green
 Write-Host ""
 Write-Host "⚠️  Para encerrar tudo, execute: .\start.ps1 -Kill" @red
 Write-Host ""

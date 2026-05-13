@@ -68,12 +68,19 @@ builder.Services.AddSingleton<HealthCheckService>();
 // HTTP Client for API calls with JWT authentication and retry policy
 var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5164";
 builder.Services.AddScoped<AuthHttpClientHandler>();
+
+// "TicketPrimeApi" — pipeline Polly apenas (sem AuthHttpClientHandler).
+// O handler de autenticação é adicionado manualmente no AddScoped abaixo para
+// garantir que ele resolva a SessionService do escopo correto do circuito Blazor.
+// Se AddHttpMessageHandler<AuthHttpClientHandler>() fosse usado aqui, o
+// IHttpClientFactory criaria o handler num scope interno diferente do circuito,
+// fazendo SessionService.Token ser sempre null e todas as chamadas autenticadas
+// falharem com 401.
 builder.Services.AddHttpClient("TicketPrimeApi", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
 })
-.AddHttpMessageHandler<AuthHttpClientHandler>()
 .AddStandardResilienceHandler(options =>
 {
     // ════════════════════════════════════════════════════════════
@@ -119,8 +126,24 @@ builder.Services.AddHttpClient("TicketPrimeApi", client =>
     // ════════════════════════════════════════════════════════════
     options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
 });
+
+// Cria o HttpClient com AuthHttpClientHandler resolvido do escopo do circuito Blazor
+// (não do escopo interno do IHttpClientFactory), garantindo que Token seja sempre atual.
+// IHttpMessageHandlerFactory.CreateHandler retorna o pipeline Polly já configurado acima.
 builder.Services.AddScoped(sp =>
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("TicketPrimeApi"));
+{
+    var sessionService = sp.GetRequiredService<SessionService>();
+    var authHandler = new AuthHttpClientHandler(sessionService)
+    {
+        InnerHandler = sp.GetRequiredService<IHttpMessageHandlerFactory>()
+                          .CreateHandler("TicketPrimeApi")
+    };
+    return new HttpClient(authHandler, disposeHandler: false)
+    {
+        BaseAddress = new Uri(apiBaseUrl),
+        Timeout = TimeSpan.FromSeconds(30)
+    };
+});
 
 // CupomService — serviço frontend que chama API REST de cupons
 builder.Services.AddScoped<CupomService>();
