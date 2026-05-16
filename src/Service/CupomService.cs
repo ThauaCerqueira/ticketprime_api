@@ -31,8 +31,8 @@ public class CupomService
         // Validação conforme o tipo de desconto
         if (dto.TipoDesconto == DiscountType.Percentual)
         {
-            if (dto.PorcentagemDesconto < 1 || dto.PorcentagemDesconto > 100)
-                throw new ArgumentException("Desconto percentual deve ser entre 1 e 100.");
+            if (dto.PorcentagemDesconto < 1 || dto.PorcentagemDesconto >= 100)
+                throw new ArgumentException("Desconto percentual deve ser entre 1 e 99.");
         }
         else if (dto.TipoDesconto == DiscountType.ValorFixo)
         {

@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Distributed;
 using src.DTOs;
 using src.Infrastructure.IRepository;
+using src.Service;
 using System.Text;
+using System.Text.Json;
 
 namespace src.Controllers;
 
@@ -17,29 +19,46 @@ public class AdminController : ControllerBase
     private readonly IReservaRepository _reservaRepo;
     private readonly ICupomRepository _cupomRepo;
     private readonly IUsuarioRepository _usuarioRepo;
+    private readonly IDistributedCache _cache;
+    private readonly AuditLogService _auditLog;
+
+    private static readonly JsonSerializerOptions _jsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     public AdminController(
         IEventoRepository eventoRepo,
         IReservaRepository reservaRepo,
         ICupomRepository cupomRepo,
-        IUsuarioRepository usuarioRepo)
+        IUsuarioRepository usuarioRepo,
+        IDistributedCache cache,
+        AuditLogService auditLog)
     {
         _eventoRepo = eventoRepo;
         _reservaRepo = reservaRepo;
         _cupomRepo = cupomRepo;
         _usuarioRepo = usuarioRepo;
+        _cache = cache;
+        _auditLog = auditLog;
     }
 
     /// <summary>
-    /// Dashboard admin resumido (cards) — com cache de 2 minutos.
+    /// Dashboard admin resumido (cards) — com cache distribuído de 2 minutos.
     /// </summary>
     [HttpGet("dashboard")]
     [Authorize(Roles = "ADMIN")]
-    public async Task<IResult> Dashboard([FromServices] IMemoryCache cache)
+    public async Task<IResult> Dashboard()
     {
         const string cacheKey = "admin_dashboard";
-        if (cache.TryGetValue(cacheKey, out object? cached))
-            return Results.Ok(cached);
+
+        var cachedBytes = await _cache.GetAsync(cacheKey);
+        if (cachedBytes != null)
+        {
+            var cached = JsonSerializer.Deserialize<object>(cachedBytes, _jsonOpts);
+            if (cached != null)
+                return Results.Ok(cached);
+        }
 
         var eventos = (await _eventoRepo.ObterTodosAsync()).Itens.ToList();
         var cupons  = (await _cupomRepo.ListarAsync()).ToList();
@@ -56,20 +75,45 @@ public class AdminController : ControllerBase
             receitaTotal      = receitaTotal,
         };
 
-        cache.Set(cacheKey, result, TimeSpan.FromMinutes(2));
+        var serialized = JsonSerializer.SerializeToUtf8Bytes(result, _jsonOpts);
+        var options = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2)
+        };
+        await _cache.SetAsync(cacheKey, serialized, options);
+
+        // Audit
+        var adminCpf = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        await _auditLog.LogCustomAsync(
+            actionType: "AdminDashboard",
+            usuarioCpf: adminCpf,
+            eventoId: null,
+            reservaId: null,
+            valorTransacionado: null,
+            ipAddress: ip,
+            userAgent: HttpContext.Request.Headers.UserAgent.FirstOrDefault(),
+            detalhes: new { endpoint = "dashboard" });
+
         return Results.Ok(result);
     }
 
     /// <summary>
-    /// Dashboard completo com gráficos — cache 2 min.
+    /// Dashboard completo com gráficos — cache distribuído 2 min.
     /// </summary>
     [HttpGet("dashboard/completo")]
     [Authorize(Roles = "ADMIN")]
-    public async Task<IResult> DashboardCompleto([FromServices] IMemoryCache cache)
+    public async Task<IResult> DashboardCompleto()
     {
         const string cacheKey = "admin_dashboard_completo";
-        if (cache.TryGetValue(cacheKey, out object? cached))
-            return Results.Ok(cached);
+
+        var cachedBytes = await _cache.GetAsync(cacheKey);
+        if (cachedBytes != null)
+        {
+            var cached = JsonSerializer.Deserialize<DashboardCompletoDTO>(cachedBytes, _jsonOpts);
+            if (cached != null)
+                return Results.Ok(cached);
+        }
 
         var eventos = (await _eventoRepo.ObterTodosAsync()).Itens.ToList();
         var cupons  = (await _cupomRepo.ListarAsync()).ToList();
@@ -101,7 +145,26 @@ public class AdminController : ControllerBase
             DemandaPorLocal     = demandaPorLocal,
         };
 
-        cache.Set(cacheKey, completo, TimeSpan.FromMinutes(2));
+        var serialized = JsonSerializer.SerializeToUtf8Bytes(completo, _jsonOpts);
+        var options = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2)
+        };
+        await _cache.SetAsync(cacheKey, serialized, options);
+
+        // Audit
+        var adminCpf = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        await _auditLog.LogCustomAsync(
+            actionType: "AdminDashboardCompleto",
+            usuarioCpf: adminCpf,
+            eventoId: null,
+            reservaId: null,
+            valorTransacionado: null,
+            ipAddress: ip,
+            userAgent: HttpContext.Request.Headers.UserAgent.FirstOrDefault(),
+            detalhes: new { endpoint = "dashboard/completo" });
+
         return Results.Ok(completo);
     }
 
@@ -170,6 +233,20 @@ public class AdminController : ControllerBase
         }
 
         var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+
+        // Audit
+        var adminCpf = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        await _auditLog.LogCustomAsync(
+            actionType: "AdminExportarCSV",
+            usuarioCpf: adminCpf,
+            eventoId: null,
+            reservaId: null,
+            valorTransacionado: null,
+            ipAddress: ip,
+            userAgent: HttpContext.Request.Headers.UserAgent.FirstOrDefault(),
+            detalhes: new { endpoint = "relatorio-financeiro/csv", periodo = new { inicio, fim } });
+
         return Results.File(bytes, "text/csv; charset=utf-8", $"relatorio-financeiro-{DateTime.UtcNow:yyyyMMdd}.csv");
     }
 
@@ -262,6 +339,20 @@ public class AdminController : ControllerBase
         html.AppendLine("</body></html>");
 
         var bytes = Encoding.UTF8.GetBytes(html.ToString());
+
+        // Audit
+        var adminCpf = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        await _auditLog.LogCustomAsync(
+            actionType: "AdminExportarPDF",
+            usuarioCpf: adminCpf,
+            eventoId: null,
+            reservaId: null,
+            valorTransacionado: null,
+            ipAddress: ip,
+            userAgent: HttpContext.Request.Headers.UserAgent.FirstOrDefault(),
+            detalhes: new { endpoint = "relatorio-financeiro/pdf", periodo = new { inicio, fim } });
+
         return Results.File(bytes, "text/html", $"relatorio-financeiro-{DateTime.UtcNow:yyyyMMdd}.html");
     }
 
@@ -300,6 +391,20 @@ public class AdminController : ControllerBase
 
         var bytes = Encoding.UTF8.GetBytes(csv.ToString());
         var nomeArquivo = $"participantes-evento-{id}-{DateTime.UtcNow:yyyyMMdd}.csv";
+
+        // Audit
+        var adminCpf = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        await _auditLog.LogCustomAsync(
+            actionType: "AdminExportarParticipantes",
+            usuarioCpf: adminCpf,
+            eventoId: id,
+            reservaId: null,
+            valorTransacionado: null,
+            ipAddress: ip,
+            userAgent: HttpContext.Request.Headers.UserAgent.FirstOrDefault(),
+            detalhes: new { endpoint = "eventos/{id}/participantes.csv" });
+
         return Results.File(bytes, "text/csv; charset=utf-8", nomeArquivo);
     }
 

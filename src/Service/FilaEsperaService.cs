@@ -14,7 +14,6 @@ public class WaitingQueueService : IWaitingQueueService
     private readonly IFilaEsperaRepository _filaEsperaRepository;
     private readonly IEventoRepository _eventoRepository;
     private readonly IUsuarioRepository _usuarioRepository;
-    private readonly IReservaRepository _reservaRepository;
     private readonly EmailTemplateService _emailTemplate;
     private readonly ILogger<WaitingQueueService> _logger;
 
@@ -22,14 +21,12 @@ public class WaitingQueueService : IWaitingQueueService
         IFilaEsperaRepository filaEsperaRepository,
         IEventoRepository eventoRepository,
         IUsuarioRepository usuarioRepository,
-        IReservaRepository reservaRepository,
         EmailTemplateService emailTemplate,
         ILogger<WaitingQueueService> logger)
     {
         _filaEsperaRepository = filaEsperaRepository;
         _eventoRepository = eventoRepository;
         _usuarioRepository = usuarioRepository;
-        _reservaRepository = reservaRepository;
         _emailTemplate = emailTemplate;
         _logger = logger;
     }
@@ -50,10 +47,9 @@ public class WaitingQueueService : IWaitingQueueService
         if (evento.DataEvento <= DateTime.Now)
             throw new InvalidOperationException("Este evento já aconteceu.");
 
-        // Verifica se o evento está realmente lotado
-        var vagasOcupadas = await _reservaRepository.ContarReservasPorEventoAsync(eventoId);
-        var vagasRestantes = evento.CapacidadeTotal - vagasOcupadas;
-        if (vagasRestantes > 0)
+        // Verifica se o evento está realmente lotado usando CapacidadeRestante
+        // (mantido transacionalmente no banco — decrementado na compra, incrementado no cancelamento)
+        if (evento.CapacidadeRestante > 0)
             throw new InvalidOperationException("Ainda há vagas disponíveis para este evento. Compre seu ingresso!");
 
         // Verifica se o usuário já está na fila

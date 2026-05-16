@@ -145,6 +145,13 @@ public partial class EventoCreate : IAsyncDisposable
     // ─────────────────────────────────────────────────────────────────────────
     // Ciclo de vida
     // ─────────────────────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.CarregarAsync();
+        if (!Session.EhAdmin)
+            Navigation.NavigateTo("/", replace: true);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;

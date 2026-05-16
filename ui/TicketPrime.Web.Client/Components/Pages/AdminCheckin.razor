@@ -3,6 +3,7 @@
 @using TicketPrime.Web.Shared.Models
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject TicketPrime.Web.Client.Services.SessionService Session
 
 <PageTitle>Check-in - TicketPrime Admin</PageTitle>
 
@@ -65,6 +66,13 @@
     private bool processando;
     private bool checkinValido;
     private CheckinData? dadosIngresso;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.CarregarAsync();
+        if (!Session.EhAdmin)
+            Navigation.NavigateTo("/", replace: true);
+    }
 
     private async void HandleKeyDown(KeyboardEventArgs e)
     {

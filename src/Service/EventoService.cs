@@ -54,6 +54,9 @@ public class EventoService
         if (dto.TaxaServico < 0)
             throw new ArgumentException("A taxa de serviço não pode ser negativa.");
 
+        if (dto.DataTermino.HasValue && dto.DataTermino.Value <= dto.DataEvento)
+            throw new ArgumentException("A data de término deve ser posterior à data de início do evento.");
+
         var novoEvento = new TicketEvent(
             dto.Nome,
             dto.CapacidadeTotal,

@@ -3,6 +3,7 @@
 @using TicketPrime.Web.Shared.Models
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject TicketPrime.Web.Client.Services.SessionService Session
 
 <PageTitle>Meia-Entrada - Admin TicketPrime</PageTitle>
 
@@ -107,7 +108,16 @@
     private int mostrarRejeitar = -1;
     private string motivoRejeicao = "";
 
-    protected override async Task OnInitializedAsync() => await CarregarDocumentos();
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.CarregarAsync();
+        if (!Session.EhAdmin)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+        await CarregarDocumentos();
+    }
 
     private async Task CarregarDocumentos()
     {
