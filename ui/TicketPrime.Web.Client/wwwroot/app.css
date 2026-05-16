@@ -1,0 +1,439 @@
+/* ── Estilos Globais TicketPrime ────────────────────────────────────────── */
+/* Tema Claro (padrão) */
+:root {
+    /* Primária */
+    --tp-primary: #5B5BD6;
+    --tp-primary-hover: #4949c4;
+    --tp-primary-light: #F0F0FF;
+
+    /* Fundos */
+    --tp-bg-page: #F8FAFC;
+    --tp-bg-card: #ffffff;
+    --tp-bg-input: #ffffff;
+
+    /* Texto */
+    --tp-text-heading: #1a1a2e;
+    --tp-text-body: #374151;
+    --tp-text-muted: #6B7280;
+    --tp-text-light: #9CA3AF;
+
+    /* Bordas */
+    --tp-border: #E5E7EB;
+    --tp-border-card: #F1F5F9;
+
+    /* Alertas */
+    --tp-error-bg: #FEE2E2;
+    --tp-error-text: #991B1B;
+    --tp-success-bg: #D1FAE5;
+    --tp-success-text: #065F46;
+
+    /* Sombras */
+    --tp-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.04);
+    --tp-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --tp-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --tp-navbar-bg: rgba(255, 255, 255, 0.92);
+    --tp-navbar-border: rgba(91, 91, 214, 0.08);
+}
+
+/* Tema Escuro */
+[data-theme="dark"] {
+    --tp-primary: #7C7CF0;
+    --tp-primary-hover: #6666E0;
+    --tp-primary-light: #2D2D6B;
+
+    --tp-bg-page: #0F0F1A;
+    --tp-bg-card: #1A1A2E;
+    --tp-bg-input: #1E1E38;
+
+    --tp-text-heading: #E8E8F0;
+    --tp-text-body: #C4C4D0;
+    --tp-text-muted: #8888A0;
+    --tp-text-light: #6B6B80;
+
+    --tp-border: #2D2D4A;
+    --tp-border-card: #252540;
+
+    --tp-error-bg: #3B1A1A;
+    --tp-error-text: #FCA5A5;
+    --tp-success-bg: #1A3B2A;
+    --tp-success-text: #86EFAC;
+
+    --tp-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.2);
+    --tp-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+    --tp-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --tp-navbar-bg: rgba(15, 15, 26, 0.94);
+    --tp-navbar-border: rgba(124, 124, 240, 0.12);
+}
+
+html, body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: var(--tp-bg-page);
+    color: var(--tp-text-body);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+/* ── Tipografia ──────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--tp-text-heading);
+    font-weight: 700;
+}
+
+a {
+    color: var(--tp-primary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: var(--tp-primary-hover);
+    text-decoration: underline;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────── */
+.card {
+    border-radius: 18px;
+    padding: 1.5rem;
+    background: var(--tp-bg-card);
+    border: 1.5px solid var(--tp-border-card);
+    box-shadow: var(--tp-shadow-sm);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--tp-shadow-md);
+}
+
+/* ── Botões ──────────────────────────────────────────────────────────── */
+.btn-primary-tp {
+    padding: 0.65rem 1.8rem;
+    background: var(--tp-primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.btn-primary-tp:hover {
+    background: var(--tp-primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-primary-tp:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-outline-tp {
+    padding: 0.65rem 1.4rem;
+    background: transparent;
+    color: var(--tp-primary);
+    border: 1.5px solid var(--tp-primary);
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+.btn-outline-tp:hover {
+    background: var(--tp-primary-light);
+}
+
+.btn-outline-tp:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────────── */
+.input-tp {
+    width: 100%;
+    padding: 0.68rem 0.9rem;
+    border: 1.5px solid var(--tp-border);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    color: var(--tp-text-heading);
+    background: var(--tp-bg-input);
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-tp:focus {
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px rgba(91, 91, 214, 0.1);
+}
+
+.input-tp::placeholder {
+    color: var(--tp-text-light);
+}
+
+.select-tp {
+    width: 100%;
+    padding: 0.68rem 0.9rem;
+    border: 1.5px solid var(--tp-border);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    color: var(--tp-text-heading);
+    background: var(--tp-bg-input);
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.select-tp:focus {
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px rgba(91, 91, 214, 0.1);
+}
+
+/* ── Alertas ─────────────────────────────────────────────────────────── */
+.alert-tp {
+    padding: 0.85rem 1.1rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.alert-tp-error {
+    background: var(--tp-error-bg);
+    color: var(--tp-error-text);
+}
+
+.alert-tp-success {
+    background: var(--tp-success-bg);
+    color: var(--tp-success-text);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--tp-bg-page);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #D1D5DB;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9CA3AF;
+}
+
+/* ── Utilitários ─────────────────────────────────────────────────────── */
+.text-muted {
+    color: var(--tp-text-muted) !important;
+}
+
+.validation-message {
+    color: #DC2626;
+    font-size: 0.78rem;
+    margin-top: 0.25rem;
+}
+
+/* ── Dev Warning Banner (SimulatedPaymentGateway) ──────────────── */
+.dev-warning-banner {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+    border-bottom: 2px solid #F59E0B;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    color: #92400E;
+}
+
+.dev-warning-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.dev-warning-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.dev-warning-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.dev-warning-text strong {
+    font-weight: 700;
+}
+
+.dev-warning-text span {
+    font-size: 0.78rem;
+    opacity: 0.9;
+}
+
+.dev-warning-close {
+    background: none;
+    border: none;
+    color: #92400E;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.dev-warning-close:hover {
+    opacity: 1;
+    background: rgba(146, 64, 14, 0.1);
+}
+
+/* Tema escuro */
+[data-theme="dark"] .dev-warning-banner {
+    background: linear-gradient(135deg, #3B2F0A 0%, #4A3B0E 100%);
+    border-bottom-color: #B45309;
+    color: #FDE68A;
+}
+
+[data-theme="dark"] .dev-warning-close {
+    color: #FDE68A;
+}
+
+[data-theme="dark"] .dev-warning-close:hover {
+    background: rgba(253, 230, 138, 0.1);
+}
+
+/* ── Tema escuro automático (detecta preferência do sistema) ──────── */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --tp-primary: #7C7CF0;
+        --tp-primary-hover: #6666E0;
+        --tp-primary-light: #2D2D6B;
+        --tp-bg-page: #0F0F1A;
+        --tp-bg-card: #1A1A2E;
+        --tp-bg-input: #1E1E38;
+        --tp-text-heading: #E8E8F0;
+        --tp-text-body: #C4C4D0;
+        --tp-text-muted: #8888A0;
+        --tp-text-light: #6B6B80;
+        --tp-border: #2D2D4A;
+        --tp-border-card: #252540;
+        --tp-error-bg: #3B1A1A;
+        --tp-error-text: #FCA5A5;
+        --tp-success-bg: #1A3B2A;
+        --tp-success-text: #86EFAC;
+        --tp-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.2);
+        --tp-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+        --tp-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+        --tp-navbar-bg: rgba(15, 15, 26, 0.94);
+        --tp-navbar-border: rgba(124, 124, 240, 0.12);
+    }
+}
+
+/* ── PWA: estilos para instalável e offline ───────────────────────── */
+.pwa-install-banner {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 9998;
+    background: var(--tp-bg-card);
+    border: 1.5px solid var(--tp-border);
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--tp-shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 360px;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.pwa-install-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--tp-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.pwa-install-text h4 {
+    margin: 0 0 0.2rem 0;
+    font-size: 0.9rem;
+}
+
+.pwa-install-text p {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--tp-text-muted);
+}
+
+.pwa-install-btn {
+    padding: 0.4rem 0.9rem;
+    background: var(--tp-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+.pwa-install-btn:hover {
+    background: var(--tp-primary-hover);
+}
+
+.pwa-install-close {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: none;
+    border: none;
+    color: var(--tp-text-muted);
+    cursor: pointer;
+    padding: 0.2rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.pwa-install-close:hover {
+    opacity: 1;
+}

@@ -1,0 +1,119 @@
+@page "/admin/checkin"
+@using System.Net.Http.Json
+@using TicketPrime.Web.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Check-in - TicketPrime Admin</PageTitle>
+
+<div class="dash-wrapper">
+    <div class="dash-header">
+        <div>
+            <h2>✅ Check-in de Ingressos</h2>
+            <p>Validação e entrada física de participantes</p>
+        </div>
+    </div>
+
+    <div style="background:var(--tp-bg-card);border-radius:18px;border:1.5px solid var(--tp-border-card);padding:2rem;max-width:600px;margin:0 auto;">
+        <div style="text-align:center;margin-bottom:1.5rem;">
+            <div style="font-size:2.5rem;margin-bottom:0.5rem;">🎟️</div>
+            <h3 style="margin-bottom:0.3rem;">Escaneie ou digite o código</h3>
+            <p style="color:var(--tp-text-muted);font-size:0.85rem;">
+                Insira o código do ingresso para validar a entrada
+            </p>
+        </div>
+
+        <div class="login-input-wrapper" style="margin-bottom:1rem;">
+            <input class="login-input"
+                   type="text"
+                   @bind="codigoIngresso"
+                   placeholder="Código do ingresso"
+                   @onkeydown="HandleKeyDown" />
+        </div>
+
+        <button class="login-btn" @onclick="ValidarIngresso" disabled="@processando">
+            @(processando ? "Validando..." : "🔍 Validar Ingresso")
+        </button>
+
+        @if (!string.IsNullOrEmpty(resultado))
+        {
+            <div style="margin-top:1.5rem;padding:1.5rem;border-radius:12px;border:2px solid;@(checkinValido ? "background:#ECFDF5;border-color:#059669;color:#065F46;" : "background:#FEF2F2;border-color:#DC2626;color:#991B1B;")">
+                <div style="font-size:2rem;text-align:center;margin-bottom:0.5rem;">
+                    @(checkinValido ? "✅" : "❌")
+                </div>
+                <h4 style="text-align:center;margin-bottom:0.5rem;">
+                    @(checkinValido ? "Check-in Realizado!" : "Ingresso Inválido")
+                </h4>
+                <p style="text-align:center;font-size:0.9rem;">@resultado</p>
+                @if (dadosIngresso != null)
+                {
+                    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(0,0,0,0.1);font-size:0.85rem;">
+                        <div><strong>Evento:</strong> @dadosIngresso.Nome</div>
+                        <div><strong>Data:</strong> @dadosIngresso.DataEvento.ToString("dd/MM/yyyy HH:mm")</div>
+                        <div><strong>Local:</strong> @dadosIngresso.Local</div>
+                        <div><strong>Setor:</strong> @dadosIngresso.TicketTypeNome</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string codigoIngresso = "";
+    private string resultado = "";
+    private bool processando;
+    private bool checkinValido;
+    private CheckinData? dadosIngresso;
+
+    private async void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await ValidarIngresso();
+    }
+
+    private async Task ValidarIngresso()
+    {
+        if (string.IsNullOrWhiteSpace(codigoIngresso)) return;
+        processando = true;
+        resultado = "";
+        dadosIngresso = null;
+        try
+        {
+            var response = await Http.GetAsync($"api/ingressos/{codigoIngresso.Trim()}/validar");
+            var content = await response.Content.ReadFromJsonAsync<CheckinResponse>();
+            if (content != null)
+            {
+                checkinValido = content.Valido;
+                resultado = content.Mensagem;
+                if (content.Valido) codigoIngresso = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            checkinValido = false;
+            resultado = $"Erro: {ex.Message}";
+        }
+        finally
+        {
+            processando = false;
+        }
+    }
+
+    public class CheckinResponse
+    {
+        public bool Valido { get; set; }
+        public string? Mensagem { get; set; }
+        public int? ReservaId { get; set; }
+        public string? Status { get; set; }
+        public CheckinData? Data { get; set; }
+    }
+
+    public class CheckinData
+    {
+        public string? Nome { get; set; }
+        public DateTime DataEvento { get; set; }
+        public string? Local { get; set; }
+        public string? TicketTypeNome { get; set; }
+    }
+}

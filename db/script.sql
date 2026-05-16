@@ -247,7 +247,18 @@ GO
 -- ─── Cria o usuário admin padrão ─────────────────────────────────────────────
 
 -- Cria o usuário admin padrão
--- IMPORTANTE: altere a senha imediatamente após o primeiro acesso!
+-- ═══════════════════════════════════════════════════════════════════
+-- SEGURANÇA: A senha abaixo é TEMPORÁRIA e conhecida publicamente.
+--   O AdminSecurityService na inicialização da aplicação irá:
+--   1. DETECTAR que a senha é a padrão
+--   2. GERAR uma nova senha aleatória de 16 caracteres
+--   3. LOGAR a nova senha no console para o administrador
+--   4. Em PRODUÇÃO, BLOQUEAR endpoints admin até a troca
+--
+--   A senha 'admin123' NUNCA deve ser usada em produção.
+--   Consulte os logs da aplicação após o primeiro deploy
+--   para obter a senha gerada automaticamente.
+-- ═══════════════════════════════════════════════════════════════════
 -- CPF padrão: 00000000191 — troque por um CPF real antes de ir a produção.
 IF NOT EXISTS (SELECT * FROM Usuarios WHERE Cpf = '00000000191')
 BEGIN
@@ -974,6 +985,18 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns
     ALTER TABLE [dbo].[Reservas] ADD [DataEstorno] DATETIME2(7) NULL;
 GO
 
+-- Reservas: status de pagamento (ex: 'approved', 'pending', 'rejected', 'refunded')
+IF NOT EXISTS (SELECT 1 FROM sys.columns
+               WHERE object_id = OBJECT_ID(N'dbo.Reservas') AND name = 'StatusPagamento')
+    ALTER TABLE [dbo].[Reservas] ADD [StatusPagamento] NVARCHAR(30) NULL;
+GO
+
+-- Reservas: chave de idempotência para evitar cobrança duplicada no gateway
+IF NOT EXISTS (SELECT 1 FROM sys.columns
+               WHERE object_id = OBJECT_ID(N'dbo.Reservas') AND name = 'IdempotencyKey')
+    ALTER TABLE [dbo].[Reservas] ADD [IdempotencyKey] NVARCHAR(100) NULL;
+GO
+
 -- Eventos: URL de imagem de capa e categoria
 IF NOT EXISTS (SELECT 1 FROM sys.columns
                WHERE object_id = OBJECT_ID(N'dbo.Eventos') AND name = 'ImagemUrl')
@@ -1103,5 +1126,96 @@ BEGIN
         UPDATE [dbo].[Eventos] SET [CapacidadeRestante] = [CapacidadeTotal]
         WHERE [CapacidadeRestante] = 0;
     ';
+END
+GO
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- ÍNDICES RECOMENDADOS — Performance para consultas frequentes
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- Índice para filtragem de reservas por status (ativo/cancelado)
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'IX_Reservas_Status_DataCompra'
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_Reservas_Status_DataCompra]
+        ON [dbo].[Reservas]([Status])
+        INCLUDE ([DataCompra], [UsuarioCpf]);
+END
+GO
+
+-- Índice para listagem de eventos disponíveis (vitrine)
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'[dbo].[Eventos]') AND name = 'IX_Eventos_Status_DataEvento'
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_Eventos_Status_DataEvento]
+        ON [dbo].[Eventos]([Status], [DataEvento])
+        INCLUDE ([Id], [Nome], [CapacidadeRestante], [PrecoPadrao]);
+END
+GO
+
+-- Índice para validação de cupom na compra (expiração e limite de usos)
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'[dbo].[Cupons]') AND name = 'IX_Cupons_Expiracao'
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_Cupons_Expiracao]
+        ON [dbo].[Cupons]([DataExpiracao], [TotalUsado], [LimiteUsos])
+        INCLUDE ([PorcentagemDesconto], [ValorMinimoRegra]);
+END
+GO
+
+-- Índice para trilha de auditoria por usuário
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'[dbo].[AuditLog]') AND name = 'IX_AuditLog_UsuarioCpf_Timestamp'
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_AuditLog_UsuarioCpf_Timestamp]
+        ON [dbo].[AuditLog]([UsuarioCpf], [Timestamp] DESC)
+        INCLUDE ([ActionType]);
+END
+GO
+
+-- Índice para busca de usuário verificado por email
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'[dbo].[Usuarios]') AND name = 'IX_Usuarios_Email_Verificado'
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_Usuarios_Email_Verificado]
+        ON [dbo].[Usuarios]([Email])
+        WHERE [EmailVerificado] = 1;
+END
+GO
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- FAVORITOS / WISHLIST — Eventos favoritados pelo usuário
+-- ═══════════════════════════════════════════════════════════════════════════════
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Favoritos]') AND type = N'U')
+BEGIN
+    CREATE TABLE [dbo].[Favoritos] (
+        [Id]             INT           IDENTITY (1, 1) NOT NULL,
+        [UsuarioCpf]     CHAR(11)      NOT NULL,
+        [EventoId]       INT           NOT NULL,
+        [DataFavoritado] DATETIME2 (7) NOT NULL DEFAULT GETUTCDATE(),
+
+        CONSTRAINT [PK_Favoritos] PRIMARY KEY CLUSTERED ([Id] ASC),
+        CONSTRAINT [FK_Favoritos_Usuarios] FOREIGN KEY ([UsuarioCpf]) REFERENCES [Usuarios]([Cpf]),
+        CONSTRAINT [FK_Favoritos_Eventos]  FOREIGN KEY ([EventoId])   REFERENCES [Eventos]([Id]) ON DELETE CASCADE,
+        CONSTRAINT [UQ_Favoritos_Usuario_Evento] UNIQUE ([UsuarioCpf], [EventoId])
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'[dbo].[Favoritos]') AND name = 'IX_Favoritos_UsuarioCpf')
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_Favoritos_UsuarioCpf]
+        ON [dbo].[Favoritos]([UsuarioCpf] ASC)
+        INCLUDE ([EventoId], [DataFavoritado]);
 END
 GO

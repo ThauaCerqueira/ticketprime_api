@@ -1,0 +1,29 @@
+@page "/Error"
+@inject IJSRuntime JS
+
+<PageTitle>Erro — TicketPrime</PageTitle>
+
+<div class="error-container" style="text-align: center; padding: 4rem 2rem;">
+    <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="@Size.Large" Color="@Color.Error" />
+    <h3 style="margin-top: 1.5rem;">Ocorreu um erro inesperado</h3>
+    <p style="color: #888; margin-top: 0.5rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+        Desculpe pelo inconveniente. Nossa equipe foi notificada e estamos trabalhando para resolver o problema.
+    </p>
+    <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+        <MudButton Variant="@Variant.Filled" Color="@Color.Primary"
+                   @onclick="@RecarregarPagina">
+            Tentar novamente
+        </MudButton>
+        <MudButton Variant="@Variant.Outlined" Color="@Color.Secondary"
+                   href="/">
+            Voltar para o início
+        </MudButton>
+    </div>
+</div>
+
+@code {
+    private async Task RecarregarPagina()
+    {
+        await JS.InvokeVoidAsync("location.reload");
+    }
+}

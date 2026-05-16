@@ -1,0 +1,279 @@
+@page "/"
+@layout EmptyLayout
+@using System.Net.Http.Json
+@using TicketPrime.Web.Client.Services
+@using TicketPrime.Web.Client.Components.Layout
+@inject HttpClient Http
+@inject SessionService Session
+@inject NavigationManager Navigation
+
+@* ── SEO / Open Graph ──────────────────────────────────────────────── *@
+<SeoMetaTags Title="TicketPrime - Sua plataforma de ingressos online"
+             Description="Compre ingressos com segurança, gerencie suas reservas e aproveite os melhores eventos com a TicketPrime. Plataforma de ingressos online."
+             PageUrl="@Navigation.Uri" />
+
+<nav class="hp-navbar">
+    <a class="hp-nav-logo" href="/">
+        <div class="hp-nav-logo-icon">
+            <svg viewBox="0 0 24 24" role="img" aria-label="Logotipo TicketPrime"><path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a2 2 0 0 0 0 4v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0 0-4zM12 17.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0-7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+        </div>
+        <span class="hp-nav-logo-name">TicketPrime</span>
+    </a>
+
+    <!-- Desktop links -->
+    <div class="hp-nav-links">
+        @if (Session.EstaLogado)
+        {
+            <button class="hp-nav-user" @onclick='() => Navigation.NavigateTo("/eventos")'>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Eventos
+            </button>
+            <button class="hp-nav-user" @onclick='() => Navigation.NavigateTo("/perfil")'>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+                @Session.Nome
+            </button>
+        }
+        else
+        {
+            <a class="hp-nav-link" href="/login">Entrar</a>
+            <a class="hp-nav-btn" href="/cadastro-user">Criar conta</a>
+        }
+    </div>
+
+    <!-- Mobile hamburger -->
+    <button class="hp-nav-hamburger @(menuMobileAberto ? "open" : "")"
+            @onclick="ToggleMenuMobile"
+            aria-label="@(menuMobileAberto ? "Fechar menu" : "Abrir menu")"
+            aria-expanded="@menuMobileAberto">
+        <span></span><span></span><span></span>
+    </button>
+
+    @if (menuMobileAberto)
+    {
+        <div class="hp-nav-mobile-menu" role="menu">
+            @if (Session.EstaLogado)
+            {
+                <button class="hp-nav-mobile-item" @onclick='() => NavMobile("/eventos")' role="menuitem">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Eventos
+                </button>
+                <button class="hp-nav-mobile-item" @onclick='() => NavMobile("/perfil")' role="menuitem">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    @Session.Nome
+                </button>
+            }
+            else
+            {
+                <button class="hp-nav-mobile-item hp-nav-mobile-item-primary" @onclick='() => NavMobile("/cadastro-user")' role="menuitem">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                    Criar conta grátis
+                </button>
+                <div class="hp-nav-mobile-divider"></div>
+                <button class="hp-nav-mobile-item" @onclick='() => NavMobile("/login")' role="menuitem">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                    Já tenho conta
+                </button>
+            }
+        </div>
+    }
+</nav>
+
+
+<section class="hp-hero">
+    <div class="hp-hero-blob1"></div>
+    <div class="hp-hero-blob2"></div>
+
+    <div class="hp-badge">
+        <div class="hp-badge-dot"></div>
+        Plataforma de ingressos online
+    </div>
+
+    <h1 class="hp-hero-title">
+        Seus eventos favoritos,<br/>
+        <span>na palma da mão</span>
+    </h1>
+
+    <p class="hp-hero-desc">
+        Compre ingressos com segurança, gerencie suas reservas e aproveite os melhores eventos com a TicketPrime.
+    </p>
+
+    <div class="hp-hero-btns">
+        @if (Session.EstaLogado)
+        {
+            <button class="hp-hero-btn-main" @onclick='() => Navigation.NavigateTo("/eventos")'>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" aria-hidden="true" focusable="false">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Ver Eventos
+            </button>
+            <button class="hp-hero-btn-sec" @onclick='() => Navigation.NavigateTo("/perfil")'>
+                @(Session.EhAdmin ? "Meus Eventos" : "Meus Ingressos")
+            </button>
+        }
+        else
+        {
+            <button class="hp-hero-btn-main" @onclick='() => Navigation.NavigateTo("/cadastro-user")'>
+                Começar agora — é grátis
+            </button>
+            <button class="hp-hero-btn-sec" @onclick='() => Navigation.NavigateTo("/login")'>
+                Já tenho conta
+            </button>
+        }
+    </div>
+
+    <div class="hp-stats">
+        @if (stats != null)
+        {
+            <div class="hp-stat">
+                <div class="hp-stat-num">@(stats.TotalEventosPublicados > 0 ? stats.TotalEventosPublicados + "+" : stats.TotalEventosPublicados.ToString())</div>
+                <div class="hp-stat-label">Eventos ativos</div>
+            </div>
+            <div class="hp-stat-divider"></div>
+            <div class="hp-stat">
+                <div class="hp-stat-num">@FormatIngressos(stats.TotalIngressosVendidos)</div>
+                <div class="hp-stat-label">Ingressos vendidos</div>
+            </div>
+            <div class="hp-stat-divider"></div>
+            <div class="hp-stat">
+                <div class="hp-stat-num">@(stats.TotalUsuarios > 0 ? stats.TotalUsuarios + "+" : stats.TotalUsuarios.ToString())</div>
+                <div class="hp-stat-label">Usuários cadastrados</div>
+            </div>
+        }
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="hp-features">
+    <div class="hp-section-tag">Por que escolher a TicketPrime?</div>
+    <h2 class="hp-section-title">Tudo que você precisa em um só lugar</h2>
+    <p class="hp-section-desc">Simples, rápido e seguro para compradores e organizadores de eventos.</p>
+
+    <div class="hp-feature-grid">
+        <div class="hp-feature-card">
+            <div class="hp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <div class="hp-feature-title">Compra segura</div>
+            <div class="hp-feature-desc">Seus dados e pagamentos protegidos com autenticação e criptografia de ponta a ponta.</div>
+        </div>
+
+        <div class="hp-feature-card">
+            <div class="hp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+            </div>
+            <div class="hp-feature-title">Gestão de eventos</div>
+            <div class="hp-feature-desc">Crie e gerencie eventos com controle total de capacidade, preços e disponibilidade.</div>
+        </div>
+
+        <div class="hp-feature-card">
+            <div class="hp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+                </svg>
+            </div>
+            <div class="hp-feature-title">Cupons de desconto</div>
+            <div class="hp-feature-desc">Aplique cupons exclusivos e aproveite promoções especiais nos eventos disponíveis.</div>
+        </div>
+
+        <div class="hp-feature-card">
+            <div class="hp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+            </div>
+            <div class="hp-feature-title">Perfil completo</div>
+            <div class="hp-feature-desc">Acompanhe todos os seus ingressos, histórico de compras e gerencie suas reservas.</div>
+        </div>
+
+        <div class="hp-feature-card">
+            <div class="hp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                </svg>
+            </div>
+            <div class="hp-feature-title">Vagas em tempo real</div>
+            <div class="hp-feature-desc">Capacidade atualizada instantaneamente a cada compra, sem risco de superlotação.</div>
+        </div>
+
+        <div class="hp-feature-card">
+            <div class="hp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+            </div>
+            <div class="hp-feature-title">Cancelamento fácil</div>
+            <div class="hp-feature-desc">Precisa cancelar? Devolva seu ingresso com um clique e a vaga volta automaticamente.</div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="hp-cta">
+    <h2>Pronto para o próximo evento?</h2>
+    <p>Crie sua conta agora e garanta seus ingressos em segundos.</p>
+    @if (!Session.EstaLogado)
+    {
+        <button class="hp-cta-btn" @onclick='() => Navigation.NavigateTo("/cadastro-user")'>
+            Criar conta grátis
+        </button>
+    }
+    else
+    {
+        <button class="hp-cta-btn" @onclick='() => Navigation.NavigateTo("/eventos")'>
+            Ver eventos disponíveis
+        </button>
+    }
+</section>
+
+<!-- FOOTER -->
+<footer class="hp-footer">
+    © 2026 <span>TicketPrime</span> — Todos os direitos reservados.
+</footer>
+
+@code {
+    private HomeStatsDTO? stats;
+    private bool menuMobileAberto = false;
+
+    private void ToggleMenuMobile() => menuMobileAberto = !menuMobileAberto;
+
+    private void NavMobile(string url)
+    {
+        menuMobileAberto = false;
+        Navigation.NavigateTo(url);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            stats = await Http.GetFromJsonAsync<HomeStatsDTO>("api/public/stats");
+            // Hide stats block when platform is empty (all zeros = no data to show)
+            if (stats != null &&
+                stats.TotalEventosPublicados == 0 &&
+                stats.TotalIngressosVendidos == 0 &&
+                stats.TotalUsuarios == 0)
+            {
+                stats = null;
+            }
+        }
+        catch
+        {
+            stats = null; // Don't show zero stats on API failure
+        }
+    }
+
+    private static string FormatIngressos(int value)
+    {
+        if (value == 0) return "0";
+        if (value >= 1000) return $"{value / 1000}k+";
+        return $"{value}+";
+    }
+}

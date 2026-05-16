@@ -1,0 +1,31 @@
+﻿@page "/not-found"
+@layout EmptyLayout
+@inject NavigationManager NavigationManager
+
+<div class="not-found-container" style="text-align: center; padding: 4rem 2rem;">
+    <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="@Size.Large" Color="@Color.Warning" />
+    <h3 style="margin-top: 1.5rem;">Página não encontrada</h3>
+    <p style="color: #888; margin-top: 0.5rem;">
+        Desculpe, o conteúdo que você está procurando não existe ou foi removido.
+    </p>
+    <MudButton Variant="@Variant.Filled" Color="@Color.Primary"
+               href="/" style="margin-top: 1.5rem;">
+        Voltar para o início
+    </MudButton>
+</div>
+
+@* ── Página offline (para PWA) ───────────────────────────────────────── *@
+@* Compartilha o mesmo layout da página 404 para consistência visual. *@
+
+@code {
+    // Suporta dois modos: /not-found (erro 404) e /offline (PWA sem conexão)
+    [Parameter]
+    public bool IsOffline { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // Se a URL contém /offline, configura para modo offline
+        var uri = NavigationManager.Uri;
+        IsOffline = uri.Contains("/offline", StringComparison.OrdinalIgnoreCase);
+    }
+}

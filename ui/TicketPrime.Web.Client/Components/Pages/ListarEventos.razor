@@ -1,0 +1,601 @@
+@page "/eventos"
+@using TicketPrime.Web.Client.Services
+@using TicketPrime.Web.Shared.Models
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject SessionService Session
+@inject NavigationManager Navigation
+<PageTitle>Eventos - TicketPrime</PageTitle>
+
+<style>
+    .ev-wrapper {
+        min-height: 100vh;
+        background: var(--tp-bg-page);
+        padding: 2rem;
+    }
+
+    .ev-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .ev-header-left h2 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--tp-text-heading);
+        margin: 0 0 0.2rem 0;
+    }
+
+    .ev-header-left p {
+        font-size: 0.875rem;
+        color: var(--tp-text-muted);
+        margin: 0;
+    }
+
+    .ev-btn-new {
+        padding: 0.65rem 1.4rem;
+        background: var(--tp-primary);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: background 0.2s, transform 0.15s;
+    }
+
+    .ev-btn-new:hover { background: var(--tp-primary-hover); transform: translateY(-1px); color: white; }
+
+    .ev-alert {
+        padding: 0.9rem 1.2rem;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .ev-alert-success { background: var(--tp-success-bg); color: var(--tp-success-text); }
+    .ev-alert-error { background: var(--tp-error-bg); color: var(--tp-error-text); }
+
+    .ev-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.2rem;
+    }
+
+    .ev-card {
+        background: var(--tp-bg-card);
+        border-radius: 18px;
+        overflow: hidden;
+        border: 1.5px solid var(--tp-border-card);
+        box-shadow: var(--tp-shadow-sm);
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ev-card-img {
+        width: 100%;
+        height: 160px;
+        object-fit: cover;
+        display: block;
+        background: var(--tp-border-card);
+    }
+
+    .ev-card-img-placeholder {
+        width: 100%;
+        height: 160px;
+        background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--tp-primary);
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .ev-card-body {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        flex: 1;
+    }
+
+    .ev-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px color-mix(in srgb, var(--tp-primary) 10%, transparent);
+    }
+
+    .ev-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .ev-card-name {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--tp-text-heading);
+        line-height: 1.3;
+    }
+
+    .ev-badge {
+        padding: 0.25rem 0.7rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .ev-badge-available { background: var(--tp-success-bg); color: var(--tp-success-text); }
+    .ev-badge-sold { background: var(--tp-error-bg); color: var(--tp-error-text); }
+    .ev-badge-draft { background: #FEF3C7; color: #B45309; }
+    .ev-badge-published { background: var(--tp-success-bg); color: var(--tp-success-text); }
+    .ev-badge-canceled { background: var(--tp-error-bg); color: var(--tp-error-text); }
+
+    .ev-card-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .ev-card-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--tp-text-muted);
+    }
+
+    .ev-card-row svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    .ev-card-price {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: var(--tp-primary);
+    }
+
+    .ev-card-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: auto;
+    }
+
+    .ev-btn-buy {
+        flex: 1;
+        padding: 0.7rem;
+        background: var(--tp-primary);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+
+    .ev-btn-buy:hover { background: var(--tp-primary-hover); transform: translateY(-1px); }
+    .ev-btn-buy:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .ev-btn-login {
+        width: 100%;
+        padding: 0.7rem;
+        background: transparent;
+        color: var(--tp-primary);
+        border: 2px solid var(--tp-primary);
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        text-decoration: none;
+        display: block;
+        text-align: center;
+    }
+
+    .ev-btn-login:hover { background: color-mix(in srgb, var(--tp-primary) 10%, transparent); color: var(--tp-primary); }
+
+    .ev-btn-sold {
+        width: 100%;
+        padding: 0.7rem;
+        background: var(--tp-border-card);
+        color: var(--tp-text-light);
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: not-allowed;
+    }
+
+    .ev-btn-publish {
+        padding: 0.7rem;
+        background: #059669;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.3rem;
+        white-space: nowrap;
+    }
+
+    .ev-btn-publish:hover { background: #047857; }
+    .ev-btn-publish:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .ev-empty {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--tp-text-light);
+    }
+
+    .ev-empty svg { width: 48px; height: 48px; margin-bottom: 1rem; }
+    .ev-empty h3 { font-size: 1.1rem; font-weight: 600; color: var(--tp-text-body); margin-bottom: 0.4rem; }
+
+    .ev-loading {
+        text-align: center;
+        padding: 4rem;
+        color: var(--tp-text-muted);
+    }
+
+    .ev-spinner {
+        width: 36px; height: 36px;
+        border: 3px solid var(--tp-border);
+        border-top-color: var(--tp-primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    [data-theme="dark"] .ev-card-img-placeholder {
+        background: linear-gradient(135deg, #1a1a3a 0%, #2d1b2e 100%);
+    }
+
+    [data-theme="dark"] .ev-badge-draft {
+        background: #3B3520;
+        color: #FDE68A;
+    }
+</style>
+
+<div class="ev-wrapper">
+    <div class="ev-header">
+        <div class="ev-header-left">
+            <h2>Eventos disponíveis</h2>
+            <p>Encontre e compre ingressos para os melhores eventos</p>
+        </div>
+        @if (Session.EhAdmin)
+        {
+            <a href="/eventos/criar-seguro" class="ev-btn-new">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" aria-hidden="true" focusable="false">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Novo Evento
+            </a>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div class="ev-alert @(mensagem.Contains("sucesso") ? "ev-alert-success" : "ev-alert-error")">
+            @mensagem
+        </div>
+    }
+
+    @if (carregando)
+    {
+        <div class="ev-loading">
+            <div class="ev-spinner"></div>
+            <p>Carregando eventos...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(mensagemErro))
+    {
+        <div class="ev-alert ev-alert-error">@mensagemErro</div>
+    }
+    else if (eventos == null || !eventos.Any())
+    {
+        <div class="ev-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <h3>Nenhum evento disponível</h3>
+            <p>Novos eventos serão adicionados em breve.</p>
+        </div>
+    }
+    else
+    {
+        <div class="ev-grid">
+            @foreach (var evento in eventos)
+            {
+                var statusClass = evento.Status switch
+                {
+                    "Publicado" => "ev-badge-published",
+                    "Rascunho" => "ev-badge-draft",
+                    "Cancelado" => "ev-badge-canceled",
+                    "Encerrado" => "ev-badge-sold",
+                    _ => "ev-badge-available"
+                };
+
+                <div class="ev-card">
+                    @if (!string.IsNullOrEmpty(evento.FotoThumbnailBase64))
+                    {
+                        <img class="ev-card-img"
+                             src="data:image/jpeg;base64,@evento.FotoThumbnailBase64"
+                             alt="@evento.Nome" loading="lazy" />
+                    }
+                    else
+                    {
+                        <div class="ev-card-img-placeholder">
+                            🎵
+                        </div>
+                    }
+                    <div class="ev-card-body">
+                    <div class="ev-card-top">
+                        <div class="ev-card-name">@evento.Nome</div>
+                        <span class="ev-badge @statusClass">
+                            @evento.Status
+                        </span>
+                    </div>
+
+                    <div class="ev-card-info">
+                        <div class="ev-card-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            @evento.DataEvento.ToString("dd/MM/yyyy 'às' HH:mm")
+                        </div>
+                        <div class="ev-card-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                            </svg>
+                            @evento.CapacidadeTotal vagas no total
+                        </div>
+                        <div class="ev-card-price">@evento.PrecoPadrao.ToString("C")</div>
+                    </div>
+
+                    <div class="ev-card-actions">
+                        @if (Session.EhAdmin && evento.Status == "Rascunho")
+                        {
+                            <button class="ev-btn-publish"
+                                    @onclick="() => Publicar(evento.Id)"
+                                    disabled="@(publicando && eventoPublicandoId == evento.Id)">
+                                @if (publicando && eventoPublicandoId == evento.Id)
+                                {
+                                    <div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                                    <span>Publicando...</span>
+                                }
+                                else
+                                {
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" aria-hidden="true" focusable="false">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                    <span>Publicar</span>
+                                }
+                            </button>
+                        }
+                        @if (evento.CapacidadeTotal <= 0)
+                        {
+                            <button class="ev-btn-sold" disabled>Esgotado</button>
+                        }
+                        else if (!Session.EstaLogado)
+                        {
+                            <a href="/login" class="ev-btn-login">Entrar para comprar</a>
+                        }
+                        else if (!Session.EhAdmin)
+                        {
+                            <button class="ev-btn-buy" @onclick="() => Comprar(evento.Id)" disabled="@(comprando && eventoSelecionado == evento.Id)">
+                                @if (comprando && eventoSelecionado == evento.Id)
+                                {
+                                    <div style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                                    <span>Comprando...</span>
+                                }
+                                else
+                                {
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" aria-hidden="true" focusable="false">
+                                        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
+                                    </svg>
+                                    <span>Comprar ingresso</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<TicketEvent>? eventos;
+    private string mensagem = "";
+    private string? mensagemErro;
+    private bool carregando = true;
+    private bool comprando = false;
+    private int eventoSelecionado = 0;
+    private bool publicando = false;
+    private int eventoPublicandoId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Carregamento feito em OnAfterRenderAsync para evitar conflito com prerendering
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (!Session.EstaLogado)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await CarregarEventos();
+        StateHasChanged();
+    }
+
+    private async Task CarregarEventos()
+    {
+        carregando = true;
+        mensagemErro = null;
+
+        try
+        {
+            // Admin vê todos os eventos (incluindo rascunhos); cliente vê apenas publicados
+            var url = Session.EhAdmin ? "api/eventos" : "api/eventos/disponiveis";
+            var result = await Http.GetFromJsonAsync<PaginatedResult<TicketEvent>>(url);
+            eventos = result?.Itens ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            mensagemErro = "Erro de conexão com o servidor. Verifique se a API está rodando.";
+        }
+        catch (TaskCanceledException)
+        {
+            mensagemErro = "A requisição excedeu o tempo limite. Tente novamente.";
+        }
+        catch (Exception ex)
+        {
+            mensagemErro = $"Erro ao carregar eventos: {ex.Message}";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task Comprar(int eventoId)
+    {
+        if (!Session.EstaLogado) { Navigation.NavigateTo("/login"); return; }
+        comprando = true; eventoSelecionado = eventoId; mensagem = "";
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/reservas", new { EventoId = eventoId });
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensagem = "Ingresso comprado com sucesso!";
+                await CarregarEventos();
+            }
+            else
+            {
+                var statusCode = (int)response.StatusCode;
+                try
+                {
+                    var erro = await response.Content.ReadFromJsonAsync<ErroResponse>();
+                    var textoErro = erro?.Mensagem ?? "";
+
+                    if (statusCode == 401)
+                        mensagem = "Não autorizado. Faça login novamente.";
+                    else if (statusCode == 429)
+                        mensagem = "⏳ Muitas requisições. Aguarde um instante e tente novamente.";
+                    else if (textoErro.Contains("já aconteceu") || textoErro.Contains("já passou"))
+                        mensagem = "Evento já passou da data.";
+                    else if (textoErro.Contains("vagas"))
+                        mensagem = "Não há mais vagas disponíveis para este evento.";
+                    else
+                        mensagem = $" {textoErro}";
+                }
+                catch
+                {
+                    mensagem = statusCode switch
+                    {
+                        401 => "Não autorizado. Faça login novamente.",
+                        400 => "Dados inválidos para a compra.",
+                        429 => "⏳ Muitas requisições. Aguarde um instante e tente novamente.",
+                        _ => $"Erro ao comprar ingresso (código {statusCode}). Tente novamente."
+                    };
+                }
+            }
+        }
+        catch (HttpRequestException)
+        {
+            mensagem = "Erro de conexão com o servidor. Verifique sua conexão.";
+        }
+        catch (TaskCanceledException)
+        {
+            mensagem = "A requisição excedeu o tempo limite. Tente novamente.";
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"Erro inesperado: {ex.Message}";
+        }
+        finally { comprando = false; eventoSelecionado = 0; }
+    }
+
+    private async Task Publicar(int eventoId)
+    {
+        publicando = true;
+        eventoPublicandoId = eventoId;
+        mensagem = "";
+
+        try
+        {
+            var response = await Http.PutAsync($"api/eventos/{eventoId}/publicar", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensagem = "Evento publicado com sucesso! Agora está visível para compra.";
+                await CarregarEventos();
+            }
+            else
+            {
+                var statusCode = (int)response.StatusCode;
+                try
+                {
+                    var erro = await response.Content.ReadFromJsonAsync<ErroResponse>();
+                    mensagem = $"Erro ao publicar: {erro?.Mensagem ?? "Erro desconhecido"}";
+                }
+                catch
+                {
+                    mensagem = statusCode switch
+                    {
+                        400 => "Não foi possível publicar o evento.",
+                        404 => "Evento não encontrado.",
+                        _ => $"Erro ao publicar evento (código {statusCode})."
+                    };
+                }
+            }
+        }
+        catch (HttpRequestException)
+        {
+            mensagem = "Erro de conexão com o servidor.";
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"Erro inesperado: {ex.Message}";
+        }
+        finally { publicando = false; eventoPublicandoId = 0; }
+    }
+
+    private class ErroResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("mensagem")]
+        public string? Mensagem { get; set; }
+    }
+}

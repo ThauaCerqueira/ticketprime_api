@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TicketPrime - Sua plataforma de ingressos online</title>
+    <base href="/" />
+
+    <!-- ── PWA: Manifest e tema ────────────────────────────────────────── -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#5B5BD6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="TicketPrime" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+
+    <link rel="preload" id="webassembly" />
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="TicketPrime.Web.Client.styles.css" rel="stylesheet" />
+    <script type="importmap"></script>
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+
+    <!-- ── PWA: Service Worker ─────────────────────────────────────────── -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(function(registration) {
+                    console.log('[PWA] Service Worker registrado com sucesso:', registration.scope);
+                })
+                .catch(function(error) {
+                    console.log('[PWA] Falha ao registrar Service Worker:', error);
+                });
+        }
+    </script>
+
+    <!-- ── Tema escuro automático (detecta preferência do sistema) ─────── -->
+    <script>
+        (function() {
+            const stored = localStorage.getItem('tp-theme');
+            if (stored) {
+                document.documentElement.setAttribute('data-theme', stored);
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+
+            // Escuta mudanças de tema do sistema em tempo real
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                if (!localStorage.getItem('tp-theme')) {
+                    document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>

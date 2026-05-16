@@ -1,0 +1,97 @@
+@page "/organizador/{slug}"
+@using System.Net.Http.Json
+@using TicketPrime.Web.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Perfil do Organizador - TicketPrime</PageTitle>
+
+<div class="org-wrapper">
+    <a class="org-back" href="/vitrine">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Vitrine de eventos
+    </a>
+
+    @if (carregando)
+    {
+        <div style="text-align:center;padding:4rem;color:var(--tp-text-muted);">
+            <div style="width:36px;height:36px;border:3px solid var(--tp-border);border-top-color:var(--tp-primary);border-radius:50%;animation:org-spin 0.8s linear infinite;margin:0 auto 1rem;"></div>
+            Carregando perfil...
+        </div>
+    }
+    else if (erro != null)
+    {
+        <div style="background:var(--tp-error-bg);color:var(--tp-error-text);padding:1rem 1.5rem;border-radius:12px;font-size:0.9rem;">@erro</div>
+    }
+    else if (perfil != null)
+    {
+        <div class="org-card">
+            <div class="org-header">
+                <div class="org-avatar">@(perfil.Nome.Length > 0 ? perfil.Nome[0].ToString().ToUpper() : "?")</div>
+                <div class="org-name">@perfil.Nome</div>
+                <div class="org-sub">Organizador de eventos</div>
+            </div>
+            <div class="org-body">
+                <div class="org-section-title">Eventos publicados (@perfil.EventosPublicados.Count)</div>
+                @if (perfil.EventosPublicados.Count == 0)
+                {
+                    <div class="org-empty">Este organizador ainda não tem eventos publicados.</div>
+                }
+                else
+                {
+                    @foreach (var ev in perfil.EventosPublicados)
+                    {
+                        <a class="org-event-card" href="/evento/@ev.Id">
+                            <div class="org-event-icon">🎵</div>
+                            <div>
+                                <div class="org-event-name">@ev.Nome</div>
+                                <div class="org-event-meta">@ev.DataEvento.ToString("dd/MM/yyyy 'às' HH:mm") · @ev.Local</div>
+                            </div>
+                        </a>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    private bool carregando = true;
+    private string? erro;
+    private OrganizadorPerfilDto? perfil;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarPerfil();
+    }
+
+    private async Task CarregarPerfil()
+    {
+        carregando = true;
+        erro = null;
+        try
+        {
+            perfil = await Http.GetFromJsonAsync<OrganizadorPerfilDto>($"api/public/organizadores/{Slug}");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            erro = "Organizador não encontrado.";
+        }
+        catch
+        {
+            erro = "Erro ao carregar perfil do organizador.";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    // ⚠️ DTOs OrganizadorPerfilDto e EventoResumoDto foram movidos para TicketPrime.Web.Models (DtoModels.cs)
+    //    para evitar duplicação.
+}

@@ -1,0 +1,55 @@
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@inject ILogger<DevWarningBanner> Logger
+
+@* ── Aviso de ambiente de desenvolvimento ───────────────────────────── *@
+@* Mostra um banner no topo da página quando o sistema está rodando
+   em modo de desenvolvimento (SimulatedPaymentGateway ativo).
+
+   ═══════════════════════════════════════════════════════════════════
+   SEGURANÇA: Este banner serve como lembrete VISUAL de que o gateway
+   de pagamento não está processando pagamentos reais.
+
+   Em produção, com MercadoPago configurado, este banner desaparece
+   automaticamente (a condição !IsProduction é falsa).
+   ═══════════════════════════════════════════════════════════════════
+*@
+
+@if (MostrarAviso)
+{
+    <div class="dev-warning-banner" role="alert">
+        <div class="dev-warning-content">
+            <span class="dev-warning-icon">⚠️</span>
+            <div class="dev-warning-text">
+                <strong>Ambiente de Desenvolvimento</strong>
+                <span>Pagamentos estão sendo processados pelo <strong>SimulatedPaymentGateway</strong> — nenhum pagamento real é cobrado.</span>
+            </div>
+            <button class="dev-warning-close" @onclick="Fechar" aria-label="Fechar aviso">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _visible = true;
+
+    /// <summary>
+    /// Mostra o banner apenas em ambientes não-Production (Development, Staging, etc.)
+    /// porque em produção o MercadoPagoPaymentGateway deve estar configurado.
+    /// </summary>
+    private bool MostrarAviso =>
+        _visible &&
+        !string.Equals(
+            Configuration["ASPNETCORE_ENVIRONMENT"] ?? Configuration["Environment"] ?? "Production",
+            "Production",
+            StringComparison.OrdinalIgnoreCase);
+
+    private void Fechar()
+    {
+        _visible = false;
+        Logger.LogInformation("DevWarningBanner fechado pelo usuário.");
+    }
+}

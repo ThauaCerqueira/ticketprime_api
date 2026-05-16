@@ -1,0 +1,641 @@
+@page "/admin/dashboard"
+@using System.Net.Http.Json
+@using TicketPrime.Web.Client.Services
+@using TicketPrime.Web.Shared.Models
+@inject HttpClient Http
+@inject SessionService Session
+@inject NavigationManager Navigation
+<PageTitle>Dashboard Admin - TicketPrime</PageTitle>
+
+<div class="dash-wrapper">
+    <div class="dash-header">
+        <div>
+            <h2>📊 Dashboard Administrativo</h2>
+            <p>Visão completa da plataforma — métricas, vendas, cancelamentos e demanda</p>
+        </div>
+        <div class="actions-bar">
+            <button class="dash-link dash-link-sm dash-link-green" @onclick="ExportarCsv" disabled="@exportando">
+                📥 Exportar CSV
+            </button>
+            <button class="dash-link dash-link-sm dash-link-outline" @onclick="ExportarPdf" disabled="@exportando">
+                📄 Exportar HTML/PDF
+            </button>
+            <button class="dash-link dash-link-sm" @onclick="CarregarStats">
+                🔄 Atualizar
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(erro))
+    {
+        <div class="dash-alert dash-alert-error">@erro</div>
+    }
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div class="dash-alert dash-alert-info">@mensagem</div>
+    }
+
+    @if (carregando)
+    {
+        <div class="dash-grid">
+            @for (int i = 0; i < 6; i++) { <div class="dash-card"><div class="skeleton" style="height:1rem;width:60%;margin-bottom:0.5rem;"></div><div class="skeleton" style="height:2.5rem;width:40%;"></div></div> }
+        </div>
+        <div class="dash-section"><div class="skeleton" style="height:180px;"></div></div>
+    }
+    else if (stats != null)
+    {
+        @* ── Cards Resumo ───────────────────────────────────────── *@
+        <div class="dash-grid">
+            <div class="dash-card">
+                <div class="dash-card-label">📅 Total de Eventos</div>
+                <div class="dash-card-value">@stats.TotalEventos</div>
+                <div class="dash-card-sub">
+                    <span class="status-badge status-ok">@stats.EventosPublicados publicados</span>
+                    <span class="status-badge status-warn">@stats.EventosRascunho rascunhos</span>
+                </div>
+            </div>
+            <div class="dash-card accent-purple">
+                <div class="dash-card-label">🏷️ Cupons Ativos</div>
+                <div class="dash-card-value">@stats.TotalCupons</div>
+                <div class="dash-card-sub">@stats.RelatorioFinanceiro.CuponsUtilizados utilizados</div>
+            </div>
+            <div class="dash-card accent-green">
+                <div class="dash-card-label">👥 Usuários Cadastrados</div>
+                <div class="dash-card-value">@stats.TotalUsuarios</div>
+                <div class="dash-card-sub">total de contas na plataforma</div>
+            </div>
+            <div class="dash-card accent-orange">
+                <div class="dash-card-label">💰 Receita Total</div>
+                <div class="dash-card-value" style="font-size:1.4rem;">@stats.ReceitaTotal.ToString("C")</div>
+                <div class="dash-card-sub">@stats.RelatorioFinanceiro.TotalIngressosVendidos ingressos vendidos</div>
+            </div>
+            <div class="dash-card accent-red">
+                <div class="dash-card-label">📉 Cancelamentos</div>
+                <div class="dash-card-value" style="font-size:1.6rem;">@stats.CancelamentoStats.TaxaCancelamento.ToString("F1")%</div>
+                <div class="dash-card-sub">@stats.CancelamentoStats.TotalCanceladas de @stats.CancelamentoStats.TotalReservas reservas</div>
+            </div>
+            <div class="dash-card accent-purple">
+                <div class="dash-card-label">🎟️ Ticket Médio</div>
+                <div class="dash-card-value" style="font-size:1.4rem;">@stats.RelatorioFinanceiro.TicketMedio.ToString("C")</div>
+                <div class="dash-card-sub">valor médio por ingresso</div>
+            </div>
+        </div>
+
+        @* ── Gráfico de Vendas por Período ───────────────────── *@
+        <div class="dash-section">
+            <h3>📈 Vendas por Período <span class="badge">últimos 12 meses</span></h3>
+            @if (stats.VendasPorPeriodo.Count > 0)
+            {
+                var maxQtd = stats.VendasPorPeriodo.Max(v => v.Quantidade);
+                var maxRec = stats.VendasPorPeriodo.Max(v => v.Receita);
+                <div class="chart-legend">
+                    <div class="chart-legend-item"><div class="chart-legend-swatch" style="background:#5B5BD6;"></div> Ingressos</div>
+                    <div class="chart-legend-item"><div class="chart-legend-swatch" style="background:#059669;"></div> Receita</div>
+                </div>
+                <div class="bar-chart">
+                    @foreach (var v in stats.VendasPorPeriodo)
+                    {
+                        var alturaQtd = maxQtd > 0 ? Math.Max(4, (v.Quantidade * 160) / maxQtd) : 4;
+                        var alturaRec = maxRec > 0 ? Math.Max(4, (int)(v.Receita * 160 / maxRec)) : 4;
+                        <div class="bar-col" title="@v.Rotulo: @v.Quantidade ingressos, @v.Receita.ToString("C")">
+                            <div class="bar receita" style="height:@(alturaRec)px;margin-bottom:2px;"></div>
+                            <div class="bar" style="height:@(alturaQtd)px;"></div>
+                            <div class="bar-label">@v.Rotulo</div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p style="color:#9CA3AF;text-align:center;padding:2rem;">Nenhuma veda registrada nos últimos 12 meses.</p>
+            }
+        </div>
+
+        @* ── Dois painéis lado a lado ────────────────────────── *@
+        <div class="dash-cols">
+            @* Eventos Mais Vendidos ──────────────────────────── *@
+            <div class="dash-section">
+                <h3>🏆 Eventos Mais Vendidos <span class="badge">top 10</span></h3>
+                @if (stats.EventosMaisVendidos.Count > 0)
+                {
+                    <table class="dash-table">
+                        <thead>
+                            <tr>
+                                <th>Evento</th>
+                                <th>Data</th>
+                                <th style="text-align:center;">Ingressos</th>
+                                <th style="text-align:center;">Ocupação</th>
+                                <th style="text-align:right;">Receita</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ev in stats.EventosMaisVendidos)
+                            {
+                                <tr>
+                                    <td><strong>@ev.Nome</strong></td>
+                                    <td>@ev.DataEvento.ToString("dd/MM/yyyy")</td>
+                                    <td style="text-align:center;">@ev.IngressosVendidos / @ev.CapacidadeTotal</td>
+                                    <td style="text-align:center;min-width:100px;">
+                                        @ev.TaxaOcupacao.ToString("F1")%
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" style="width:@(Math.Min(ev.TaxaOcupacao,100))%;background:@(ev.TaxaOcupacao switch { >= 80 => "#059669", >= 50 => "#D97706", _ => "#6B7280" });"></div>
+                                        </div>
+                                    </td>
+                                    <td style="text-align:right;font-weight:600;">@ev.ReceitaGerada.ToString("C")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p style="color:#9CA3AF;text-align:center;padding:1rem;">Nenhum evento com vendas registradas.</p>
+                }
+            </div>
+
+            @* Demanda por Local (Mapa de Calor) ──────────────── *@
+            <div class="dash-section">
+                <h3>🔥 Mapa de Calor — Demanda por Local <span class="badge">intensidade</span></h3>
+                @if (stats.DemandaPorLocal.Count > 0)
+                {
+                    <div class="heatmap-grid">
+                        @foreach (var d in stats.DemandaPorLocal)
+                        {
+                            var heatClass = d.Intensidade switch
+                            {
+                                "Alta" => "heat-alta",
+                                "Média" => "heat-media",
+                                "Baixa" => "heat-baixa",
+                                _ => "heat-nenhuma"
+                            };
+                            <div class="heatmap-item @heatClass">
+                                <div class="local-name">@d.Local</div>
+                                <div class="local-metric">@d.IngressosVendidos ingressos</div>
+                                <div class="local-metric">@d.TotalEventos eventos · @d.ReceitaGerada.ToString("C")</div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p style="color:#9CA3AF;text-align:center;padding:1rem;">Nenhum dado de demanda por local.</p>
+                }
+            </div>
+        </div>
+
+        @* ── Cancelamento Stats ─────────────────────────────── *@
+        <div class="dash-section">
+            <h3>📊 Taxa de Cancelamento <span class="badge">análise</span></h3>
+            <div class="fin-summary">
+                <div class="fin-item">
+                    <div class="fin-label">Total Reservas</div>
+                    <div class="fin-value">@stats.CancelamentoStats.TotalReservas</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Ativas</div>
+                    <div class="fin-value positive">@stats.CancelamentoStats.TotalAtivas</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Usadas (check-in)</div>
+                    <div class="fin-value positive">@stats.CancelamentoStats.TotalUsadas</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Canceladas</div>
+                    <div class="fin-value negative">@stats.CancelamentoStats.TotalCanceladas</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Taxa de Cancelamento</div>
+                    <div class="fin-value @(stats.CancelamentoStats.TaxaCancelamento > 10 ? "negative" : "positive")">@stats.CancelamentoStats.TaxaCancelamento.ToString("F2")%</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Receita Perdida</div>
+                    <div class="fin-value negative">@stats.CancelamentoStats.ReceitaPerdidaCancelamentos.ToString("C")</div>
+                </div>
+            </div>
+            @* Mini barra de proporção *@
+            @{
+                var total = stats.CancelamentoStats.TotalReservas > 0 ? stats.CancelamentoStats.TotalReservas : 1;
+                var pAtiva = (stats.CancelamentoStats.TotalAtivas * 100.0) / total;
+                var pUsada = (stats.CancelamentoStats.TotalUsadas * 100.0) / total;
+                var pCancel = (stats.CancelamentoStats.TotalCanceladas * 100.0) / total;
+            }
+            <div style="display:flex;height:24px;border-radius:12px;overflow:hidden;margin-top:0.5rem;">
+                <div style="flex:@(pAtiva);background:#059669;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:600;color:white;min-width:fit-content;padding:0 0.5rem;">Ativas @(pAtiva.ToString("F0"))%</div>
+                <div style="flex:@(pUsada);background:#3B82F6;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:600;color:white;min-width:fit-content;padding:0 0.5rem;">Usadas @(pUsada.ToString("F0"))%</div>
+                <div style="flex:@(pCancel);background:#DC2626;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:600;color:white;min-width:fit-content;padding:0 0.5rem;">Canceladas @(pCancel.ToString("F0"))%</div>
+            </div>
+        </div>
+
+        @* ── Relatório Financeiro ───────────────────────────── *@
+        <div class="dash-section">
+            <h3>💵 Relatório Financeiro <span class="badge">últimos 12 meses</span></h3>
+            <div class="fin-summary">
+                <div class="fin-item">
+                    <div class="fin-label">Receita Bruta</div>
+                    <div class="fin-value">@stats.RelatorioFinanceiro.ReceitaBruta.ToString("C")</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Taxas de Serviço</div>
+                    <div class="fin-value negative">-@stats.RelatorioFinanceiro.TaxasServico.ToString("C")</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Seguros</div>
+                    <div class="fin-value negative">-@stats.RelatorioFinanceiro.SegurosContratados.ToString("C")</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Descontos</div>
+                    <div class="fin-value negative">-@stats.RelatorioFinanceiro.DescontosConcedidos.ToString("C")</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Receita Líquida</div>
+                    <div class="fin-value positive">@stats.RelatorioFinanceiro.ReceitaLiquida.ToString("C")</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Ticket Médio</div>
+                    <div class="fin-value">@stats.RelatorioFinanceiro.TicketMedio.ToString("C")</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Ingressos</div>
+                    <div class="fin-value">@stats.RelatorioFinanceiro.TotalIngressosVendidos</div>
+                </div>
+                <div class="fin-item">
+                    <div class="fin-label">Cupons Usados</div>
+                    <div class="fin-value">@stats.RelatorioFinanceiro.CuponsUtilizados</div>
+                </div>
+            </div>
+            <div class="actions-bar">
+                <button class="dash-link dash-link-sm dash-link-green" @onclick="ExportarCsv" disabled="@exportando">📥 Exportar CSV</button>
+                <button class="dash-link dash-link-sm dash-link-outline" @onclick="ExportarPdf" disabled="@exportando">📄 Exportar HTML (imprimir como PDF)</button>
+            </div>
+        </div>
+
+        @* ── Meia-entrada (Lei 12.933/2013) ─────────────────── *@
+        <div class="dash-section">
+            <h3>🎫 Verificação de Meia-entrada <span class="badge">Lei 12.933/2013</span></h3>
+            @if (carregandoMeiaEntrada)
+            {
+                <p style="color:#9CA3AF;">Carregando documentos pendentes...</p>
+            }
+            else if (meiaEntradaErro is not null)
+            {
+                <div class="dash-alert dash-alert-error">@meiaEntradaErro</div>
+            }
+            else if (documentosPendentes is null)
+            {
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <button class="dash-link dash-link-sm" @onclick="CarregarDocumentosMeiaEntrada">
+                        📄 Carregar documentos pendentes
+                    </button>
+                </div>
+            }
+            else if (documentosPendentes.Count == 0)
+            {
+                <p style="color:#059669;display:flex;align-items:center;gap:0.4rem;">
+                    ✅ Nenhum documento pendente de verificação.
+                </p>
+            }
+            else
+            {
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.8rem;">
+                    <span class="status-badge status-warn" style="font-size:0.85rem;padding:0.3rem 0.7rem;">
+                        ⏳ @documentosPendentes.Count pendente(s)
+                    </span>
+                    <button class="dash-link dash-link-sm" @onclick="CarregarDocumentosMeiaEntrada" style="font-size:0.78rem;">
+                        🔄 Atualizar
+                    </button>
+                </div>
+
+                @foreach (var doc in documentosPendentes)
+                {
+                    <div style="border:1px solid #E5E7EB;border-radius:8px;padding:0.8rem;margin-bottom:0.6rem;background:#FFFBEB;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">
+                            <div style="flex:1;min-width:200px;">
+                                <div style="font-weight:600;font-size:0.9rem;">@doc.UsuarioNome</div>
+                                <div style="font-size:0.78rem;color:#6B7280;">
+                                    CPF: @doc.UsuarioCpf · Evento: @doc.EventoNome
+                                </div>
+                                <div style="font-size:0.78rem;color:#6B7280;">
+                                    Arquivo: @doc.NomeOriginal (@FormatFileSize(doc.TamanhoBytes))
+                                </div>
+                                <div style="font-size:0.78rem;color:#6B7280;">
+                                    Enviado em: @doc.DataUpload.ToString("dd/MM/yyyy HH:mm")
+                                </div>
+                                @if (!string.IsNullOrEmpty(doc.ReservaId.ToString()))
+                                {
+                                    <div style="font-size:0.78rem;color:#6B7280;">
+                                        Reserva #@doc.ReservaId
+                                    </div>
+                                }
+                            </div>
+                            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                                <button class="dash-link dash-link-sm dash-link-green"
+                                        @onclick="() => AprovarDocumento(doc)"
+                                        disabled="@verificando">
+                                    ✅ Aprovar
+                                </button>
+                                <button class="dash-link dash-link-sm dash-link-red"
+                                        @onclick="() => AbrirRejeicao(doc)"
+                                        disabled="@verificando">
+                                    ❌ Rejeitar
+                                </button>
+                                <button class="dash-link dash-link-sm dash-link-outline"
+                                        @onclick="() => VisualizarDocumento(doc)"
+                                        disabled="@verificando">
+                                    👁️ Ver
+                                </button>
+                            </div>
+                        </div>
+
+                        @* Modal de rejeição inline *@
+                        @if (documentoRejeicaoId == doc.Id)
+                        {
+                            <div style="margin-top:0.6rem;padding:0.6rem;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:6px;">
+                                <label style="font-size:0.82rem;font-weight:600;color:#991B1B;display:block;margin-bottom:0.3rem;">
+                                    Motivo da rejeição (obrigatório):
+                                </label>
+                                <input style="width:100%;padding:0.4rem 0.6rem;border:1px solid #D1D5DB;border-radius:6px;font-size:0.82rem;margin-bottom:0.4rem;"
+                                       placeholder="Ex: Documento ilegível, fora do prazo de validade, etc."
+                                       @bind="motivoRejeicao"
+                                       @bind:event="oninput" />
+                                <div style="display:flex;gap:0.4rem;">
+                                    <button class="dash-link dash-link-sm dash-link-red"
+                                            @onclick="() => ConfirmarRejeicao(doc)"
+                                            disabled="@verificando || string.IsNullOrWhiteSpace(motivoRejeicao)">
+                                        Confirmar rejeição
+                                    </button>
+                                    <button class="dash-link dash-link-sm dash-link-outline"
+                                            @onclick="CancelarRejeicao">
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+
+            @* Visualizador de documento *@
+            @if (documentoVisualizar is not null)
+            {
+                <div style="margin-top:1rem;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.8rem;background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
+                        <span style="font-weight:600;font-size:0.85rem;">📄 @documentoVisualizar.NomeOriginal</span>
+                        <button class="dash-link dash-link-sm" @onclick="FecharVisualizador" style="font-size:0.78rem;">Fechar</button>
+                    </div>
+                    <div style="padding:0.8rem;text-align:center;max-height:400px;overflow:auto;">
+                        @if (documentoVisualizar.TipoMime.StartsWith("image/"))
+                        {
+                            <img src="data:@documentoVisualizar.TipoMime;base64,@documentoVisualizar.ConteudoBase64"
+                                 style="max-width:100%;max-height:360px;border-radius:4px;"
+                                 alt="Documento comprobatório" />
+                        }
+                        else if (documentoVisualizar.TipoMime == "application/pdf")
+                        {
+                            <iframe src="data:@documentoVisualizar.TipoMime;base64,@documentoVisualizar.ConteudoBase64"
+                                    style="width:100%;height:360px;border:1px solid #D1D5DB;border-radius:4px;"
+                                    title="Documento PDF"></iframe>
+                        }
+                        else
+                        {
+                            <p style="color:#6B7280;">Visualização não disponível para este tipo de arquivo.</p>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* ── Ações Rápidas ──────────────────────────────────── *@
+        <div class="dash-section">
+            <h3>⚡ Ações rápidas</h3>
+            <a class="dash-link" href="/criar-evento">+ Criar Evento</a>
+            <a class="dash-link dash-link-outline" href="/listar-eventos">Ver Eventos</a>
+            <a class="dash-link dash-link-outline" href="/listar-cupons">Gerenciar Cupons</a>
+            <a class="dash-link dash-link-outline" href="/cadastro-cupom">+ Novo Cupom</a>
+        </div>
+    }
+</div>
+
+@code {
+    private DashboardCompletoDTO? stats;
+    private bool carregando = true;
+    private bool exportando;
+    private string? erro;
+    private string? mensagem;
+
+    // ── Meia-entrada (Lei 12.933/2013) ──────────────────────────────────
+    private List<MeiaEntradaDocumentoDto>? documentosPendentes;
+    private bool carregandoMeiaEntrada;
+    private string? meiaEntradaErro;
+    private bool verificando;
+    private int? documentoRejeicaoId;
+    private string motivoRejeicao = "";
+    private MeiaEntradaDocumentoDto? documentoVisualizar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.EhAdmin)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+        await CarregarStats();
+    }
+
+    private async Task CarregarStats()
+    {
+        carregando = true;
+        erro = null;
+        try
+        {
+            stats = await Http.GetFromJsonAsync<DashboardCompletoDTO>("api/admin/dashboard/completo");
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao carregar estatísticas: {ex.Message}";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task ExportarCsv()
+    {
+        exportando = true;
+        mensagem = null;
+        try
+        {
+            // Usa o link direto para download
+            Navigation.NavigateTo("/api/admin/relatorio-financeiro/csv", forceLoad: true);
+            mensagem = "📥 Download do CSV iniciado.";
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao exportar CSV: {ex.Message}";
+        }
+        finally
+        {
+            exportando = false;
+        }
+    }
+
+    private async Task ExportarPdf()
+    {
+        exportando = true;
+        mensagem = null;
+        try
+        {
+            Navigation.NavigateTo("/api/admin/relatorio-financeiro/pdf", forceLoad: true);
+            mensagem = "📄 Download do relatório HTML iniciado (abra e imprima como PDF).";
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao exportar relatório: {ex.Message}";
+        }
+        finally
+        {
+            exportando = false;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  Meia-entrada (Lei 12.933/2013) — Verificação de Documentos
+    // ══════════════════════════════════════════════════════════════════
+
+    /// <summary>Carrega a lista de documentos pendentes de verificação.</summary>
+    private async Task CarregarDocumentosMeiaEntrada()
+    {
+        carregandoMeiaEntrada = true;
+        meiaEntradaErro = null;
+        try
+        {
+            var result = await Http.GetFromJsonAsync<MeiaEntradaPendenteDto>("api/meia-entrada/pendentes");
+            documentosPendentes = result?.Documentos ?? [];
+        }
+        catch (Exception ex)
+        {
+            meiaEntradaErro = $"Erro ao carregar documentos: {ex.Message}";
+            documentosPendentes = [];
+        }
+        finally
+        {
+            carregandoMeiaEntrada = false;
+        }
+    }
+
+    /// <summary>Aprova um documento de meia-entrada sem necessidade de confirmação adicional.</summary>
+    private async Task AprovarDocumento(MeiaEntradaDocumentoDto doc)
+    {
+        verificando = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                $"api/meia-entrada/{doc.Id}/verificar",
+                new MeiaEntradaVerificacaoDto { Status = "Aprovado" });
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensagem = $"✅ Documento de {doc.UsuarioNome} aprovado com sucesso!";
+                await CarregarDocumentosMeiaEntrada();
+            }
+            else
+            {
+                meiaEntradaErro = $"Erro ao aprovar documento: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            meiaEntradaErro = $"Erro ao aprovar documento: {ex.Message}";
+        }
+        finally
+        {
+            verificando = false;
+        }
+    }
+
+    /// <summary>Abre o campo para informar motivo da rejeição.</summary>
+    private void AbrirRejeicao(MeiaEntradaDocumentoDto doc)
+    {
+        documentoRejeicaoId = doc.Id;
+        motivoRejeicao = "";
+    }
+
+    /// <summary>Confirma a rejeição do documento com o motivo informado.</summary>
+    private async Task ConfirmarRejeicao(MeiaEntradaDocumentoDto doc)
+    {
+        if (string.IsNullOrWhiteSpace(motivoRejeicao)) return;
+
+        verificando = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                $"api/meia-entrada/{doc.Id}/verificar",
+                new MeiaEntradaVerificacaoDto
+                {
+                    Status = "Rejeitado",
+                    MotivoRejeicao = motivoRejeicao.Trim()
+                });
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensagem = $"❌ Documento de {doc.UsuarioNome} rejeitado: {motivoRejeicao}";
+                documentoRejeicaoId = null;
+                motivoRejeicao = "";
+                await CarregarDocumentosMeiaEntrada();
+            }
+            else
+            {
+                meiaEntradaErro = $"Erro ao rejeitar documento: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            meiaEntradaErro = $"Erro ao rejeitar documento: {ex.Message}";
+        }
+        finally
+        {
+            verificando = false;
+        }
+    }
+
+    /// <summary>Cancela o fluxo de rejeição.</summary>
+    private void CancelarRejeicao()
+    {
+        documentoRejeicaoId = null;
+        motivoRejeicao = "";
+    }
+
+    /// <summary>Carrega e exibe o documento comprobatório.</summary>
+    private async Task VisualizarDocumento(MeiaEntradaDocumentoDto doc)
+    {
+        try
+        {
+            var detalhe = await Http.GetFromJsonAsync<MeiaEntradaDocumentoDto>($"api/meia-entrada/{doc.Id}");
+            if (detalhe != null)
+            {
+                documentoVisualizar = detalhe;
+            }
+        }
+        catch (Exception ex)
+        {
+            meiaEntradaErro = $"Erro ao carregar documento: {ex.Message}";
+        }
+    }
+
+    /// <summary>Fecha o visualizador de documento.</summary>
+    private void FecharVisualizador()
+    {
+        documentoVisualizar = null;
+    }
+
+    /// <summary>Formata tamanho em bytes para exibição legível.</summary>
+    private static string FormatFileSize(long bytes)
+    {
+        return bytes switch
+        {
+            < 1024 => $"{bytes} B",
+            < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
+            _ => $"{bytes / (1024.0 * 1024.0):F1} MB"
+        };
+    }
+}

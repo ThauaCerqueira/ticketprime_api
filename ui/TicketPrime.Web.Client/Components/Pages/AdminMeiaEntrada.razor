@@ -1,0 +1,161 @@
+@page "/admin/meia-entrada"
+@using System.Net.Http.Json
+@using TicketPrime.Web.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Meia-Entrada - Admin TicketPrime</PageTitle>
+
+<div class="dash-wrapper">
+    <div class="dash-header">
+        <div>
+            <h2>📋 Verificação de Meia-Entrada</h2>
+            <p>Documentos comprobatórios pendentes (Lei 12.933/2013)</p>
+        </div>
+        <button class="dash-link dash-link-sm" @onclick="CarregarDocumentos">
+            🔄 Atualizar
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(erro))
+    {
+        <div class="dash-alert dash-alert-error">@erro</div>
+    }
+
+    @if (carregando)
+    {
+        <div class="dash-grid">
+            @for (int i = 0; i < 3; i++) { <div class="dash-card"><div class="skeleton" style="height:1rem;width:60%;margin-bottom:0.5rem;"></div><div class="skeleton" style="height:2rem;width:80%;"></div></div> }
+        </div>
+    }
+    else if (!(documentos?.Any() ?? false))
+    {
+        <div style="text-align:center;padding:3rem;">
+            <div style="font-size:3rem;margin-bottom:1rem;">✅</div>
+            <h3>Nenhum documento pendente</h3>
+            <p style="color:var(--tp-text-muted);">Todos os documentos foram verificados.</p>
+        </div>
+    }
+    else
+    {
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+            <button class="dash-link dash-link-sm @(filtro == null ? "dash-link-green" : "")" @onclick='() => { filtro = null; CarregarDocumentos(); }'>Todos</button>
+            <button class="dash-link dash-link-sm @(filtro == "Pendente" ? "dash-link-green" : "")" @onclick='() => { filtro = "Pendente"; CarregarDocumentos(); }'>⏳ Pendentes</button>
+            <button class="dash-link dash-link-sm @(filtro == "Aprovado" ? "dash-link-green" : "")" @onclick='() => { filtro = "Aprovado"; CarregarDocumentos(); }'>✅ Aprovados</button>
+            <button class="dash-link dash-link-sm @(filtro == "Rejeitado" ? "dash-link-green" : "")" @onclick='() => { filtro = "Rejeitado"; CarregarDocumentos(); }'>❌ Rejeitados</button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+            @foreach (var doc in documentos)
+            {
+                <div style="background:var(--tp-bg-card);border:1.5px solid var(--tp-border-card);border-radius:14px;padding:1.25rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:1rem;">
+                        <div>
+                            <strong>@doc.UsuarioNome ?? @doc.UsuarioCpf</strong>
+                            <span style="display:inline-block;margin-left:0.5rem;padding:0.15rem 0.5rem;border-radius:6px;font-size:0.75rem;font-weight:600;
+                                @(doc.Status == "Pendente" ? "background:#FEF3C7;color:#92400E;" : 
+                                  doc.Status == "Aprovado" ? "background:#ECFDF5;color:#065F46;" : 
+                                  "background:#FEF2F2;color:#991B1B;")">
+                                @doc.Status
+                            </span>
+                        </div>
+                        <div style="font-size:0.85rem;color:var(--tp-text-muted);">
+                            Reserva #@doc.ReservaId · @doc.DataUpload.ToString("dd/MM/yyyy HH:mm")
+                        </div>
+                    </div>
+                    <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--tp-text-muted);">
+                        Arquivo: @doc.NomeOriginal (@(doc.TamanhoBytes > 1024 ? $"{doc.TamanhoBytes/1024}KB" : $"{doc.TamanhoBytes}B"))
+                    </div>
+                    @if (doc.Status == "Pendente")
+                    {
+                        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;">
+                            <button class="dash-link dash-link-sm dash-link-green" @onclick='() => VerificarDocumento(doc.Id, "Aprovado", "")'>
+                                ✅ Aprovar
+                            </button>
+                            <button class="dash-link dash-link-sm" style="background:#FEF2F2;color:#DC2626;"
+                                    @onclick='() => mostrarRejeitar = mostrarRejeitar == doc.Id ? -1 : doc.Id'>
+                                ❌ Rejeitar
+                            </button>
+                        </div>
+                    }
+                    @if (mostrarRejeitar == doc.Id)
+                    {
+                        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
+                            <input class="login-input" type="text" @bind="motivoRejeicao" placeholder="Motivo da rejeição" style="flex:1;" />
+                            <button class="dash-link dash-link-sm" @onclick='() => VerificarDocumento(doc.Id, "Rejeitado", motivoRejeicao)'>
+                                Confirmar Rejeição
+                            </button>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(doc.MotivoRejeicao))
+                    {
+                        <div style="margin-top:0.5rem;font-size:0.85rem;color:#DC2626;">
+                            Motivo: @doc.MotivoRejeicao
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<MeiaEntradaDocumentoDto>? documentos;
+    private bool carregando = true;
+    private string? erro;
+    private string? filtro;
+    private int mostrarRejeitar = -1;
+    private string motivoRejeicao = "";
+
+    protected override async Task OnInitializedAsync() => await CarregarDocumentos();
+
+    private async Task CarregarDocumentos()
+    {
+        carregando = true;
+        erro = null;
+        try
+        {
+            var url = "api/meia-entrada";
+            if (!string.IsNullOrEmpty(filtro))
+                url += $"?status={filtro}";
+            documentos = await Http.GetFromJsonAsync<List<MeiaEntradaDocumentoDto>>(url);
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task VerificarDocumento(int id, string status, string motivo)
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync($"api/meia-entrada/{id}/verificar",
+                new { status, motivoRejeicao = motivo });
+            if (response.IsSuccessStatusCode)
+            {
+                await CarregarDocumentos();
+                mostrarRejeitar = -1;
+                motivoRejeicao = "";
+            }
+        }
+        catch { }
+    }
+
+    public class MeiaEntradaDocumentoDto
+    {
+        public int Id { get; set; }
+        public int? ReservaId { get; set; }
+        public string? UsuarioCpf { get; set; }
+        public string? UsuarioNome { get; set; }
+        public string? Status { get; set; }
+        public string? NomeOriginal { get; set; }
+        public long TamanhoBytes { get; set; }
+        public DateTime DataUpload { get; set; }
+        public string? MotivoRejeicao { get; set; }
+    }
+}

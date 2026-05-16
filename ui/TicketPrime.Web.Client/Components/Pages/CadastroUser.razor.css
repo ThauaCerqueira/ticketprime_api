@@ -1,0 +1,188 @@
+/* ── Cadastro User (cu-*) ─────────────────────────────────────── */
+.cu-wrapper {
+    min-height: 100vh;
+    background: var(--tp-bg-page);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.cu-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.cu-header-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+}
+
+.cu-header-logo-icon {
+    width: 38px; height: 38px;
+    background: var(--tp-primary);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+}
+
+.cu-header-logo-icon svg { width: 18px; height: 18px; fill: white; }
+
+.cu-header-logo-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--tp-text-heading);
+}
+
+.cu-header h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--tp-text-heading);
+    margin: 0 0 0.4rem 0;
+}
+
+.cu-header p {
+    font-size: 0.9rem;
+    color: var(--tp-text-muted);
+    margin: 0;
+}
+
+.cu-card {
+    background: var(--tp-bg-card);
+    border-radius: 18px;
+    border: 1.5px solid var(--tp-border-card);
+    box-shadow: var(--tp-shadow-sm);
+    width: 100%;
+    max-width: 460px;
+    overflow: hidden;
+}
+
+.cu-card-body {
+    padding: 1.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.cu-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.cu-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--tp-text-body);
+}
+
+.cu-input {
+    padding: 0.7rem 1rem;
+    border: 1.5px solid var(--tp-border);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    color: var(--tp-text-heading);
+    background: var(--tp-bg-input);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    width: 100%;
+}
+
+.cu-input:focus {
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
+}
+
+.cu-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.cu-alert {
+    padding: 0.9rem 1.2rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cu-alert-success { background: var(--tp-success-bg); color: var(--tp-success-text); }
+.cu-alert-error   { background: var(--tp-error-bg); color: var(--tp-error-text); }
+
+.cu-footer {
+    padding: 1.2rem 1.8rem;
+    border-top: 1.5px solid var(--tp-border-card);
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.cu-btn-save {
+    padding: 0.75rem;
+    background: var(--tp-primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.cu-btn-save:hover { background: var(--tp-primary-hover); transform: translateY(-1px); }
+.cu-btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.cu-login-link {
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--tp-text-muted);
+}
+
+.cu-login-link a {
+    color: var(--tp-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.cu-login-link a:hover { text-decoration: underline; }
+
+.cu-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: cu-spin 0.8s linear infinite;
+}
+
+.cu-input.invalid {
+    border-color: var(--tp-error-text);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-error-text) 10%, transparent);
+}
+
+.cu-validation-msg {
+    font-size: 0.78rem;
+    color: var(--tp-error-text);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.1rem;
+}
+
+@keyframes cu-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 500px) {
+    .cu-wrapper { padding: 1rem; justify-content: flex-start; padding-top: 2rem; }
+    .cu-row { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,837 @@
+@page "/eventos/novo"
+@page "/eventos/criar-seguro"
+@using TicketPrime.Web.Shared.Models
+@using TicketPrime.Web.Client.Validators
+@using TicketPrime.Web.Client.Services
+@using MudBlazor
+
+@inject CryptoService  CryptoSvc
+@inject ISnackbar      Snackbar
+@inject NavigationManager Navigation
+@inject SessionService Session
+
+<PageTitle>Criar Evento – TicketPrime</PageTitle>
+
+<style>
+    .ec-wrapper {
+        min-height: 100vh;
+        background: var(--tp-bg-page);
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ec-inner {
+        width: 100%;
+        max-width: 760px;
+    }
+
+    .ec-header { margin-bottom: 1.8rem; }
+
+    .ec-back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--tp-text-muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        transition: color 0.2s;
+        font-family: inherit;
+    }
+    .ec-back-btn:hover { color: var(--tp-primary); }
+    .ec-back-btn svg { width: 15px; height: 15px; }
+
+    .ec-header h2 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--tp-text-heading);
+        margin: 0 0 0.3rem;
+    }
+    .ec-header p {
+        font-size: 0.9rem;
+        color: var(--tp-text-muted);
+        margin: 0;
+    }
+
+    /* Cards */
+    .ec-card {
+        background: var(--tp-bg-card);
+        border-radius: 18px;
+        border: 1.5px solid var(--tp-border-card);
+        box-shadow: var(--tp-shadow-sm);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+    .ec-card-header {
+        padding: 1.2rem 1.8rem;
+        border-bottom: 1.5px solid var(--tp-border-card);
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+    .ec-card-header-icon {
+        width: 38px; height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .ec-icon-blue   { background: var(--tp-primary-light); color: var(--tp-primary); }
+    .ec-icon-green  { background: #ECFDF5; color: #059669; }
+    .ec-icon-amber  { background: #FFFBEB; color: #D97706; }
+    .ec-card-header-icon svg { width: 18px; height: 18px; }
+    .ec-card-header-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--tp-text-heading);
+    }
+    .ec-card-header-sub {
+        font-size: 0.8rem;
+        color: var(--tp-text-muted);
+        margin-top: 0.1rem;
+    }
+    .ec-card-body {
+        padding: 1.5rem 1.8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+    }
+
+    /* Campos */
+    .ec-field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .ec-label { font-size: 0.875rem; font-weight: 600; color: var(--tp-text-body); }
+    .ec-hint  { font-size: 0.78rem; color: var(--tp-text-muted); }
+
+    .ec-input, .ec-select, .ec-textarea {
+        padding: 0.68rem 0.9rem;
+        border: 1.5px solid var(--tp-border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        color: var(--tp-text-heading);
+        background: var(--tp-bg-input);
+        width: 100%;
+        outline: none;
+        font-family: inherit;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        box-sizing: border-box;
+    }
+    .ec-input:focus, .ec-select:focus, .ec-textarea:focus {
+        border-color: var(--tp-primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
+    }
+    .ec-textarea { resize: vertical; min-height: 96px; }
+    .ec-input--error, .ec-select--error { border-color: var(--tp-error-text) !important; }
+
+    .ec-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .ec-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+    .ec-field-hint {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--tp-text-muted);
+        margin-top: 0.25rem;
+    }
+
+    /* Prefixo R$ */
+    .ec-prefix-wrap {
+        display: flex;
+        align-items: center;
+        border: 1.5px solid var(--tp-border);
+        border-radius: 10px;
+        overflow: hidden;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .ec-prefix-wrap:focus-within {
+        border-color: var(--tp-primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
+    }
+    .ec-prefix {
+        padding: 0.68rem 0.75rem;
+        background: var(--tp-bg-input);
+        color: var(--tp-text-muted);
+        font-size: 0.9rem;
+        font-weight: 600;
+        border-right: 1.5px solid var(--tp-border);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .ec-prefix-input {
+        padding: 0.68rem 0.9rem;
+        border: none;
+        outline: none;
+        font-size: 0.95rem;
+        color: var(--tp-text-heading);
+        width: 100%;
+        background: transparent;
+        font-family: inherit;
+    }
+
+    /* Checkbox */
+    .ec-checkbox-row {
+        display: flex; align-items: center; gap: 0.6rem;
+        cursor: pointer; user-select: none;
+    }
+    .ec-checkbox-row input[type="checkbox"] {
+        width: 18px; height: 18px;
+        accent-color: var(--tp-primary); cursor: pointer;
+    }
+    .ec-checkbox-label { font-size: 0.9rem; font-weight: 500; color: var(--tp-text-body); }
+
+    /* Validação inline */
+    .ec-error-msg { font-size: 0.78rem; color: var(--tp-error-text); }
+
+    /* Alertas */
+    .ec-alert {
+        padding: 0.85rem 1.1rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        display: flex; align-items: flex-start; gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .ec-alert-error   { background: var(--tp-error-bg); color: var(--tp-error-text); }
+    .ec-alert-success { background: var(--tp-success-bg); color: var(--tp-success-text); }
+
+    /* Drop zone */
+    .ec-drop-zone {
+        border: 2px dashed var(--tp-border);
+        border-radius: 12px;
+        padding: 2rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        background: var(--tp-bg-input);
+        display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .ec-drop-zone:hover, .ec-drop-zone--active {
+        border-color: var(--tp-primary);
+        background: color-mix(in srgb, var(--tp-primary) 6%, transparent);
+    }
+    .ec-drop-icon { width: 38px; height: 38px; color: var(--tp-text-light); }
+    .ec-drop-text { font-size: 0.9rem; color: var(--tp-text-muted); margin: 0; }
+    .ec-drop-btn {
+        padding: 0.4rem 1rem;
+        background: transparent;
+        color: var(--tp-primary);
+        border: 1.5px solid var(--tp-primary);
+        border-radius: 8px;
+        font-size: 0.85rem; font-weight: 600;
+        cursor: pointer; font-family: inherit;
+        transition: background 0.2s;
+    }
+    .ec-drop-btn:hover { background: color-mix(in srgb, var(--tp-primary) 8%, transparent); }
+    .ec-drop-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .ec-photo-count { font-size: 0.8rem; color: var(--tp-text-muted); margin: 0.3rem 0 0; }
+
+    /* Grade de fotos */
+    .ec-photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+    }
+    .ec-photo-item {
+        position: relative; border-radius: 8px; overflow: hidden;
+        aspect-ratio: 1; background: var(--tp-bg-input); border: 1px solid var(--tp-border);
+    }
+    .ec-photo-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ec-photo-overlay {
+        position: absolute; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: color-mix(in srgb, var(--tp-bg-card) 72%, transparent);
+        backdrop-filter: blur(2px);
+    }
+    .ec-spinner {
+        width: 22px; height: 22px;
+        border: 2.5px solid var(--tp-border); border-top-color: var(--tp-primary);
+        border-radius: 50%; animation: ec-spin 0.7s linear infinite;
+    }
+    .ec-photo-remove {
+        position: absolute; top: 4px; right: 4px;
+        width: 22px; height: 22px; border-radius: 50%;
+        background: var(--tp-error-bg); border: none;
+        color: #fff; font-size: 1rem; line-height: 1;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        z-index: 10; transition: background 0.15s;
+    }
+    .ec-photo-remove:hover:not(:disabled) { background: var(--tp-error-text); }
+    .ec-photo-remove:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Progresso */
+    .ec-progress { height: 4px; background: var(--tp-border); border-radius: 4px; overflow: hidden; margin-top: 0.75rem; }
+    .ec-progress-fill { height: 100%; background: var(--tp-primary); border-radius: 4px; animation: ec-prog 1.4s ease-in-out infinite; }
+
+    /* Botões de ação */
+    .ec-actions {
+        display: flex; justify-content: flex-end; gap: 0.8rem;
+        padding: 0.25rem 0 2.5rem;
+    }
+    .ec-btn-cancel {
+        padding: 0.65rem 1.4rem;
+        background: transparent; color: var(--tp-text-muted);
+        border: 1.5px solid var(--tp-border); border-radius: 10px;
+        font-size: 0.9rem; font-weight: 600;
+        cursor: pointer; font-family: inherit; transition: all 0.2s;
+    }
+    .ec-btn-cancel:hover { background: var(--tp-bg-input); color: var(--tp-text-body); }
+    .ec-btn-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .ec-btn-save {
+        padding: 0.65rem 1.8rem;
+        background: var(--tp-primary); color: white;
+        border: none; border-radius: 10px;
+        font-size: 0.9rem; font-weight: 600;
+        cursor: pointer; font-family: inherit;
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        transition: background 0.2s, transform 0.15s;
+    }
+    .ec-btn-save:hover { background: var(--tp-primary-hover); transform: translateY(-1px); }
+    .ec-btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .ec-btn-spinner {
+        width: 15px; height: 15px;
+        border: 2px solid rgba(255,255,255,0.4); border-top-color: white;
+        border-radius: 50%; animation: ec-spin 0.8s linear infinite;
+    }
+
+    /* ===== Dark Overrides ===== */
+    [data-theme="dark"] .ec-icon-green  { background: var(--tp-success-bg); }
+    [data-theme="dark"] .ec-icon-amber  { background: #3B3520; }
+
+    @@keyframes ec-spin    { to { transform: rotate(360deg); } }
+    @@keyframes ec-prog    { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+
+    @@media (max-width: 600px) {
+        .ec-wrapper  { padding: 1rem; }
+        .ec-row2     { grid-template-columns: 1fr; }
+        .ec-row3     { grid-template-columns: 1fr; }
+        .ec-card-body { padding: 1.2rem; }
+    }
+</style>
+
+<div class="ec-wrapper">
+    <div class="ec-inner">
+
+        @* ── Cabeçalho ── *@
+        <div class="ec-header">
+            <button class="ec-back-btn" type="button"
+                    @onclick="@(() => Navigation.NavigateTo("/eventos"))">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Voltar para eventos
+            </button>
+            <h2>Criar Evento</h2>
+            <p>Preencha os dados abaixo para publicar seu evento</p>
+        </div>
+
+        @* ── Alerta de erro de formulário ── *@
+        @if (_erroGeral is not null)
+        {
+            <div class="ec-alert ec-alert-error">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                @_erroGeral
+            </div>
+        }
+
+        @* ── Card 1: Informações do Evento ── *@
+        <div class="ec-card">
+            <div class="ec-card-header">
+                <div class="ec-card-header-icon ec-icon-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="ec-card-header-title">Informações do Evento</div>
+                </div>
+            </div>
+            <div class="ec-card-body">
+
+                @* Nome *@
+                <div class="ec-field">
+                    <label class="ec-label">Nome do evento *</label>
+                    <input class="ec-input @(Erro("Nome") != "" ? "ec-input--error" : "")"
+                           type="text"
+                           @bind="_evento.Nome"
+                           maxlength="200"
+                           placeholder="Ex.: Festival de Música 2026" />
+                    @if (Erro("Nome") != "") { <span class="ec-error-msg">@Erro("Nome")</span> }
+                </div>
+
+                @* Data + Hora + Gênero *@
+                <div class="ec-row3">
+                    <div class="ec-field">
+                        <label class="ec-label">Data do evento *</label>
+                        <input class="ec-input @(Erro("DataHora") != "" ? "ec-input--error" : "")"
+                               type="date"
+                               value="@_dataStr"
+                               @onchange="@(e => _dataStr = e.Value?.ToString() ?? "")"
+                               min="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" />
+                        @if (Erro("DataHora") != "") { <span class="ec-error-msg">@Erro("DataHora")</span> }
+                    </div>
+                    <div class="ec-field">
+                        <label class="ec-label">Hora do evento *</label>
+                        <input class="ec-input" type="time"
+                               value="@_horaStr"
+                               @onchange="@(e => _horaStr = e.Value?.ToString() ?? "")" />
+                    </div>
+                    <div class="ec-field">
+                        <label class="ec-label">Gênero *</label>
+                        <select class="ec-select @(Erro("GeneroMusical") != "" ? "ec-select--error" : "")"
+                                @bind="_evento.GeneroMusical">
+                            <option value="">Selecione...</option>
+                            @foreach (var g in _generosMusicas)
+                            {
+                                <option value="@g">@g</option>
+                            }
+                        </select>
+                        @if (Erro("GeneroMusical") != "") { <span class="ec-error-msg">@Erro("GeneroMusical")</span> }
+                    </div>
+                </div>
+
+                @* Data/Hora de Término *@
+                <div class="ec-row2">
+                    <div class="ec-field">
+                        <label class="ec-label">Data de término</label>
+                        <input class="ec-input"
+                               type="date"
+                               value="@_dataTerminoStr"
+                               @onchange="@(e => _dataTerminoStr = e.Value?.ToString() ?? "")"
+                               min="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" />
+                        <span class="ec-field-hint">Deixe em branco para duração padrão de 4h</span>
+                    </div>
+                    <div class="ec-field">
+                        <label class="ec-label">Hora de término</label>
+                        <input class="ec-input" type="time"
+                               value="@_horaTerminoStr"
+                               @onchange="@(e => _horaTerminoStr = e.Value?.ToString() ?? "")" />
+                    </div>
+                </div>
+
+                @* Local *@
+                <div class="ec-field">
+                    <label class="ec-label">Local *</label>
+                    <input class="ec-input @(Erro("Local") != "" ? "ec-input--error" : "")"
+                           type="text"
+                           @bind="_evento.Local"
+                           maxlength="500"
+                           placeholder="Rua das Flores, 123 – São Paulo, SP" />
+                    @if (Erro("Local") != "") { <span class="ec-error-msg">@Erro("Local")</span> }
+                </div>
+
+                @* Descrição *@
+                <div class="ec-field">
+                    <label class="ec-label">Descrição (opcional)</label>
+                    <textarea class="ec-textarea"
+                              @bind="_evento.Descricao"
+                              maxlength="2000"
+                              placeholder="Fale sobre o evento, artistas, atrações…"></textarea>
+                    @if (Erro("Descricao") != "") { <span class="ec-error-msg">@Erro("Descricao")</span> }
+                </div>
+
+            </div>
+        </div>
+
+        @* ── Card 2: Ingressos ── *@
+        <div class="ec-card">
+            <div class="ec-card-header">
+                <div class="ec-card-header-icon ec-icon-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                        <path d="M2 9a1 1 0 0 1 1-1h1a3 3 0 0 0 0-6H3a1 1 0 0 0-1 1v3"/>
+                        <path d="M22 9a1 1 0 0 0-1-1h-1a3 3 0 0 1 0-6h1a1 1 0 0 1 1 1v3"/>
+                        <path d="M2 15a1 1 0 0 0 1 1h1a3 3 0 0 1 0 6H3a1 1 0 0 1-1-1v-3"/>
+                        <path d="M22 15a1 1 0 0 1-1 1h-1a3 3 0 0 0 0 6h1a1 1 0 0 0 1-1v-3"/>
+                        <line x1="2" y1="12" x2="22" y2="12"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="ec-card-header-title">Ingressos</div>
+                </div>
+            </div>
+            <div class="ec-card-body">
+
+                <label class="ec-checkbox-row">
+                    <input type="checkbox" @bind="_evento.EventoGratuito" />
+                    <span class="ec-checkbox-label">Evento gratuito</span>
+                </label>
+
+                <label class="ec-checkbox-row" style="margin-top:0.25rem;">
+                    <input type="checkbox" @bind="_evento.TemMeiaEntrada" disabled="@_evento.EventoGratuito" />
+                    <span class="ec-checkbox-label">
+                        Oferecer meia-entrada
+                        <span style="font-weight:400;color:var(--tp-text-muted);font-size:0.8rem;">
+                            (Lei 12.933/2013 – 50% do valor)
+                        </span>
+                    </span>
+                </label>
+
+                @if (!_evento.EventoGratuito)
+                {
+                    <div class="ec-row2">
+                        <div class="ec-field">
+                            <label class="ec-label">Preço do ingresso *</label>
+                            <div class="ec-prefix-wrap">
+                                <span class="ec-prefix">R$</span>
+                                <input class="ec-prefix-input"
+                                       type="number" step="0.01" min="0" max="50000"
+                                       value="@_precoStr"
+                                       @onchange="@(e => _precoStr = e.Value?.ToString() ?? "")"
+                                       placeholder="0,00" />
+                            </div>
+                            @if (Erro("Preco") != "") { <span class="ec-error-msg">@Erro("Preco")</span> }
+                        </div>
+                        <div class="ec-field">
+                            <label class="ec-label">Taxa de serviço (máx. 5%)</label>
+                            <div class="ec-prefix-wrap">
+                                <span class="ec-prefix">R$</span>
+                                <input class="ec-prefix-input"
+                                       type="number" step="0.01" min="0"
+                                       value="@_taxaStr"
+                                       @onchange="@(e => _taxaStr = e.Value?.ToString() ?? "")"
+                                       placeholder="0,00" />
+                            </div>
+                            <span class="ec-hint">Máx.: R$ @((_evento.Preco.GetValueOrDefault() * 0.05m).ToString("F2")) · Não reembolsada sem seguro</span>
+                            @if (Erro("TaxaServico") != "") { <span class="ec-error-msg">@Erro("TaxaServico")</span> }
+                        </div>
+                    </div>
+                }
+
+                <div class="ec-field" style="max-width:280px">
+                    <label class="ec-label">Capacidade máxima *</label>
+                    <input class="ec-input @(Erro("CapacidadeMaxima") != "" ? "ec-input--error" : "")"
+                           type="number" min="1" max="100000"
+                           @bind="_evento.CapacidadeMaxima"
+                           placeholder="Ex.: 500" />
+                    @if (Erro("CapacidadeMaxima") != "") { <span class="ec-error-msg">@Erro("CapacidadeMaxima")</span> }
+                </div>
+
+            </div>
+        </div>
+
+        @* ── Card 3: Setores / Tipos de Ingresso ── *@
+        <div class="ec-card">
+            <div class="ec-card-header">
+                <div class="ec-card-header-icon ec-icon-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="ec-card-header-title">Setores / Tipos de Ingresso</div>
+                    <div class="ec-card-header-sub">Configure diferentes setores (Pista, VIP, Camarote…) com preços e capacidades distintas</div>
+                </div>
+            </div>
+            <div class="ec-card-body">
+
+                <label class="ec-checkbox-row">
+                    <input type="checkbox" @bind="_usarSetores" />
+                    <span class="ec-checkbox-label">Usar múltiplos setores</span>
+                </label>
+
+                @if (_usarSetores)
+                {
+                    <div style="background:var(--tp-bg-input);border-radius:12px;padding:1rem;border:1.5px solid var(--tp-border-card);">
+
+                        @* Lista de setores já adicionados *@
+                        @if (_evento.TiposIngresso.Count > 0)
+                        {
+                            <div style="margin-bottom:1rem;">
+                                @foreach (var setor in _evento.TiposIngresso)
+                                {
+                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;border-bottom:1px solid var(--tp-border);font-size:0.9rem;">
+                                        <div style="flex:1;">
+                                            <strong>@setor.Nome</strong>
+                                            <span style="color:var(--tp-text-muted);margin-left:0.5rem;">
+                                                R$ @setor.Preco.ToString("F2") · @setor.CapacidadeTotal vagas
+                                            </span>
+                                            @if (!string.IsNullOrEmpty(setor.Descricao))
+                                            {
+                                                <br /><span style="font-size:0.8rem;color:var(--tp-text-light);">@setor.Descricao</span>
+                                            }
+                                        </div>
+                                        <button type="button" class="ec-photo-remove"
+                                                @onclick="() => RemoverSetor(setor)"
+                                                style="position:static;flex-shrink:0;"
+                                                aria-label="Remover setor @setor.Nome">×</button>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @* Formulário para adicionar novo setor *@
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+                            <div class="ec-field">
+                                <label class="ec-label">Nome do setor *</label>
+                                <input class="ec-input" type="text"
+                                       @bind="_novoSetorNome"
+                                       placeholder="Ex: Pista, VIP, Camarote" />
+                            </div>
+                            <div class="ec-field">
+                                <label class="ec-label">Descrição (opcional)</label>
+                                <input class="ec-input" type="text"
+                                       @bind="_novoSetorDescricao"
+                                       placeholder="Ex: Área próxima ao palco" />
+                            </div>
+                            <div class="ec-field">
+                                <label class="ec-label">Preço (R$) *</label>
+                                <input class="ec-input" type="number" step="0.01" min="0"
+                                       @bind="_novoSetorPreco"
+                                       placeholder="0,00" />
+                            </div>
+                            <div class="ec-field">
+                                <label class="ec-label">Capacidade *</label>
+                                <input class="ec-input" type="number" min="1"
+                                       @bind="_novoSetorCapacidade"
+                                       placeholder="Ex: 500" />
+                            </div>
+                        </div>
+                        <button type="button" style="margin-top:0.75rem;padding:0.5rem 1.2rem;background:var(--tp-primary);color:white;border:none;border-radius:10px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;"
+                                @onclick="AdicionarSetor"
+                                disabled="@(string.IsNullOrWhiteSpace(_novoSetorNome) || string.IsNullOrWhiteSpace(_novoSetorPreco) || string.IsNullOrWhiteSpace(_novoSetorCapacidade))">
+                            + Adicionar setor
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="ec-hint" style="padding:0.5rem 0;">
+                        Modo simples: um único tipo de ingresso com preço único. Ative "Usar múltiplos setores" acima para configurar Pista, VIP, Camarote etc.
+                    </div>
+                }
+
+            </div>
+        </div>
+
+        @* ── Card 4: Lotes Progressivos ── *@
+        <div class="ec-card">
+            <div class="ec-card-header">
+                <div class="ec-card-header-icon ec-icon-amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="ec-card-header-title">Lotes Progressivos</div>
+                    <div class="ec-card-header-sub">Crie lotes com preços especiais por período (1º lote, 2º lote, promoção relâmpago…)</div>
+                </div>
+            </div>
+            <div class="ec-card-body">
+
+                @* Lista de lotes já adicionados *@
+                @if (_evento.Lotes.Count > 0)
+                {
+                    <div style="margin-bottom:1rem;">
+                        @foreach (var lote in _evento.Lotes)
+                        {
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;border-bottom:1px solid var(--tp-border);font-size:0.9rem;">
+                                <div style="flex:1;">
+                                    <strong>@lote.Nome</strong>
+                                    <span style="color:var(--tp-text-muted);margin-left:0.5rem;">
+                                        R$ @lote.Preco.ToString("F2") · @lote.QuantidadeMaxima unidades
+                                    </span>
+                                    @if (lote.TicketTypeIndex.HasValue && _evento.TiposIngresso.Count > lote.TicketTypeIndex.Value)
+                                    {
+                                        <span style="color:var(--tp-primary);margin-left:0.5rem;font-size:0.85rem;">
+                                            (Setor: @_evento.TiposIngresso[lote.TicketTypeIndex.Value].Nome)
+                                        </span>
+                                    }
+                                </div>
+                                <button type="button" class="ec-photo-remove"
+                                        @onclick="() => RemoverLote(lote)"
+                                        style="position:static;flex-shrink:0;"
+                                        aria-label="Remover lote @lote.Nome">×</button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* Formulário para adicionar novo lote *@
+                <div style="background:var(--tp-bg-input);border-radius:12px;padding:1rem;border:1.5px solid var(--tp-border-card);">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+                        <div class="ec-field">
+                            <label class="ec-label">Nome do lote *</label>
+                            <input class="ec-input" type="text"
+                                   @bind="_novoLoteNome"
+                                   placeholder="Ex: 1º Lote, 2º Lote" />
+                        </div>
+                        <div class="ec-field">
+                            <label class="ec-label">Preço do lote (R$) *</label>
+                            <input class="ec-input" type="number" step="0.01" min="0"
+                                   @bind="_novoLotePreco"
+                                   placeholder="0,00" />
+                        </div>
+                        <div class="ec-field">
+                            <label class="ec-label">Quantidade máxima *</label>
+                            <input class="ec-input" type="number" min="1"
+                                   @bind="_novoLoteQtd"
+                                   placeholder="Ex: 200" />
+                        </div>
+                        @if (_usarSetores && _evento.TiposIngresso.Count > 0)
+                        {
+                            <div class="ec-field">
+                                <label class="ec-label">Vincular ao setor (opcional)</label>
+                                <select class="ec-select"
+                                        value="@(_novoLoteTicketTypeIndex?.ToString() ?? "")"
+                                        @onchange="@(e => _novoLoteTicketTypeIndex = int.TryParse(e.Value?.ToString(), out var idx) ? idx : null)">
+                                    <option value="">Global (todos os setores)</option>
+                                    @for (int i = 0; i < _evento.TiposIngresso.Count; i++)
+                                    {
+                                        <option value="@i">@_evento.TiposIngresso[i].Nome</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                        <div class="ec-field">
+                            <label class="ec-label">Data início (opcional)</label>
+                            <input class="ec-input" type="date"
+                                   value="@_novoLoteDataInicio"
+                                   @onchange="@(e => _novoLoteDataInicio = e.Value?.ToString() ?? "")" />
+                        </div>
+                        <div class="ec-field">
+                            <label class="ec-label">Data fim (opcional)</label>
+                            <input class="ec-input" type="date"
+                                   value="@_novoLoteDataFim"
+                                   @onchange="@(e => _novoLoteDataFim = e.Value?.ToString() ?? "")" />
+                        </div>
+                    </div>
+                    <button type="button" style="margin-top:0.75rem;padding:0.5rem 1.2rem;background:var(--tp-primary);color:white;border:none;border-radius:10px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;"
+                            @onclick="AdicionarLote"
+                            disabled="@(string.IsNullOrWhiteSpace(_novoLoteNome) || string.IsNullOrWhiteSpace(_novoLotePreco) || string.IsNullOrWhiteSpace(_novoLoteQtd))">
+                        + Adicionar lote
+                    </button>
+                </div>
+
+                <div class="ec-hint" style="margin-top:0.75rem;">
+                    Os lotes permitem oferecer preços promocionais por tempo limitado. O sistema aplica automaticamente o melhor lote disponível no momento da compra.
+                </div>
+
+            </div>
+        </div>
+
+        @* ── Card 5: Fotos Comerciais ── *@
+        <div class="ec-card">
+            <div class="ec-card-header">
+                <div class="ec-card-header-icon ec-icon-amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="ec-card-header-title">Fotos Comerciais</div>
+                    <div class="ec-card-header-sub">JPG, PNG ou WebP · mín. 800×600 px · máx. 5 MB · até 10 fotos</div>
+                </div>
+            </div>
+            <div class="ec-card-body">
+
+                <div id="ec-drop-zone"
+                     class="ec-drop-zone @(_isDragOver ? "ec-drop-zone--active" : "")"
+                     @ondragover:preventDefault="true"
+                     @ondragenter:preventDefault="true"
+                     @ondragleave:preventDefault="true">
+
+                    <svg class="ec-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+
+                    <p class="ec-drop-text">
+                        @(_isDragOver ? "Solte as fotos aqui" : "Arraste as fotos aqui ou")
+                    </p>
+
+                    @if (!_isDragOver)
+                    {
+                        <button class="ec-drop-btn" type="button"
+                                @onclick="AbrirSeletorArquivosAsync"
+                                disabled="@(_fotos.Count >= MaxFotos)">
+                            Selecionar arquivos
+                        </button>
+                    }
+
+                    <InputFile id="ec-file-input"
+                               OnChange="HandleInputFileAsync"
+                               multiple
+                               accept="image/jpeg,image/png,image/webp"
+                               style="display:none" />
+                </div>
+
+                @if (_fotos.Count > 0)
+                {
+                    <p class="ec-photo-count">@_fotos.Count de @MaxFotos fotos adicionadas</p>
+                    <div class="ec-photo-grid">
+                        @foreach (var foto in _fotos)
+                        {
+                            <div class="ec-photo-item">
+                                <img class="ec-photo-thumb"
+                                     src="@foto.ThumbnailDataUrl"
+                                     alt="@foto.NomeArquivo"
+                                     title="@foto.NomeArquivo" />
+                                @if (foto.Criptografando)
+                                {
+                                    <div class="ec-photo-overlay">
+                                        <div class="ec-spinner"></div>
+                                    </div>
+                                }
+                                <button class="ec-photo-remove" type="button"
+                                        @onclick="@(() => RemoverFoto(foto.Id))"
+                                        disabled="@foto.Criptografando"
+                                        title="Remover"
+                                        aria-label="Remover foto @foto.NomeArquivo">×</button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (_criptografandoFotos)
+                {
+                    <div class="ec-progress"><div class="ec-progress-fill"></div></div>
+                }
+
+            </div>
+        </div>
+
+        @* ── Botões de ação ── *@
+        <div class="ec-actions">
+            <button class="ec-btn-cancel" type="button"
+                    @onclick="@(() => Navigation.NavigateTo("/eventos"))"
+                    disabled="@_carregando">
+                Cancelar
+            </button>
+            <button class="ec-btn-save" type="button"
+                    @onclick="CriarEventoAsync"
+                    disabled="@(_carregando || _criptografandoFotos)">
+                @if (_carregando)
+                {
+                    <div class="ec-btn-spinner"></div>
+                    <span>Criando evento…</span>
+                }
+                else
+                {
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" aria-hidden="true" focusable="false">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span>Criar Evento</span>
+                }
+            </button>
+        </div>
+
+    </div>
+</div>

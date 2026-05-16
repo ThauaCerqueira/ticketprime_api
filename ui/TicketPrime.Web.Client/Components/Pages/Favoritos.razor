@@ -1,0 +1,125 @@
+@page "/favoritos"
+@using System.Net.Http.Json
+@using TicketPrime.Web.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject TicketPrime.Web.Client.Services.SessionService Session
+
+<PageTitle>Meus Favoritos - TicketPrime</PageTitle>
+
+<div class="fav-wrapper">
+    <div class="fav-header">
+        <div>
+            <h2>❤️ Meus Favoritos</h2>
+            <p>Eventos que você salvou para acompanhar</p>
+        </div>
+    </div>
+
+    @if (carregando)
+    {
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1rem;padding:4rem 2rem;">
+            <div class="de-spinner"></div>
+            <p style="color:var(--tp-text-muted);">Carregando seus favoritos...</p>
+        </div>
+    }
+    else if (!(favoritos?.Any() ?? false))
+    {
+        <div style="text-align:center;padding:4rem 2rem;">
+            <div style="font-size:3rem;margin-bottom:1rem;">💔</div>
+            <h3 style="margin-bottom:0.5rem;">Nenhum favorito ainda</h3>
+            <p style="color:var(--tp-text-muted);margin-bottom:1.5rem;">
+                Explore eventos e favorite aqueles que te interessam!
+            </p>
+            <button class="dash-link" @onclick='() => Navigation.NavigateTo("/eventos")'>
+                Explorar Eventos
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="fav-grid">
+            @foreach (var fav in favoritos)
+            {
+                <div class="fav-card" @onclick='() => Navigation.NavigateTo($"/evento/{fav.EventoId}")'>
+                    <div class="fav-card-bg">
+                        @if (!string.IsNullOrEmpty(fav.FotoThumbnailBase64))
+                        {
+                            <img src="data:image/jpeg;base64,@fav.FotoThumbnailBase64" alt="@fav.EventoNome" />
+                        }
+                        else
+                        {
+                            <div style="font-size:2.5rem;">🎵</div>
+                        }
+                    </div>
+                    <div class="fav-card-body">
+                        <h4>@fav.EventoNome</h4>
+                        <div class="fav-card-info">
+                            <span>📅 @fav.EventoData?.ToString("dd/MM/yyyy")</span>
+                            <span>📍 @fav.EventoLocal</span>
+                        </div>
+                        <div class="fav-card-footer">
+                            <span class="fav-price">@(fav.EventoPreco?.ToString("C") ?? "Grátis")</span>
+                            <button class="fav-remove" @onclick:stopPropagation @onclick='() => RemoverFavorito(fav.EventoId)'>
+                                ❌ Remover
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<FavoritoItem>? favoritos;
+    private bool carregando = true;
+    private string? erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarFavoritos();
+    }
+
+    private async Task CarregarFavoritos()
+    {
+        carregando = true;
+        try
+        {
+            favoritos = await Http.GetFromJsonAsync<List<FavoritoItem>>("api/favoritos");
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task RemoverFavorito(int eventoId)
+    {
+        try
+        {
+            var response = await Http.DeleteAsync($"api/favoritos/{eventoId}");
+            if (response.IsSuccessStatusCode)
+            {
+                favoritos?.RemoveAll(f => f.EventoId == eventoId);
+                StateHasChanged();
+            }
+        }
+        catch { }
+    }
+
+    public class FavoritoItem
+    {
+        public int Id { get; set; }
+        public int EventoId { get; set; }
+        public string? EventoNome { get; set; }
+        public DateTime? EventoData { get; set; }
+        public string? EventoLocal { get; set; }
+        public decimal? EventoPreco { get; set; }
+        public string? EventoGenero { get; set; }
+        public string? FotoThumbnailBase64 { get; set; }
+    }
+}
