@@ -47,10 +47,13 @@ public sealed class TransacaoCompraExecutor : ITransacaoCompraExecutor
                 throw new InvalidOperationException("Não há mais vagas disponíveis para este setor.");
 
             // R3a - Decremento de vagas do evento (contador geral de disponibilidade)
-            await connection.ExecuteAsync(
+            var rowsEvento = await connection.ExecuteAsync(
                 @"UPDATE Eventos SET CapacidadeRestante = CapacidadeRestante - 1
                   WHERE Id = @EventoId AND CapacidadeRestante > 0",
                 new { EventoId = reserva.EventoId }, transaction);
+
+            if (rowsEvento == 0)
+                throw new InvalidOperationException("O evento não possui mais vagas disponíveis.");
 
             // R3b - Se um lote foi selecionado, incrementa a quantidade vendida do lote
             if (loteId.HasValue)

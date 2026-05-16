@@ -38,6 +38,7 @@ public class ReservaRepository : IReservaRepository
                            r.CodigoIngresso, r.Status, r.EhMeiaEntrada,
                            r.TicketTypeId, r.LoteId,
                            r.CodigoTransacaoGateway, r.IdEstornoGateway, r.DataEstorno,
+                           r.ChavePix,
                            e.Nome, e.Local, e.DataEvento, e.DataTermino, e.PrecoPadrao,
                            ti.Nome AS TicketTypeNome,
                            l.Nome AS LoteNome
@@ -95,6 +96,7 @@ public class ReservaRepository : IReservaRepository
                            r.CodigoIngresso, r.Status, r.EhMeiaEntrada,
                            r.TicketTypeId, r.LoteId,
                            r.CodigoTransacaoGateway, r.IdEstornoGateway, r.DataEstorno,
+                           r.ChavePix,
                            e.Nome, e.Local, e.DataEvento, e.DataTermino, e.PrecoPadrao,
                            ti.Nome AS TicketTypeNome,
                            l.Nome AS LoteNome

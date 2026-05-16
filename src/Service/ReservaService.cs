@@ -116,6 +116,30 @@ public class ReservationService
                 "Documento comprobatório enviado para compra de inteira. " +
                 "Remova o arquivo ou selecione meia-entrada.");
 
+        // R1b2 - Validação de tamanho e tipo do documento (proteção contra DoS)
+        if (!string.IsNullOrEmpty(documentoBase64))
+        {
+            // 5 MB decodificado = ~6.8 MB em base64 (fator 4/3 + padding)
+            const int maxBase64Chars = 7_000_000;
+            const int maxDecodedBytes = 5 * 1024 * 1024; // 5 MB
+
+            if (documentoBase64.Length > maxBase64Chars)
+                throw new InvalidOperationException("Documento muito grande. O tamanho máximo permitido é 5 MB.");
+
+            byte[] docBytes;
+            try { docBytes = Convert.FromBase64String(documentoBase64); }
+            catch (FormatException) { throw new InvalidOperationException("O documento enviado não é um arquivo Base64 válido."); }
+
+            if (docBytes.Length > maxDecodedBytes)
+                throw new InvalidOperationException("Documento muito grande após decodificação. O tamanho máximo é 5 MB.");
+
+            // Valida tipos de arquivo permitidos para comprovação de meia-entrada
+            var tiposPermitidos = new[] { "application/pdf", "image/jpeg", "image/png", "image/webp" };
+            var tipoEnviado = documentoContentType?.ToLowerInvariant() ?? string.Empty;
+            if (!string.IsNullOrEmpty(tipoEnviado) && !tiposPermitidos.Contains(tipoEnviado))
+                throw new InvalidOperationException($"Tipo de arquivo não permitido: {tipoEnviado}. Use PDF, JPEG, PNG ou WebP.");
+        }
+
         // R1c - Preço base: preço do tipo de ingresso (setor) ou 50% para meia-entrada
         var precoBase = ehMeiaEntrada ? ticketType.Preco / 2 : ticketType.Preco;
 
@@ -191,7 +215,8 @@ public class ReservationService
             TemSeguro        = contratarSeguro,
             ValorSeguroPago  = valorSeguro,
             EhMeiaEntrada    = ehMeiaEntrada,
-            ValorFinalPago   = valorIngresso + taxaServico + valorSeguro
+            ValorFinalPago   = valorIngresso + taxaServico + valorSeguro,
+            CodigoIngresso   = Guid.NewGuid().ToString("N").ToUpper()
         };
 
         // ── Processa pagamento antes de criar a reserva ────────────────
@@ -328,12 +353,23 @@ public class ReservationService
 
     public async Task<IEnumerable<ReservationDetailDto>> ListarReservasUsuarioAsync(string cpf)
     {
-        return await _reservaRepository.ListarPorUsuarioAsync(cpf);
+        var reservas = await _reservaRepository.ListarPorUsuarioAsync(cpf);
+        // Descriptografa ChavePix para todos os resultados PIX pendentes
+        foreach (var r in reservas.Where(r => !string.IsNullOrEmpty(r.ChavePix)))
+        {
+            r.ChavePix = _pixCryptoService.Decrypt(r.ChavePix);
+        }
+        return reservas;
     }
 
     public async Task<ReservationDetailDto?> ObterDetalhadaPorIdAsync(int reservaId, string usuarioCpf)
     {
-        return await _reservaRepository.ObterDetalhadaPorIdAsync(reservaId, usuarioCpf);
+        var detalhe = await _reservaRepository.ObterDetalhadaPorIdAsync(reservaId, usuarioCpf);
+        if (detalhe != null && !string.IsNullOrEmpty(detalhe.ChavePix))
+        {
+            detalhe.ChavePix = _pixCryptoService.Decrypt(detalhe.ChavePix);
+        }
+        return detalhe;
     }
 
     public async Task<ReservationDetailDto> ObterDetalheCancelamentoAsync(int reservaId, string usuarioCpf)
@@ -500,6 +536,16 @@ public class ReservationService
 
         if (reserva.Status != "Ativa")
             throw new InvalidOperationException("Somente ingressos ativos podem ser transferidos.");
+
+        // Verifica se o destinatário já atingiu o limite de ingressos por usuário para este evento
+        var evento = await _eventoRepository.ObterPorIdAsync(reserva.EventoId);
+        if (evento != null)
+        {
+            var reservasDestinatario = await _reservaRepository.ContarReservasUsuarioPorEventoAsync(cpfDestinatario, reserva.EventoId);
+            if (reservasDestinatario >= evento.LimiteIngressosPorUsuario)
+                throw new InvalidOperationException(
+                    $"O destinatário já atingiu o limite de {evento.LimiteIngressosPorUsuario} ingresso(s) para este evento.");
+        }
 
         var ok = await _reservaRepository.TransferirAsync(reservaId, cpfRemetente, cpfDestinatario);
         if (!ok)

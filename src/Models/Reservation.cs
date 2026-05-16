@@ -28,7 +28,15 @@ public class Reservation
     /// <summary>Valor pago pelo seguro (15% do preço do ingresso). Não é devolvido.</summary>
     public decimal ValorSeguroPago { get; set; }
     /// <summary>Código único do ingresso para validação na entrada do evento.</summary>
-    public string CodigoIngresso { get; set; } = Guid.NewGuid().ToString("N").ToUpper();
+    /// <remarks>
+    /// ═══════════════════════════════════════════════════════════════════
+    /// SEGURANÇA: GUID gerado no service/repository no momento da
+    ///   persistência (ReservaService.ComprarIngressoAsync). O construtor
+    ///   do modelo não gera GUIDs para evitar desperdício quando o objeto
+    ///   é instanciado mas não persistido (ex: validações que falham).
+    /// ═══════════════════════════════════════════════════════════════════
+    /// </remarks>
+    public string CodigoIngresso { get; set; } = string.Empty;
     /// <summary>Status da reserva: Ativa, Usada, Cancelada.</summary>
     public string Status { get; set; } = "Ativa";
     /// <summary>Data do cancelamento (se cancelada).</summary>
