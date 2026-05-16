@@ -1,6 +1,7 @@
-﻿<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+@using TicketPrime.Web.Client
+<Router AppAssembly="typeof(TicketPrime.Web.Client._Imports).Assembly" NotFoundPage="typeof(TicketPrime.Web.Client.Components.Pages.NotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <RouteView RouteData="routeData" DefaultLayout="typeof(TicketPrime.Web.Client.Components.Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>

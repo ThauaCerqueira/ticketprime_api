@@ -1,8 +1,0 @@
-/* ── NavMenu Styles ────────────────────────────────────────────────────────────
-   Os estilos do NavMenu estão definidos inline no arquivo .razor.
-   Este arquivo .razor.css foi limpo — o CSS duplicado do template padrão
-   (navbar-toggler, top-row, .nav-item, .bi-*, .nav-scrollable) foi removido
-   pois não é mais utilizado pelo componente customizado.
-   
-   Todo o CSS necessário está no bloco <style> dentro de NavMenu.razor.
-────────────────────────────────────────────────────────────────────────────── */

@@ -14,6 +14,8 @@
 
   <!-- Pacotes adicionados para EventoCreate (criptografia E2E) -->
   <ItemGroup>
+    <!-- WASM hosting -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.8" />
     <!-- Componentes visuais MudBlazor (tema escuro, formulários, ícones) -->
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
     <PackageReference Include="MudBlazor" Version="7.*" />
@@ -21,6 +23,11 @@
     <PackageReference Include="FluentValidation" Version="11.*" />
     <!-- Geração de QR Code para ingressos -->
     <PackageReference Include="QRCoder" Version="1.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TicketPrime.Web.Client\TicketPrime.Web.Client.csproj" />
+    <ProjectReference Include="..\TicketPrime.Web.Shared\TicketPrime.Web.Shared.csproj" />
   </ItemGroup>
 
 </Project>
