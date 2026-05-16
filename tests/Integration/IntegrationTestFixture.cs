@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using src.Infrastructure;
 using src.Infrastructure.IRepository;
 using src.Infrastructure.Repository;
+using src.Models;
 
 namespace TicketPrime.Tests.Integration;
 
@@ -38,15 +39,39 @@ public class IntegrationTestFixture : IAsyncLifetime
     public ICupomRepository CupomRepository { get; private set; } = null!;
 
     /// <summary>
-    /// Obtém a connection string da env var TEST_CONNECTION_STRING ou usa
-    /// a default que aponta para o SQL Server do docker-compose.
+    /// Obtém a connection string da env var TEST_DB_CONNECTION ou TEST_CONNECTION_STRING.
+    /// ═══════════════════════════════════════════════════════════════════
+    /// ANTES: Fallback hardcoded "Server=localhost,1433;...;Password=TicketPrime@2024!;..."
+    ///   Senha de banco commitada no repositório — risco de segurança.
+    ///
+    /// AGORA: Usa o helper centralizado TestConnectionHelper que NÃO tem
+    /// fallback hardcoded. Se a variável de ambiente não estiver configurada,
+    /// o teste falha com instruções claras.
+    /// ═══════════════════════════════════════════════════════════════════
     /// Um timeout curto é aplicado para falhar rapidamente quando o banco
     /// não está disponível (evita aguardar 30s por teste).
     /// </summary>
     public static string ObterConnectionString()
     {
-        var raw = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING")
-            ?? "Server=localhost,1433;Database=TicketPrime;User Id=sa;Password=TicketPrime@2024!;TrustServerCertificate=True;";
+        // ══════════════════════════════════════════════════════════════
+        // Tenta TEST_DB_CONNECTION primeiro (padrão do projeto),
+        // depois TEST_CONNECTION_STRING (legado).
+        // ══════════════════════════════════════════════════════════════
+        var raw = Environment.GetEnvironmentVariable("TEST_DB_CONNECTION")
+                  ?? Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING");
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            throw new InvalidOperationException(
+                $"""
+                ============================================================
+                ⚠️  VARIÁVEL DE AMBIENTE NÃO CONFIGURADA
+
+                Configure TEST_DB_CONNECTION ou TEST_CONNECTION_STRING:
+                  PowerShell:  $env:TEST_DB_CONNECTION="Server=localhost,1433;Database=TicketPrime;User Id=sa;Password=...;TrustServerCertificate=True;"
+                ============================================================
+                """);
+        }
 
         // Aplica timeout curto para detecção rápida de banco indisponível
         var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(raw);
@@ -105,6 +130,21 @@ public class IntegrationTestFixture : IAsyncLifetime
             _connection?.Dispose();
         }
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Cria um TicketType padrão (setor "Pista") para um evento.
+    /// Necessário para testes de Reserva por causa da FK FK_Reservas_TiposIngresso.
+    /// </summary>
+    public async Task<int> CriarTipoIngressoPadraoAsync(int eventoId)
+    {
+        var tipo = new TicketType("Pista", 100.00m, 500, 1)
+        {
+            EventoId = eventoId,
+            CapacidadeRestante = 500
+        };
+        await EventoRepository.AdicionarTiposIngressoAsync(eventoId, [tipo]);
+        return tipo.Id;
     }
 }
 

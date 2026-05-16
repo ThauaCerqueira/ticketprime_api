@@ -1,7 +1,7 @@
 using FluentValidation;
 using FluentValidation.TestHelper;
-using TicketPrime.Web.Models;
-using TicketPrime.Web.Validators;
+using TicketPrime.Web.Shared.Models;
+using TicketPrime.Web.Client.Validators;
 
 namespace TicketPrime.Tests.Validators;
 

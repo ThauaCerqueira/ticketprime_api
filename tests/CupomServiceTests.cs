@@ -10,12 +10,12 @@ namespace TicketPrime.Tests.Service
     public class CupomServiceTests
     {
         private readonly Mock<ICupomRepository> _repositoryMock;
-        private readonly CouponService _cupomService;
+        private readonly CupomService _cupomService;
 
         public CupomServiceTests()
         {
             _repositoryMock = new Mock<ICupomRepository>();
-            _cupomService = new CouponService(_repositoryMock.Object);
+            _cupomService = new CupomService(_repositoryMock.Object);
         }
 
         [Fact]

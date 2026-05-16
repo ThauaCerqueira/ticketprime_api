@@ -9,6 +9,7 @@ using src.Infrastructure;
 using src.Infrastructure.IRepository;
 using src.Models;
 using src.Service;
+using TicketPrime.Tests;
 using Xunit;
 
 namespace tests;
@@ -35,8 +36,12 @@ public class LgpdControllerTests
 
         var userService = new UserService(repoMock.Object, emailMock.Object);
 
-        var connFactory = new DbConnectionFactory(
-            "Server=.;Database=LGPD_Test;Trusted_Connection=true;TrustServerCertificate=True;Connect Timeout=1;");
+        // ══════════════════════════════════════════════════════════════
+        // ⚠️ ATENÇÃO: Estes testes usam um banco ISOLADO (LGPD_Test)
+        // que é configurado via variável de ambiente TEST_DB_CONNECTION.
+        // Se não configurada, o helper lança um erro claro.
+        // ══════════════════════════════════════════════════════════════
+        var connFactory = TestConnectionHelper.CreateDbConnectionFactory("LGPD_Test");
 
         var controller = new UserController(userService, connFactory, NullLogger<UserController>.Instance);
 

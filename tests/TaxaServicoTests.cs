@@ -4,7 +4,7 @@ using Moq;
 using src.Infrastructure;
 using src.Infrastructure.IRepository;
 using src.Service;
-using TicketPrime.Web.Validators;
+using TicketPrime.Web.Client.Validators;
 using Xunit;
 
 // Aliases para resolver ambiguidade entre src.* e TicketPrime.Web.*
@@ -13,7 +13,7 @@ using Reserva = src.Models.Reservation;
 using Usuario = src.Models.User;
 using ReservaDetalhadaDTO = src.DTOs.ReservationDetailDto;
 // Mantém TicketPrime.Web.Models para EventoCreateDto, FotoCriptografada, etc.
-using TicketPrime.Web.Models;
+using TicketPrime.Web.Shared.Models;
 
 namespace TicketPrime.Tests.TaxaServico;
 
@@ -135,13 +135,13 @@ public class TaxaServicoValidatorTests
 // ─────────────────────────────────────────────────────────────────────────────
 public class EventoServiceTaxaTests
 {
-    private static EventService CriarService(Mock<IEventoRepository> repoMock)
+    private static EventoService CriarService(Mock<IEventoRepository> repoMock)
     {
         var reservaMock = new Mock<IReservaRepository>();
         var usuarioMock = new Mock<IUsuarioRepository>();
-        var emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!);
-        var loggerMock = new Mock<ILogger<EventService>>();
-        return new EventService(repoMock.Object, reservaMock.Object, usuarioMock.Object,
+        var emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!, null!);
+        var loggerMock = new Mock<ILogger<EventoService>>();
+        return new EventoService(repoMock.Object, reservaMock.Object, usuarioMock.Object,
                                  emailTemplateMock.Object, loggerMock.Object);
     }
 
@@ -229,13 +229,13 @@ public class EventoServiceTaxaTests
 // ─────────────────────────────────────────────────────────────────────────────
 public class EventoServiceDeletarTests
 {
-    private static EventService CriarService(Mock<IEventoRepository> repoMock)
+    private static EventoService CriarService(Mock<IEventoRepository> repoMock)
     {
         var reservaMock = new Mock<IReservaRepository>();
         var usuarioMock = new Mock<IUsuarioRepository>();
-        var emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!);
-        var loggerMock = new Mock<ILogger<EventService>>();
-        return new EventService(repoMock.Object, reservaMock.Object, usuarioMock.Object,
+        var emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!, null!);
+        var loggerMock = new Mock<ILogger<EventoService>>();
+        return new EventoService(repoMock.Object, reservaMock.Object, usuarioMock.Object,
                                  emailTemplateMock.Object, loggerMock.Object);
     }
 
@@ -322,7 +322,7 @@ public class ReservaServiceSeguroTests
                 return r;
             });
 
-        var emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!);
+        var emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!, null!);
         var loggerMock = new Mock<ILogger<ReservationService>>();
         var filaEsperaServiceMock = new Mock<IWaitingQueueService>();
 
@@ -342,7 +342,8 @@ public class ReservaServiceSeguroTests
                                      auditLogSvc,
                                      paymentGatewayMock.Object,
                                      new Mock<IMeiaEntradaRepository>().Object,
-                                     new Mock<IMeiaEntradaStorageService>().Object);
+                                     new Mock<IMeiaEntradaStorageService>().Object,
+                                     new Mock<PixCryptoService>(null!).Object);
         return (svc, transacaoMock);
     }
 

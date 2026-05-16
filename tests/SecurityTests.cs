@@ -478,7 +478,7 @@ public class CupomSecurityTests
     {
         // Arrange
         var repoMock = new Mock<ICupomRepository>();
-        var service = new CouponService(repoMock.Object);
+        var service = new CupomService(repoMock.Object);
 
         var dto = new CreateCouponDto
         {
@@ -514,7 +514,7 @@ public class CupomSecurityTests
         repoMock.Setup(r => r.ObterPorCodigoAsync(It.IsAny<string>()))
                 .ReturnsAsync((Coupon?)null);
         repoMock.Setup(r => r.CriarAsync(It.IsAny<Coupon>())).ReturnsAsync(1);
-        var service = new CouponService(repoMock.Object);
+        var service = new CupomService(repoMock.Object);
 
         var dto = new CreateCouponDto
         {

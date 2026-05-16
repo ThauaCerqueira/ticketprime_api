@@ -1,4 +1,4 @@
-using TicketPrime.Web.Models;
+using TicketPrime.Web.Shared.Models;
 
 namespace TicketPrime.Tests.Models;
 

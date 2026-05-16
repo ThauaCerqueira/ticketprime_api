@@ -35,7 +35,7 @@ namespace TicketPrime.Tests.Service
             _usuarioRepoMock = new Mock<IUsuarioRepository>();
             _cupomRepoMock = new Mock<ICupomRepository>();
             _transacaoMock = new Mock<ITransacaoCompraExecutor>();
-            _emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!);
+            _emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!, null!);
             _loggerMock = new Mock<ILogger<ReservationService>>();
             _filaEsperaServiceMock = new Mock<IWaitingQueueService>();
             _paymentGatewayMock = new Mock<IPaymentGateway>();
@@ -53,17 +53,15 @@ namespace TicketPrime.Tests.Service
                 _usuarioRepoMock.Object,
                 _cupomRepoMock.Object,
                 _transacaoMock.Object,
-                new DbConnectionFactory(
-                    Environment.GetEnvironmentVariable("TEST_DB_CONNECTION")
-                    ?? "Server=.;Database=TicketPrime_UnitTest;Trusted_Connection=true;TrustServerCertificate=True;"
-                ),
+                TestConnectionHelper.CreateDbConnectionFactory("TicketPrime_UnitTest"),
                 _emailTemplateMock.Object,
                 _loggerMock.Object,
                 _filaEsperaServiceMock.Object,
                 auditLogService,
                 _paymentGatewayMock.Object,
                 new Mock<IMeiaEntradaRepository>().Object,
-                new Mock<IMeiaEntradaStorageService>().Object
+                new Mock<IMeiaEntradaStorageService>().Object,
+                new Mock<PixCryptoService>(null!).Object
             );
 
             _usuarioValido = new User

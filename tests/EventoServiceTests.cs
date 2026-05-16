@@ -13,18 +13,18 @@ namespace TicketPrime.Tests.Service
         private readonly Mock<IReservaRepository> _reservaRepoMock;
         private readonly Mock<IUsuarioRepository> _usuarioRepoMock;
         private readonly Mock<EmailTemplateService> _emailTemplateMock;
-        private readonly Mock<ILogger<EventService>> _loggerMock;
-        private readonly EventService _eventoService;
+        private readonly Mock<ILogger<EventoService>> _loggerMock;
+        private readonly EventoService _eventoService;
 
         public EventoServiceTests()
         {
             _repositoryMock = new Mock<IEventoRepository>();
             _reservaRepoMock = new Mock<IReservaRepository>();
             _usuarioRepoMock = new Mock<IUsuarioRepository>();
-            _emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!);
-            _loggerMock = new Mock<ILogger<EventService>>();
+            _emailTemplateMock = new Mock<EmailTemplateService>(MockBehavior.Loose, null!, null!, null!);
+            _loggerMock = new Mock<ILogger<EventoService>>();
 
-            _eventoService = new EventService(
+            _eventoService = new EventoService(
                 _repositoryMock.Object,
                 _reservaRepoMock.Object,
                 _usuarioRepoMock.Object,

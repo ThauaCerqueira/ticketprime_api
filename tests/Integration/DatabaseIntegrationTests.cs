@@ -154,6 +154,7 @@ public class DatabaseIntegrationTests
         GeneroMusical = "Rock",
         PrecoPadrao = 100.00m,
         CapacidadeTotal = 500,
+        CapacidadeRestante = 500,
         Status = "Rascunho",
         TaxaServico = 5.00m,
         LimiteIngressosPorUsuario = 6
@@ -208,7 +209,7 @@ public class DatabaseIntegrationTests
 
         Assert.True(sucesso);
         Assert.NotNull(obtido);
-        Assert.Equal(evento.CapacidadeTotal - 1, obtido.CapacidadeTotal);
+        Assert.Equal(evento.CapacidadeTotal - 1, obtido.CapacidadeRestante);
     }
 
     [SkippableFact]
@@ -240,7 +241,7 @@ public class DatabaseIntegrationTests
 
         Assert.NotNull(antes);
         Assert.NotNull(depois);
-        Assert.Equal(antes.CapacidadeTotal + 1, depois.CapacidadeTotal);
+        Assert.Equal(antes.CapacidadeRestante + 1, depois.CapacidadeRestante);
     }
 
     [SkippableFact]
@@ -375,10 +376,12 @@ public class DatabaseIntegrationTests
 
         var evento = CriarEventoTeste();
         var eventoId = await _fixture.EventoRepository.AdicionarAsync(evento);
+        var ticketTypeId = await _fixture.CriarTipoIngressoPadraoAsync(eventoId);
 
         var reserva = new Reservation
         {
             EventoId = eventoId,
+            TicketTypeId = ticketTypeId,
             UsuarioCpf = usuario.Cpf,
             ValorFinalPago = evento.PrecoPadrao,
             CupomUtilizado = null,
@@ -417,10 +420,12 @@ public class DatabaseIntegrationTests
 
         var evento = CriarEventoTeste();
         var eventoId = await _fixture.EventoRepository.AdicionarAsync(evento);
+        var ticketTypeId = await _fixture.CriarTipoIngressoPadraoAsync(eventoId);
 
         var reserva = new Reservation
         {
             EventoId = eventoId,
+            TicketTypeId = ticketTypeId,
             UsuarioCpf = usuario.Cpf,
             ValorFinalPago = evento.PrecoPadrao,
             DataCompra = DateTime.Now,
@@ -455,10 +460,12 @@ public class DatabaseIntegrationTests
 
         var evento = CriarEventoTeste();
         var eventoId = await _fixture.EventoRepository.AdicionarAsync(evento);
+        var ticketTypeId = await _fixture.CriarTipoIngressoPadraoAsync(eventoId);
 
         var reserva = new Reservation
         {
             EventoId = eventoId,
+            TicketTypeId = ticketTypeId,
             UsuarioCpf = usuario.Cpf,
             ValorFinalPago = evento.PrecoPadrao,
             DataCompra = DateTime.Now,
@@ -487,10 +494,12 @@ public class DatabaseIntegrationTests
 
         var evento = CriarEventoTeste();
         var eventoId = await _fixture.EventoRepository.AdicionarAsync(evento);
+        var ticketTypeId = await _fixture.CriarTipoIngressoPadraoAsync(eventoId);
 
         var reserva = new Reservation
         {
             EventoId = eventoId,
+            TicketTypeId = ticketTypeId,
             UsuarioCpf = usuario.Cpf,
             ValorFinalPago = evento.PrecoPadrao,
             DataCompra = DateTime.Now,
@@ -521,11 +530,13 @@ public class DatabaseIntegrationTests
 
         var evento = CriarEventoTeste();
         var eventoId = await _fixture.EventoRepository.AdicionarAsync(evento);
+        var ticketTypeId = await _fixture.CriarTipoIngressoPadraoAsync(eventoId);
 
         var codigoIngresso = Guid.NewGuid().ToString("N").ToUpper()[..20];
         var reserva = new Reservation
         {
             EventoId = eventoId,
+            TicketTypeId = ticketTypeId,
             UsuarioCpf = usuario.Cpf,
             ValorFinalPago = evento.PrecoPadrao,
             DataCompra = DateTime.Now,
@@ -566,6 +577,9 @@ public class DatabaseIntegrationTests
         cupom.ValorMinimoRegra = 100.00m;
         await _fixture.CupomRepository.CriarAsync(cupom);
 
+        // Cria TicketType para a reserva
+        var ticketTypeId = await _fixture.CriarTipoIngressoPadraoAsync(eventoId);
+
         // Act — compra com cupom
         var valorBruto = evento.PrecoPadrao; // 200.00
         var desconto = valorBruto * (cupom.PorcentagemDesconto / 100m); // 40.00
@@ -574,6 +588,7 @@ public class DatabaseIntegrationTests
         var reserva = new Reservation
         {
             EventoId = eventoId,
+            TicketTypeId = ticketTypeId,
             UsuarioCpf = usuario.Cpf,
             ValorFinalPago = valorFinal,
             CupomUtilizado = cupom.Codigo,
@@ -601,7 +616,7 @@ public class DatabaseIntegrationTests
 
         var eventoObtido = await _fixture.EventoRepository.ObterPorIdAsync(eventoId);
         Assert.NotNull(eventoObtido);
-        Assert.Equal(evento.CapacidadeTotal - 1, eventoObtido.CapacidadeTotal);
+        Assert.Equal(evento.CapacidadeRestante - 1, eventoObtido.CapacidadeRestante);
     }
 
     [SkippableFact]
@@ -614,10 +629,12 @@ public class DatabaseIntegrationTests
 
         var evento = CriarEventoTeste();
         var eventoId = await _fixture.EventoRepository.AdicionarAsync(evento);
+        var ticketTypeId = await _fixture.CriarTipoIngressoPadraoAsync(eventoId);
 
         var reserva = new Reservation
         {
             EventoId = eventoId,
+            TicketTypeId = ticketTypeId,
             UsuarioCpf = usuario.Cpf,
             ValorFinalPago = evento.PrecoPadrao,
             DataCompra = DateTime.Now,
@@ -631,16 +648,16 @@ public class DatabaseIntegrationTests
 
         // "Compra" realizada — diminui capacidade
         await _fixture.EventoRepository.DiminuirCapacidadeAsync(eventoId);
-        var capacidadeAposCompra = (await _fixture.EventoRepository.ObterPorIdAsync(eventoId))!.CapacidadeTotal;
+        var capacidadeAposCompra = (await _fixture.EventoRepository.ObterPorIdAsync(eventoId))!.CapacidadeRestante;
 
         // Act — cancela a reserva
         await _fixture.ReservaRepository.CancelarAsync(criada.Id, usuario.Cpf);
         await _fixture.EventoRepository.AumentarCapacidadeAsync(eventoId);
-        var capacidadeAposCancelamento = (await _fixture.EventoRepository.ObterPorIdAsync(eventoId))!.CapacidadeTotal;
+        var capacidadeAposCancelamento = (await _fixture.EventoRepository.ObterPorIdAsync(eventoId))!.CapacidadeRestante;
 
         // Assert
-        Assert.Equal(evento.CapacidadeTotal - 1, capacidadeAposCompra);
-        Assert.Equal(evento.CapacidadeTotal, capacidadeAposCancelamento);
+        Assert.Equal(evento.CapacidadeRestante - 1, capacidadeAposCompra);
+        Assert.Equal(evento.CapacidadeRestante, capacidadeAposCancelamento);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
