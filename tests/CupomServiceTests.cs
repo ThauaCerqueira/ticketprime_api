@@ -32,6 +32,7 @@ namespace TicketPrime.Tests.Service
         [Theory]
         [InlineData(0)]
         [InlineData(-5)]
+        [InlineData(100)]
         [InlineData(101)]
         public async Task CriarAsync_DeveLancarExcecao_QuandoDescontoInvalido(int descontoInvalido)
         {
@@ -40,7 +41,7 @@ namespace TicketPrime.Tests.Service
 
             
             var ex = await Assert.ThrowsAsync<ArgumentException>(() => _cupomService.CriarAsync(dto));
-            Assert.Equal("Desconto percentual deve ser entre 1 e 100.", ex.Message);
+            Assert.Equal("Desconto percentual deve ser entre 1 e 99.", ex.Message);
         }
 
         [Fact]

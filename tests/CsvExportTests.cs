@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Caching.Distributed;
 using src.Controllers;
 using src.DTOs;
 using src.Infrastructure.IRepository;
+using src.Service;
 using Moq;
 using Xunit;
 
@@ -31,11 +33,18 @@ public class CsvExportTests
         var cupomMock   = new Mock<ICupomRepository>();
         var usuarioMock = new Mock<IUsuarioRepository>();
 
+        var cacheMock = new Mock<IDistributedCache>();
+        var auditMock = new Mock<AuditLogService>(
+            Mock.Of<src.Infrastructure.IRepository.IAuditLogRepository>(),
+            Mock.Of<Microsoft.Extensions.Logging.ILogger<AuditLogService>>());
+
         return new AdminController(
             eventoMock.Object,
             reservaMock.Object,
             cupomMock.Object,
-            usuarioMock.Object);
+            usuarioMock.Object,
+            cacheMock.Object,
+            auditMock.Object);
     }
 
     // ════════════════════════════════════════════════════════════════════════

@@ -17,6 +17,9 @@ public class TicketEvent
     [JsonPropertyName("capacidadeTotal")]
     public int CapacidadeTotal { get; set; }
 
+    [JsonPropertyName("capacidadeRestante")]
+    public int CapacidadeRestante { get; set; }
+
     [JsonPropertyName("dataEvento")]
     public DateTime DataEvento { get; set; }
 
@@ -131,6 +134,9 @@ public class ReservationDetailDto
 
     [JsonPropertyName("loteNome")]
     public string? LoteNome { get; set; }
+
+    [JsonPropertyName("chavePix")]
+    public string? ChavePix { get; set; }
 
     [JsonPropertyName("status")]
     public string Status { get; set; } = "Ativa";

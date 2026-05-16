@@ -355,27 +355,24 @@ public class MeiaEntradaTests
             });
 
         // Simula falha no storage (tipo MIME inválido)
-        // NOTA: O serviço CAPTURA esta exceção internamente (try-catch), então
-        // a compra continua normalmente mesmo com documento inválido.
-        // O comportamento é "best-effort" para o documento.
+        // Com a nova validação fail-fast, a exceção é lançada ANTES da transação.
         _meiaEntradaStorageMock
             .Setup(s => s.SalvarDocumentoAsync(
                 It.IsAny<Stream>(), It.IsAny<string>(), "text/html"))
             .ThrowsAsync(new InvalidOperationException(
                 "Tipo de arquivo não permitido: text/html. Aceitos: JPEG, PNG, WebP, PDF."));
 
-        // Act — a compra prossegue mesmo com falha no documento (best-effort)
-        var resultado = await _reservaService.ComprarIngressoAsync(
-            CpfValido, _eventoComMeia.Id, 1,
-            ehMeiaEntrada: true,
-            documentoBase64: "aHRtbA==",
-            documentoNome: "doc.html",
-            documentoContentType: "text/html");
+        // Act — a validação de MIME agora é feita antes da transação (fail-fast)
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _reservaService.ComprarIngressoAsync(
+                CpfValido, _eventoComMeia.Id, 1,
+                ehMeiaEntrada: true,
+                documentoBase64: "aHRtbA==",
+                documentoNome: "doc.html",
+                documentoContentType: "text/html"));
 
-        // Assert — verifica que o storage foi chamado (o documento foi processado)
-        Assert.NotNull(resultado);
-        _meiaEntradaStorageMock.Verify(s => s.SalvarDocumentoAsync(
-            It.IsAny<Stream>(), It.IsAny<string>(), "text/html"), Times.Once);
+        // Assert — exceção correta é lançada pela validação early
+        Assert.Contains("não permitido", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -412,17 +409,17 @@ public class MeiaEntradaTests
                 It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>()))
             .ThrowsAsync(new InvalidOperationException("Arquivo excede o limite de 10 MB."));
 
-        // Act - Compra procede normalmente mesmo com documento grande demais
-        var resultado = await _reservaService.ComprarIngressoAsync(
-            CpfValido, _eventoComMeia.Id, 1,
-            ehMeiaEntrada: true,
-            documentoBase64: new string('A', 15 * 1024 * 1024 / 4 * 3 + 1), // >10MB em Base64
-            documentoNome: "grande.pdf",
-            documentoContentType: "application/pdf");
+        // Act - Com a nova validação fail-fast, documentos grandes são rejeitados antes da transação
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _reservaService.ComprarIngressoAsync(
+                CpfValido, _eventoComMeia.Id, 1,
+                ehMeiaEntrada: true,
+                documentoBase64: new string('A', 15 * 1024 * 1024 / 4 * 3 + 1), // >10MB em Base64
+                documentoNome: "grande.pdf",
+                documentoContentType: "application/pdf"));
 
-        // Assert - Verifica que a compra foi concluída mesmo com falha no documento
-        Assert.NotNull(resultado);
-        // O storage foi chamado (best-effort) mas o resultado é a compra completa
+        // Assert - A validação de tamanho é fail-fast
+        Assert.Contains("muito grande", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     // ═══════════════════════════════════════════════════════════════════

@@ -175,13 +175,13 @@ public class ConcurrencyIntegrationTests
     // TESTE 3: Deadlock prevention — ordem consistente de locks
     // ═══════════════════════════════════════════════════════════════════
 
-    [Fact(Skip = "Teste de UPDLOCK lento (~30s) por design. Execute manualmente removendo o Skip.")]
+    [Fact]
     public async Task Concorrencia_DeadlockPrevention_LockOrdemConsistente()
     {
         IgnorarSeDBIndisponivel();
         var cs = IntegrationTestFixture.ObterConnectionString();
 
-        // Cria dois eventos
+        // ── Cria dois eventos ─────────────────────────────────────────
         await using var conn = new SqlConnection(cs);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
@@ -198,44 +198,75 @@ public class ConcurrencyIntegrationTests
             SELECT SCOPE_IDENTITY();";
         var e2 = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-        // Duas transações que lockeiam na MESMA ORDEM (e1, e2) — sem deadlock
-        await using var c1 = new SqlConnection(cs);
-        await using var c2 = new SqlConnection(cs);
-        await c1.OpenAsync();
-        await c2.OpenAsync();
-        await using var t1 = c1.BeginTransaction();
-        await using var t2 = c2.BeginTransaction();
-        await using var cmd1 = c1.CreateCommand();
-        await using var cmd2 = c2.CreateCommand();
-        cmd1.Transaction = t1;
-        cmd2.Transaction = t2;
+        // ── Duas transações paralelas, mesma ordem de lock: e1 → e2 ──
+        // Sem inversão de ordem → sem deadlock. T2 bloqueia em e1 até
+        // T1 commitar, depois ambas completam normalmente.
+        // Nota: as transações devem correr em Tasks separadas; executá-las
+        // em série na mesma thread causaria deadlock de aplicação (T2 bloqueia
+        // o await enquanto T1 ainda não fez commit).
+        var tsc1 = new TaskCompletionSource();   // sinaliza quando T1 travou e1
+        var tsc2 = new TaskCompletionSource();   // sinaliza quando T2 tentou e1
 
-        // Ambas lockeiam na ordem: e1, e2 (consistente)
-        cmd1.CommandText = "UPDATE Eventos WITH(UPDLOCK) SET CapacidadeRestante-=1 WHERE Id=@E1";
-        cmd1.Parameters.AddWithValue("@E1", e1);
-        await cmd1.ExecuteNonQueryAsync();
+        var task1 = Task.Run(async () =>
+        {
+            await using var c1 = new SqlConnection(cs);
+            await c1.OpenAsync();
+            await using var tx1 = (SqlTransaction)await c1.BeginTransactionAsync();
 
-        cmd2.CommandText = "UPDATE Eventos WITH(UPDLOCK) SET CapacidadeRestante-=1 WHERE Id=@E1";
-        cmd2.Parameters.AddWithValue("@E1", e1);
-        await cmd2.ExecuteNonQueryAsync();
+            // Lock e1
+            await using var q1 = c1.CreateCommand();
+            q1.Transaction = tx1;
+            q1.CommandText = "UPDATE Eventos WITH(UPDLOCK) SET CapacidadeRestante-=1 WHERE Id=@E";
+            q1.Parameters.AddWithValue("@E", e1);
+            await q1.ExecuteNonQueryAsync();
 
-        cmd1.Parameters.Clear();
-        cmd1.CommandText = "UPDATE Eventos WITH(UPDLOCK) SET CapacidadeRestante-=1 WHERE Id=@E2";
-        cmd1.Parameters.AddWithValue("@E2", e2);
-        await cmd1.ExecuteNonQueryAsync();
+            tsc1.SetResult(); // avisa T2 que e1 está bloqueado
 
-        cmd2.Parameters.Clear();
-        cmd2.CommandText = "UPDATE Eventos WITH(UPDLOCK) SET CapacidadeRestante-=1 WHERE Id=@E2";
-        cmd2.Parameters.AddWithValue("@E2", e2);
-        await cmd2.ExecuteNonQueryAsync();
+            await tsc2.Task;  // aguarda T2 tentar e1 (já está bloqueado no banco)
 
-        await t1.CommitAsync();
-        await t2.CommitAsync();
+            // Lock e2 (mesma ordem — sem deadlock com T2)
+            q1.Parameters.Clear();
+            q1.CommandText = "UPDATE Eventos WITH(UPDLOCK) SET CapacidadeRestante-=1 WHERE Id=@E";
+            q1.Parameters.AddWithValue("@E", e2);
+            await q1.ExecuteNonQueryAsync();
 
-        // Ambas completaram sem deadlock
+            await tx1.CommitAsync(); // libera e1 — T2 pode prosseguir
+        });
+
+        var task2 = Task.Run(async () =>
+        {
+            await tsc1.Task; // espera T1 ter e1 antes de tentar
+
+            await using var c2 = new SqlConnection(cs);
+            await c2.OpenAsync();
+            await using var tx2 = (SqlTransaction)await c2.BeginTransactionAsync();
+
+            // Tenta lock e1 — vai bloquear até T1 commitar
+            await using var q2 = c2.CreateCommand();
+            q2.Transaction = tx2;
+            q2.CommandText = "UPDATE Eventos WITH(UPDLOCK) SET CapacidadeRestante-=1 WHERE Id=@E";
+            q2.Parameters.AddWithValue("@E", e1);
+
+            tsc2.SetResult(); // avisa T1 que está prestes a tentar o lock
+
+            await q2.ExecuteNonQueryAsync(); // bloqueia até T1 commitar
+
+            // Lock e2 (mesma ordem — sem chance de deadlock)
+            q2.Parameters.Clear();
+            q2.CommandText = "UPDATE Eventos WITH(UPDLOCK) SET CapacidadeRestante-=1 WHERE Id=@E";
+            q2.Parameters.AddWithValue("@E", e2);
+            await q2.ExecuteNonQueryAsync();
+
+            await tx2.CommitAsync();
+        });
+
+        // Ambas devem completar sem deadlock dentro de 15 s
+        await Task.WhenAll(task1, task2).WaitAsync(TimeSpan.FromSeconds(15));
+
+        // Capacidade final: 10 - 2 decrementos de cada tx = 8
         cmd.CommandText = "SELECT CapacidadeRestante FROM Eventos WHERE Id=@E1";
         cmd.Parameters.Clear();
         cmd.Parameters.AddWithValue("@E1", e1);
-        Assert.Equal(8, (int)(await cmd.ExecuteScalarAsync())!); // 10-1-1=8
+        Assert.Equal(8, (int)(await cmd.ExecuteScalarAsync())!);
     }
 }
