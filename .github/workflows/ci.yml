@@ -12,13 +12,29 @@ jobs:
     name: Backend (.NET)
     runs-on: ubuntu-latest
 
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          SA_PASSWORD: "TicketPrime@2024!"
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'TicketPrime@2024!' -C -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 30s
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Restore backend
         run: dotnet restore src/src.csproj
@@ -29,6 +45,10 @@ jobs:
       - name: Restore tests
         run: dotnet restore tests/tests.csproj
 
+      - name: Init Database
+        run: |
+          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'TicketPrime@2024!' -C -i db/script.sql
+
       - name: Run unit tests
         run: >
           dotnet test tests/tests.csproj
@@ -38,7 +58,7 @@ jobs:
           --collect:"XPlat Code Coverage"
           --results-directory ./TestResults
         env:
-          TEST_CONNECTION_STRING: "Server=.;Database=TicketPrime_CI;Trusted_Connection=true;"
+          TEST_CONNECTION_STRING: "Server=localhost,1433;Database=TicketPrime;User Id=sa;Password=TicketPrime@2024!;TrustServerCertificate=True;"
 
       - name: Upload test results
         if: always()
@@ -58,7 +78,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Restore frontend
         run: dotnet restore ui/TicketPrime.Web/TicketPrime.Web.csproj

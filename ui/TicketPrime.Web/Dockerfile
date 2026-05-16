@@ -27,4 +27,8 @@ COPY --from=build /publish .
 # .NET 8+ escuta na porta 8080 por padrão em containers
 EXPOSE 8080
 
+# Executa como usuário não-root para reduzir superfície de ataque
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
 ENTRYPOINT ["dotnet", "TicketPrime.Web.dll"]

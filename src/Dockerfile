@@ -15,10 +15,18 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 COPY --from=build /publish .
-# Copia o script de banco para que InitializeDatabase encontre db/script.sql em runtime
-COPY db/script.sql db/script.sql
+# ═══════════════════════════════════════════════════════════════════
+# SEGURANÇA: script.sql NÃO é copiado para a imagem de produção.
+#   Em produção, o banco já deve estar criado e migrado.
+#   InitializeDatabase() só deve rodar em Development.
+#   Use migrations versionadas (DbUp/Flyway) para produção.
+# ═══════════════════════════════════════════════════════════════════
 
 # .NET 8+ escuta na porta 8080 por padrão em containers
 EXPOSE 8080
+
+# Executa como usuário não-root para reduzir superfície de ataque
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
 
 ENTRYPOINT ["dotnet", "src.dll"]

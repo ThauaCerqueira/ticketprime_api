@@ -26,6 +26,13 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 1G
 
   # ── API (backend) ─────────────────────────────────────────────────────────────
   api:
@@ -62,8 +69,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
 
-  # ── UI (Blazor Server) ────────────────────────────────────────────────────────────────────
+  # ── UI (Blazor WebAssembly — agora servida estaticamente) ─────────────────────
   frontend:
     build:
       context: .
@@ -84,6 +98,13 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          memory: 128M
 
   # ── Reverse Proxy (nginx com TLS termination) ─────────────────────────────────
   proxy:
@@ -122,9 +143,61 @@ services:
                   done"
     profiles: ["production"]
 
-  # ── Automated database backup ─────────────────────────────────────────────────
-  # Backs up the database daily; retains 7 days of .bak files.
-  # Start with: docker compose --profile backup up -d backup
+  # ── MinIO (S3-compatible storage para backups) ────────────────────────────────
+  # Console: http://localhost:9001 (login: admin / MINIO_ROOT_PASSWORD)
+  # Free, open-source, S3-compatible.
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: ticketprime_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-admin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
+      MINIO_DOMAIN: minio
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Console web
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ── MinIO Init (one-shot: bucket, lifecycle, usuario backup) ─────────────────
+  # Executa UMA vez para configurar o MinIO.
+  minio-init:
+    image: minio/mc:latest
+    container_name: ticketprime_minio_init
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-admin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
+      MINIO_BACKUP_SECRET: "${MINIO_BACKUP_SECRET:?MINIO_BACKUP_SECRET is required}"
+      BUCKET_NAME: ticketprime
+      MINIO_ENDPOINT: minio:9000
+    volumes:
+      - ./docker/minio-init.sh:/minio-init.sh:ro
+    entrypoint: ["/bin/bash", "/minio-init.sh"]
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    profiles: ["setup"]
+
+  # ── Backup automático com MinIO S3 ───────────────────────────────────────────
+  # Cria backups FULL (semanal/mensal) ou DAILY compactados e envia ao MinIO.
+  # O .bak fica APENAS em /tmp/ dentro do container (não ocupa volume persistente).
+  # Retenção gerenciada por lifecycle policy do MinIO.
+  # Iniciar: docker compose --profile backup up -d backup
   backup:
     image: mcr.microsoft.com/mssql-tools:latest
     container_name: ticketprime_backup
@@ -132,25 +205,41 @@ services:
       SA_PASSWORD: "${SA_PASSWORD:?SA_PASSWORD is required}"
       DB_HOST: sqlserver
       DB_NAME: TicketPrime
-      RETENTION_DAYS: "7"
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ticketprime-backup
+      S3_SECRET_KEY: "${MINIO_BACKUP_SECRET:?MINIO_BACKUP_SECRET is required}"
+      S3_BUCKET: ticketprime
     volumes:
       - ./docker/backup.sh:/backup.sh:ro
-      - backups:/backups
+      - ./docker/backup-restore.sh:/backup-restore.sh:ro
     entrypoint: >
       /bin/bash -c "
-        chmod +x /backup.sh;
+        set -e;
+        # Instala o MinIO Client (mc) para upload S3
+        echo '[backup] 📦 Instalando MinIO Client...';
+        apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1;
+        curl -sL https://dl.min.io/client/mc/release/linux-amd64/mc \
+          -o /usr/local/bin/mc;
+        chmod +x /usr/local/bin/mc;
+        echo '[backup] ✅ MinIO Client instalado: mc $(mc --version 2>&1)';
+        chmod +x /backup.sh /backup-restore.sh;
+        echo '[backup] 🚀 Serviço de backup iniciado';
         trap exit TERM;
         while :; do
           /backup.sh;
-          sleep 86400;
+          sleep 43200;  # A cada 12 horas
         done"
     depends_on:
       sqlserver:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     profiles: ["backup"]
 
 volumes:
   sqlserver_data:
+    name: ticketprime_sqlserver_data
+  minio_data:
+    name: ticketprime_minio_data
   certbot_certs:
   certbot_webroot:
-  backups:

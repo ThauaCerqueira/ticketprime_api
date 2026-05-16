@@ -1,0 +1,69 @@
+# ═══════════════════════════════════════════════════════════════════
+#  Docker Compose — HashiCorp Vault (open-source)
+#  ══════════════════════════════════════════════════════════════════
+#  Uso: docker compose -f docker-compose.yml -f docker-compose.vault.yml up -d
+#
+#  Depois, inicializar:
+#    docker compose exec vault sh /vault-setup.sh
+#
+#  Configurar no appsettings.Production.json:
+#    "Vault": {
+#      "Address": "http://vault:8200",
+#      "AuthMethod": "token",
+#      "Token": "<token gerado pelo setup>",
+#      "MountPoint": "secret",
+#      "SecretPath": "ticketprime/crypto"
+#    }
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── HashiCorp Vault (open-source, gratuito) ──────────────────────
+  vault:
+    image: hashicorp/vault:latest
+    container_name: ticketprime_vault
+    cap_add:
+      - IPC_LOCK  # Necessário para mlock (memória não paginável)
+    environment:
+      VAULT_LOCAL_CONFIG: >
+        {
+          "storage": {
+            "file": {
+              "path": "/vault/data"
+            }
+          },
+          "listener": {
+            "tcp": {
+              "address": "0.0.0.0:8200",
+              "tls_disable": true
+            }
+          },
+          "default_lease_ttl": "168h",
+          "max_lease_ttl": "720h",
+          "ui": true
+        }
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault_data:/vault/data
+      - ./docker/vault-setup.sh:/vault-setup.sh:ro
+    entrypoint:
+      - vault
+      - server
+      - -config=/vault/config
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8200/v1/sys/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          memory: 128M
+
+volumes:
+  vault_data:
