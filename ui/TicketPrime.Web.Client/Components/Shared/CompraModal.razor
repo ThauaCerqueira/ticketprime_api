@@ -32,35 +32,53 @@
                     @if (!string.IsNullOrEmpty(pixChavePix))
                     {
                         <div style="margin-top:1.2rem;padding:1rem;background:var(--tp-bg-page);border-radius:14px;border:1.5px solid var(--tp-border-card);">
-                            <div style="font-size:0.9rem;font-weight:700;color:var(--tp-text-heading);margin-bottom:0.6rem;text-align:center;">
-                                💠 Pagamento PIX
-                            </div>
-                            <div style="font-size:0.78rem;color:var(--tp-text-muted);text-align:center;margin-bottom:0.8rem;">
-                                Escaneie o QR Code abaixo ou copie a chave PIX para pagar.
-                            </div>
-
-                            @* QR Code Image *@
-                            @if (!string.IsNullOrEmpty(pixQrCodeBase64))
+                            @if (_pixAprovado)
                             {
-                                <div style="display:flex;justify-content:center;margin-bottom:0.8rem;">
-                                    <img src="data:image/png;base64,@pixQrCodeBase64"
-                                         alt="QR Code PIX"
-                                         style="width:220px;height:220px;border-radius:12px;border:2px solid var(--tp-border-card);"
-                                         title="Escaneie este QR Code para pagar" />
+                                <div style="font-size:0.9rem;font-weight:700;color:#059669;margin-bottom:0.6rem;text-align:center;">
+                                    ✅ Pagamento PIX confirmado!
+                                </div>
+                                <div style="font-size:0.82rem;color:var(--tp-text-muted);text-align:center;">
+                                    Seu ingresso já está disponível. Acesse "Meus ingressos" para visualizar.
                                 </div>
                             }
+                            else
+                            {
+                                <div style="font-size:0.9rem;font-weight:700;color:var(--tp-text-heading);margin-bottom:0.6rem;text-align:center;">
+                                    💠 Pagamento PIX
+                                </div>
+                                <div style="font-size:0.78rem;color:var(--tp-text-muted);text-align:center;margin-bottom:0.8rem;">
+                                    Escaneie o QR Code abaixo ou copie a chave PIX para pagar.
+                                </div>
 
-                            @* Copia e Cola *@
-                            <div style="background:var(--tp-bg-input);border-radius:10px;padding:0.6rem 0.8rem;word-break:break-all;font-size:0.75rem;font-family:monospace;color:var(--tp-text-body);margin-bottom:0.6rem;user-select:all;">
-                                @pixChavePix
-                            </div>
+                                @* QR Code Image *@
+                                @if (!string.IsNullOrEmpty(pixQrCodeBase64))
+                                {
+                                    <div style="display:flex;justify-content:center;margin-bottom:0.8rem;">
+                                        <img src="data:image/png;base64,@pixQrCodeBase64"
+                                             alt="QR Code PIX"
+                                             style="width:220px;height:220px;border-radius:12px;border:2px solid var(--tp-border-card);"
+                                             title="Escaneie este QR Code para pagar" />
+                                    </div>
+                                }
 
-                            <button class="vitrine-modal-btn-secondary"
-                                    @onclick="CopiarChavePix"
-                                    style="font-size:0.82rem;padding:0.4rem 1rem;width:100%;"
-                                    aria-label="Copiar chave PIX">
-                                📋 Copiar chave PIX
-                            </button>
+                                @* Copia e Cola *@
+                                <div style="background:var(--tp-bg-input);border-radius:10px;padding:0.6rem 0.8rem;word-break:break-all;font-size:0.75rem;font-family:monospace;color:var(--tp-text-body);margin-bottom:0.6rem;user-select:all;">
+                                    @pixChavePix
+                                </div>
+
+                                <button class="vitrine-modal-btn-secondary"
+                                        @onclick="CopiarChavePix"
+                                        style="font-size:0.82rem;padding:0.4rem 1rem;width:100%;"
+                                        aria-label="Copiar chave PIX">
+                                    📋 Copiar chave PIX
+                                </button>
+
+                                @* Status polling *@
+                                <div style="margin-top:0.8rem;font-size:0.75rem;color:var(--tp-text-muted);text-align:center;display:flex;align-items:center;justify-content:center;gap:0.4rem;">
+                                    <div style="width:10px;height:10px;border:2px solid var(--tp-border);border-top-color:var(--tp-primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                                    <span>@(_pixStatusMsg ?? "Aguardando pagamento...")</span>
+                                </div>
+                            }
                         </div>
                     }
 
@@ -382,6 +400,10 @@
     // PIX QR Code
     private string? pixChavePix;
     private string? pixQrCodeBase64;
+    private int? _ultimaReservaId;
+    private CancellationTokenSource? _pixPollingCts;
+    private bool _pixAprovado;
+    private string? _pixStatusMsg;
 
     private decimal PrecoBase
     {
@@ -442,6 +464,11 @@
 
     private async Task FecharModal()
     {
+        // Cancela polling PIX se ativo
+        _pixPollingCts?.Cancel();
+        _pixPollingCts?.Dispose();
+        _pixPollingCts = null;
+
         await VisibleChanged.InvokeAsync(false);
         _ = UnmountMpFields();
         if (compraSucesso)
@@ -668,11 +695,20 @@
             {
                 compraSucesso = true;
 
-                // ── Extrai chavePix para pagamentos PIX ────────────────
+                // ── Extrai dados da resposta ───────────────────────────
                 try
                 {
                     var body = await response.Content.ReadAsStringAsync();
                     var result = JsonSerializer.Deserialize<JsonElement>(body);
+
+                    // Salva o ID da reserva para polling
+                    if (result.TryGetProperty("reservaId", out var reservaIdProp) &&
+                        reservaIdProp.ValueKind == JsonValueKind.Number)
+                    {
+                        _ultimaReservaId = reservaIdProp.GetInt32();
+                    }
+
+                    // Extrai chavePix para pagamentos PIX
                     if (result.TryGetProperty("chavePix", out var chavePixProp) &&
                         chavePixProp.ValueKind == JsonValueKind.String)
                     {
@@ -680,12 +716,14 @@
                         if (!string.IsNullOrEmpty(pixChavePix))
                         {
                             pixQrCodeBase64 = GerarQrCodePix(pixChavePix);
+                            // Inicia polling de status PIX
+                            _ = IniciarPixPollingAsync();
                         }
                     }
                 }
                 catch
                 {
-                    // Falha ao extrair chavePix não impede a compra
+                    // Falha ao extrair dados não impede a compra
                 }
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
@@ -710,6 +748,60 @@
         finally
         {
             comprando = false;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  PIX Polling
+    // ═══════════════════════════════════════════════════════════════════
+
+    private async Task IniciarPixPollingAsync()
+    {
+        if (_ultimaReservaId == null) return;
+        _pixPollingCts?.Cancel();
+        _pixPollingCts = new CancellationTokenSource();
+        var ct = _pixPollingCts.Token;
+
+        try
+        {
+            while (!ct.IsCancellationRequested && !_pixAprovado)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(15), ct);
+                if (ct.IsCancellationRequested) break;
+
+                try
+                {
+                    var statusResponse = await Http.GetAsync($"api/reservas/{_ultimaReservaId}/status-pagamento", ct);
+                    if (statusResponse.IsSuccessStatusCode)
+                    {
+                        var body = await statusResponse.Content.ReadAsStringAsync(ct);
+                        var json = JsonSerializer.Deserialize<JsonElement>(body);
+                        var status = json.GetProperty("statusPagamento").GetString();
+                        _pixStatusMsg = json.GetProperty("mensagem").GetString();
+
+                        if (status == "Approved")
+                        {
+                            _pixAprovado = true;
+                            _pixStatusMsg = "✅ Pagamento confirmado!";
+                        }
+                        else if (status is "Rejected" or "Cancelled")
+                        {
+                            _pixStatusMsg = "❌ " + (_pixStatusMsg ?? "Pagamento não confirmado.");
+                            break; // Para de pollar em caso de erro definitivo
+                        }
+
+                        await InvokeAsync(StateHasChanged);
+                    }
+                }
+                catch (HttpRequestException) when (!ct.IsCancellationRequested)
+                {
+                    // Erro de rede — tenta de novo no próximo ciclo
+                }
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Polling cancelado voluntariamente (fechou modal, etc.)
         }
     }
 

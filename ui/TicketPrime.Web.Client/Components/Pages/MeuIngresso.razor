@@ -51,7 +51,7 @@
 
             <!-- Body -->
             <div class="ti-body">
-                <!-- QR Code -->
+                <!-- QR Code / PIX -->
                 <div class="ti-qr-section">
                     @if (reserva.Status == "Cancelada")
                     {
@@ -69,6 +69,28 @@
                             <span style="font-size:0.9rem;font-weight:600;color:#1E40AF;text-align:center;padding:1rem;">
                                 ✅ Check-in realizado
                             </span>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(reserva.ChavePix))
+                    {
+                        @* Pagamento PIX pendente — mostra QR Code PIX *@
+                        <div style="text-align:center;">
+                            <div style="margin-bottom:0.8rem;">
+                                <span style="background:#FEF3C7;color:#92400E;padding:0.3rem 0.8rem;border-radius:20px;font-size:0.75rem;font-weight:700;">
+                                    ⏳ Aguardando pagamento PIX
+                                </span>
+                            </div>
+                            <img class="ti-qr-img"
+                                 src="data:image/png;base64,@pixQrCodeBase64"
+                                 alt="QR Code PIX para pagamento"
+                                 title="Escaneie este QR Code para pagar" />
+                            <div style="margin-top:0.5rem;font-size:0.78rem;color:var(--tp-text-muted);">
+                                Pague com PIX para ativar seu ingresso
+                            </div>
+                            @* Copia e Cola *@
+                            <div style="background:var(--tp-bg-input);border-radius:8px;padding:0.5rem 0.8rem;word-break:break-all;font-size:0.7rem;font-family:monospace;color:var(--tp-text-body);margin-top:0.5rem;user-select:all;">
+                                @reserva.ChavePix
+                            </div>
                         </div>
                     }
                     else
@@ -170,6 +192,7 @@
 
     private ReservationDetailDto? reserva;
     private string? qrCode;
+    private string? pixQrCodeBase64;
     private bool carregando = true;
     private string? erro;
 
@@ -197,6 +220,16 @@
         try
         {
             reserva = await Http.GetFromJsonAsync<ReservationDetailDto>($"api/reservas/{Id}");
+
+            // Gera QR Code PIX se houver chave pendente
+            if (reserva != null && !string.IsNullOrEmpty(reserva.ChavePix))
+            {
+                using var generator = new QRCodeGenerator();
+                var data = generator.CreateQrCode(reserva.ChavePix, QRCodeGenerator.ECCLevel.M);
+                using var qrPix = new PngByteQRCode(data);
+                pixQrCodeBase64 = Convert.ToBase64String(qrPix.GetGraphic(4));
+            }
+
             if (reserva != null && reserva.Status != "Cancelada" && reserva.Status != "Usada")
                 qrCode = GerarQrCode(reserva.CodigoIngresso);
         }
