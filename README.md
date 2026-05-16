@@ -76,8 +76,10 @@ dotnet restore      # Restaurar pacotes
 
 | Tipo | CPF | Senha |
 |---|---|---|
-| Administrador | `00000000191` | `admin123` |
+| Administrador | `00000000191` | Gerada automaticamente no 1º deploy (veja logs) |
 | Cliente | Cadastre-se em `/cadastro-user` | — |
+
+> ⚠️ **Segurança:** A senha do administrador é gerada aleatoriamente na primeira execução da aplicação e exibida nos logs. A senha `admin123` (hardcoded no script SQL) é automaticamente substituída. **NUNCA** use a senha padrão em produção.
 
 ---
 

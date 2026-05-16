@@ -1,20 +1,22 @@
 # Architecture Decision Record (ADR)
 
-## ADR-001: Uso de Minimal API com .NET 10
+## ADR-001: Uso de Controllers API com .NET 10
 
 ## Contexto
 Projeto acadêmico TicketPrime, foco em simplicidade e agilidade.
 
 ## Decisão
-Adotar Minimal API em vez de Controllers MVC tradicionais.
+Adotar Controllers API (`[ApiController]`, `[Route]`) em vez de Minimal API.
 
 ## Consequências
 Prós:
-- Menos boilerplate (`Program.cs` único vs Controllers + Startups)
-- Roteamento inline facilita entendimento do fluxo completo
+- Separação clara por controller (Auth, Evento, Reserva, Cupom, etc.)
+- Documentação Swagger por controller
+- Familiaridade com padrão MVC do .NET
 
 Contras:
-- Perde organização por separação de concerns (mitigado com Services/Repositories separados)
+- Mais boilerplate que Minimal API (mitigado com Services/Repositories separados)
+- Program.cs ainda gerencia DI e middleware centralizadamente
 
 ---
 
@@ -114,18 +116,18 @@ Contras:
 
 ---
 
-## ADR-007: Limite de 2 Reservas por CPF por Evento (R2)
+## ADR-007: Limite de N Reservas por CPF por Evento (R2)
 
 ## Contexto
-Regra de negócio R2 impede que um CPF reserve mais que 2 ingressos para o mesmo evento.
+Regra de negócio R2 impede que um CPF reserve mais que um número X de ingressos para o mesmo evento.
 
 ## Decisão
+- Limite configurável por evento via coluna `LimiteIngressosPorUsuario` (padrão: 6)
 - Verificação via `COUNT(*)` na tabela Reservas filtrando por `UsuarioCpf` e `EventoId`
-- Bloqueio na camada Service (não no banco) para mensagem de erro amigável
+- Bloqueio na camada Service com double-check: pré-verificação + UPDLOCK na transação
 
 ## Consequências
 Prós:
-- Mensagem clara para o usuário ("Você já atingiu o limite de 2 reservas")
-
-Contras:
-- Race condition teórica em requisições simultâneas (aceitável para projeto acadêmico)
+- Mensagem clara para o usuário ("Você já atingiu o limite de N reservas")
+- Limite flexível por evento (admin pode definir na criação)
+- UPDLOCK previne race conditions em requisições simultâneas
