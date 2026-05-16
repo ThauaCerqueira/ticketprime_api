@@ -437,3 +437,326 @@ a:hover {
 .pwa-install-close:hover {
     opacity: 1;
 }
+
+/* ── Páginas Legais (Termos / Privacidade) ────────────────────────── */
+.lgpd-wrapper {
+    min-height: 100vh;
+    background: var(--tp-bg-page);
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.lgpd-card {
+    max-width: 800px;
+    width: 100%;
+    background: var(--tp-bg-card);
+    border-radius: 20px;
+    border: 1.5px solid var(--tp-border-card);
+    box-shadow: var(--tp-shadow-md);
+    overflow: hidden;
+}
+
+.lgpd-header {
+    padding: 2rem 2.5rem;
+    border-bottom: 1px solid var(--tp-border);
+    text-align: center;
+}
+
+.lgpd-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+}
+
+.lgpd-logo-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--tp-primary);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lgpd-logo-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: white;
+}
+
+.lgpd-logo-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--tp-text-heading);
+}
+
+.lgpd-header h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--tp-text-heading);
+    margin: 0 0 0.4rem 0;
+}
+
+.lgpd-subtitle {
+    font-size: 0.85rem;
+    color: var(--tp-text-muted);
+    margin: 0;
+}
+
+.lgpd-content {
+    padding: 2rem 2.5rem;
+}
+
+.lgpd-content section {
+    margin-bottom: 2rem;
+}
+
+.lgpd-content h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--tp-text-heading);
+    margin: 0 0 0.75rem 0;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--tp-primary-light);
+}
+
+.lgpd-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--tp-text-heading);
+    margin: 1rem 0 0.5rem 0;
+}
+
+.lgpd-content p {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--tp-text-body);
+    margin: 0 0 0.75rem 0;
+}
+
+.lgpd-content ul {
+    margin: 0.5rem 0 0.75rem 0;
+    padding-left: 1.5rem;
+}
+
+.lgpd-content li {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--tp-text-body);
+    margin-bottom: 0.3rem;
+}
+
+.lgpd-content strong {
+    color: var(--tp-text-heading);
+}
+
+.lgpd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin: 0.75rem 0;
+}
+
+.lgpd-table th {
+    background: var(--tp-primary-light);
+    color: var(--tp-text-heading);
+    font-weight: 600;
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    border: 1px solid var(--tp-border);
+}
+
+.lgpd-table td {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--tp-border);
+    color: var(--tp-text-body);
+    vertical-align: top;
+}
+
+.lgpd-table tr:nth-child(even) td {
+    background: var(--tp-bg-page);
+}
+
+.lgpd-footer {
+    padding: 1.25rem 2.5rem;
+    border-top: 1px solid var(--tp-border);
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    background: var(--tp-bg-page);
+}
+
+.lgpd-footer a {
+    color: var(--tp-primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.lgpd-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ── Título do evento no detalhe ────────────────────────────────── */
+.de-header-title {
+    flex: 1;
+    margin: 0;
+}
+
+/* ── Botão favoritar no detalhe ─────────────────────────────────── */
+.de-fav-btn {
+    background: none;
+    border: none;
+    font-size: 1.6rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: transform 0.15s;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.de-fav-btn:hover {
+    transform: scale(1.2);
+}
+
+/* ── Botão favoritar na vitrine ──────────────────────────────────── */
+.vitrine-fav-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(255,255,255,0.92);
+    border: none;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.15s;
+    z-index: 5;
+}
+
+.vitrine-fav-btn:hover {
+    transform: scale(1.15);
+}
+
+@media (max-width: 640px) {
+    .lgpd-header { padding: 1.5rem 1.25rem; }
+    .lgpd-content { padding: 1.5rem 1.25rem; }
+    .lgpd-footer { padding: 1rem 1.25rem; flex-direction: column; gap: 0.5rem; text-align: center; }
+    .lgpd-table { font-size: 0.78rem; }
+    .lgpd-table th, .lgpd-table td { padding: 0.4rem 0.5rem; }
+}
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+.tp-footer {
+    background: var(--tp-bg-card);
+    border-top: 1.5px solid var(--tp-border);
+    margin-top: auto;
+    padding: 3rem 2rem 0;
+}
+
+.tp-footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 2rem;
+}
+
+.tp-footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.tp-footer-logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--tp-primary);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tp-footer-logo-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: white;
+}
+
+.tp-footer-logo-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--tp-text-heading);
+}
+
+.tp-footer-desc {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--tp-text-muted);
+    margin: 0;
+    max-width: 320px;
+}
+
+.tp-footer-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--tp-text-heading);
+    margin: 0 0 0.75rem 0;
+}
+
+.tp-footer-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tp-footer-nav a {
+    font-size: 0.85rem;
+    color: var(--tp-text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+
+.tp-footer-nav a:hover {
+    color: var(--tp-primary);
+    text-decoration: underline;
+}
+
+.tp-footer-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--tp-text-muted);
+}
+
+.tp-footer-bottom {
+    margin-top: 2rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--tp-border);
+    text-align: center;
+}
+
+.tp-footer-bottom p {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--tp-text-light);
+}
+
+@media (max-width: 768px) {
+    .tp-footer-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    .tp-footer { padding: 2rem 1.5rem 0; }
+}

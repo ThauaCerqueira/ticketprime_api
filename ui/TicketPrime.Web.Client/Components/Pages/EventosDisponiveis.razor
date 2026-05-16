@@ -131,20 +131,32 @@
             @foreach (var evento in eventosDisponiveis)
             {
                 <div class="vitrine-card">
-                    <a href="/evento/@evento.Id" style="text-decoration:none;display:contents;">
-                    @if (!string.IsNullOrEmpty(evento.FotoThumbnailBase64))
-                    {
-                        <img class="vitrine-card-img"
-                             src="data:image/jpeg;base64,@evento.FotoThumbnailBase64"
-                             alt="@evento.Nome" loading="lazy" />
-                    }
-                    else
-                    {
-                        <div class="vitrine-card-img-placeholder">
-                            🎵
-                        </div>
-                    }
-                    </a>
+                    <div style="position:relative;">
+                        <a href="/evento/@evento.Id" style="text-decoration:none;display:contents;">
+                        @if (!string.IsNullOrEmpty(evento.FotoThumbnailBase64))
+                        {
+                            <img class="vitrine-card-img"
+                                 src="data:image/jpeg;base64,@evento.FotoThumbnailBase64"
+                                 alt="@evento.Nome" loading="lazy" />
+                        }
+                        else
+                        {
+                            <div class="vitrine-card-img-placeholder">
+                                🎵
+                            </div>
+                        }
+                        </a>
+                        @* Botão favoritar *@
+                        @if (Session.EstaLogado)
+                        {
+                            <button class="vitrine-fav-btn"
+                                    @onclick="() => ToggleFavorito(evento.Id)"
+                                    title="@(FavoritoEstaFavoritado(evento.Id) ? "Remover dos favoritos" : "Adicionar aos favoritos")"
+                                    aria-label="@(FavoritoEstaFavoritado(evento.Id) ? "Remover dos favoritos" : "Adicionar aos favoritos")">
+                                @(FavoritoEstaFavoritado(evento.Id) ? "❤️" : "🤍")
+                            </button>
+                        }
+                    </div>
                     <div class="vitrine-card-body">
                     <a href="/evento/@evento.Id" style="text-decoration:none;color:inherit;">
                         <h5>@evento.Nome</h5>
@@ -161,6 +173,12 @@
                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                             </svg>
                             @evento.CapacidadeTotal vagas
+                            @if (!evento.EventoGratuito && evento.CapacidadeRestante > 0 && evento.CapacidadeRestante <= 20)
+                            {
+                                <span style="display:inline-block;margin-top:0.2rem;font-size:0.7rem;font-weight:700;color:#DC2626;background:#FEF2F2;padding:0.15rem 0.5rem;border-radius:20px;">
+                                    ⚡ @evento.CapacidadeRestante restantes
+                                </span>
+                            }
                         </div>
                         <div class="vitrine-card-price">@evento.PrecoPadrao.ToString("C")</div>
                     </div>
@@ -220,6 +238,10 @@
     private DateTime? filtroDataMin;
     private DateTime? filtroDataMax;
 
+    // ── Favoritos ─────────────────────────────────────────────────────
+    private HashSet<int> _favoritosIds = [];
+    private HashSet<int> _favoritandoIds = [];
+
     // ── Shared purchase modal ─────────────────────────────────────────
     private bool mostrarCompraModal;
     private TicketEvent? eventoParaCompra;
@@ -227,6 +249,67 @@
     protected override async Task OnInitializedAsync()
     {
         await CarregarEventos();
+        if (Session.EstaLogado)
+        {
+            await CarregarFavoritos();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Favoritos
+    // ═══════════════════════════════════════════════════════════════════
+
+    private async Task CarregarFavoritos()
+    {
+        try
+        {
+            var favs = await Http.GetFromJsonAsync<List<FavoritoItem>>("api/favoritos");
+            if (favs != null)
+            {
+                _favoritosIds = [.. favs.Select(f => f.EventoId)];
+            }
+        }
+        catch
+        {
+            // Falha ao carregar favoritos não bloqueia a vitrine
+        }
+    }
+
+    private bool FavoritoEstaFavoritado(int eventoId) => _favoritosIds.Contains(eventoId);
+
+    private async Task ToggleFavorito(int eventoId)
+    {
+        if (_favoritandoIds.Contains(eventoId)) return;
+        _favoritandoIds.Add(eventoId);
+
+        try
+        {
+            if (_favoritosIds.Contains(eventoId))
+            {
+                var response = await Http.DeleteAsync($"api/favoritos/{eventoId}");
+                if (response.IsSuccessStatusCode)
+                    _favoritosIds.Remove(eventoId);
+            }
+            else
+            {
+                var response = await Http.PostAsync($"api/favoritos/{eventoId}", null);
+                if (response.IsSuccessStatusCode)
+                    _favoritosIds.Add(eventoId);
+            }
+        }
+        catch
+        {
+            // Falha silenciosa
+        }
+        finally
+        {
+            _favoritandoIds.Remove(eventoId);
+        }
+    }
+
+    public class FavoritoItem
+    {
+        public int EventoId { get; set; }
     }
 
     private async Task FiltrarEventos()

@@ -132,7 +132,18 @@
                                 </span>
                             }
                         </div>
-                        <h1>@evento.Nome</h1>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <h1 class="de-header-title">@evento.Nome</h1>
+                            @if (Session.EstaLogado)
+                            {
+                                <button class="de-fav-btn"
+                                        @onclick="ToggleFavorito"
+                                        title="@(ehFavorito ? "Remover dos favoritos" : "Adicionar aos favoritos")"
+                                        aria-label="@(ehFavorito ? "Remover dos favoritos" : "Adicionar aos favoritos")">
+                                    @(ehFavorito ? "❤️" : "🤍")
+                                </button>
+                            }
+                        </div>
                     </div>
                     <div class="de-price-tag">
                         @if (evento.EventoGratuito)
@@ -619,6 +630,10 @@
     private List<AvaliacaoDto>? avaliacoes;
     private double? mediaAvaliacoes;
 
+    // ── Favoritos ────────────────────────────────────────────────────
+    private bool ehFavorito;
+    private bool _carregandoFavorito;
+
     // ── Fila de Espera ──────────────────────────────────────────────
     /// <summary>
     /// null = ainda não verificou | false = não está na fila | true = já está na fila
@@ -638,6 +653,66 @@
     protected override async Task OnInitializedAsync()
     {
         await CarregarDetalhes();
+        if (Session.EstaLogado)
+        {
+            await VerificarFavorito();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Favoritos
+    // ═══════════════════════════════════════════════════════════════════
+
+    private async Task VerificarFavorito()
+    {
+        try
+        {
+            var response = await Http.GetAsync($"api/favoritos/{Id}/check");
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<FavoritoCheckDto>();
+                ehFavorito = json?.IsFavorito ?? false;
+            }
+        }
+        catch
+        {
+            // Falha ao verificar favorito não bloqueia
+        }
+    }
+
+    private async Task ToggleFavorito()
+    {
+        if (_carregandoFavorito) return;
+        _carregandoFavorito = true;
+
+        try
+        {
+            if (ehFavorito)
+            {
+                var response = await Http.DeleteAsync($"api/favoritos/{Id}");
+                if (response.IsSuccessStatusCode)
+                    ehFavorito = false;
+            }
+            else
+            {
+                var response = await Http.PostAsync($"api/favoritos/{Id}", null);
+                if (response.IsSuccessStatusCode)
+                    ehFavorito = true;
+            }
+        }
+        catch
+        {
+            // Falha silenciosa
+        }
+        finally
+        {
+            _carregandoFavorito = false;
+        }
+    }
+
+    public class FavoritoCheckDto
+    {
+        public bool IsFavorito { get; set; }
     }
 
     private async Task CarregarDetalhes()
