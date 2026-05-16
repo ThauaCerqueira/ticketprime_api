@@ -87,22 +87,26 @@ dotnet restore      # Restaurar pacotes
 
 ```
 ticketprime_api/
-├── src/                  # Minimal API em C# com Dapper
-│   ├── DTOs/             # Objetos de transferência de dados
-│   ├── Infrastructure/   # DbConnectionFactory, Repositories, Interfaces
-│   ├── Models/           # Modelos de dados (Evento, Reserva, Usuario, Cupom)
-│   ├── Service/          # Serviços de negócio (Auth, Evento, Reserva, Cupom, Usuario, Crypto)
-│   └── Program.cs        # Minimal API endpoints
-├── ui/                   # Frontend Blazor Server (desacoplado da API)
-│   └── TicketPrime.Web/  # Comunica com API via REST (sem ProjectReference)
-│       ├── Models/       # DTOs frontend-side com [JsonPropertyName]
-│       ├── Services/     # CupomService, SessionService, AuthHttpClientHandler
-│       ├── Validators/   # FluentValidation para formulários
-│       └── Components/   # Páginas Blazor com MudBlazor
-├── db/                   # Scripts SQL
-├── docs/                 # Documentação
-├── tests/                # Testes xUnit com Moq
-└── plans/                # Planos técnicos detalhados
+├── src/                  # API REST em C# com Dapper + Controllers
+│   ├── Controllers/      # Controladores da API (16 controllers)
+│   ├── DTOs/             # Objetos de transferência de dados com validação
+│   ├── Infrastructure/   # DbConnectionFactory, Repositories, Interfaces, Redis, Caching
+│   ├── Models/           # Modelos de dados (Evento, Reserva, Usuario, Cupom, etc.)
+│   ├── Service/          # Serviços de negócio (Auth, Evento, Reserva, Cupom, Crypto, Pagamento)
+│   ├── Properties/       # Configuração de launchSettings
+│   └── Program.cs        # Pipeline de middleware, DI, segurança, OpenTelemetry
+├── ui/                   # Frontend Blazor WebAssembly
+│   ├── TicketPrime.Web/           # Projeto host (App.razor, assets, js)
+│   ├── TicketPrime.Web.Client/    # Componentes Blazor WASM (páginas, shared, layout)
+│   └── TicketPrime.Web.Shared/    # Modelos compartilhados (DTOs entre frontend e backend)
+├── db/                   # Scripts SQL + Migrações versionadas (V*__*.sql)
+│   └── migrations/       # Migrações incrementais (DbUp/Flyway)
+├── docker/               # Dockerfiles, nginx.conf, scripts de inicialização
+├── docs/                 # Documentação (ADR, requisitos, operação)
+├── scripts/              # Scripts de setup e utilidades
+├── tests/                # Testes xUnit com Moq + testes E2E (Playwright)
+├── plans/                # Planos técnicos detalhados
+└── .github/workflows/    # CI/CD com GitHub Actions (build + test + docker)
 ```
 
 ---
@@ -133,16 +137,22 @@ ticketprime_api/
 
 ## ⚙️ Tecnologias
 
-- **Blazor Server** — Frontend com C# e renderização server-side (MudBlazor UI)
-- **.NET 10 / C#**
+- **Blazor WebAssembly** — Frontend SPA com C# e MudBlazor UI
+- **.NET 10 / C#** — Backend com controllers REST
 - **Dapper** — Acesso ao banco com SQL puro e parâmetros `@`
 - **SQL Server** — Banco de dados relacional
-- **JWT** — Autenticação via Bearer Token (header + httpOnly cookie)
-- **BCrypt** — Hash de senhas com work factor configurável
+- **JWT** — Autenticação via Bearer Token (header + httpOnly cookie) com blacklist
+- **BCrypt** — Hash de senhas com work factor 11+
+- **Mercado Pago SDK** — Tokenização segura de cartões (PCI-DSS via iframes)
 - **Web Crypto API** — E2E encryption de fotos (ECDH P-256 + AES-GCM-256)
-- **FluentValidation** — Validação de formulários no frontend
-- **xUnit + Moq** — Testes unitários
-- **Rate Limiting** — 3 políticas (login: 5/min, escrita: 10/min, geral: 100/min)
+- **FluentValidation** — Validação de formulários no frontend e backend
+- **xUnit + Moq** — Testes unitários + Playwright para testes E2E
+- **Rate Limiting** — 4 políticas por usuário (login, compra, escrita, geral)
+- **Redis** — Cache distribuído (fallback para memória local)
+- **OpenTelemetry + Prometheus** — Métricas e observabilidade
+- **MinIO** — Armazenamento S3-compatible para backups e arquivos
+- **HashiCorp Vault** — Gerenciamento de secrets (opcional)
+- **GitHub Actions** — CI/CD com build, testes e Docker
 
 ---
 

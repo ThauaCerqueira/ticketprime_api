@@ -514,7 +514,11 @@ BEGIN
 END
 GO
 
--- ─── Tabela de Auditoria ──────────────────────────────────────────────────
+-- ─── Tabela de Auditoria (legada, não mais utilizada) ─────────────────────
+-- NOTA: Esta tabela foi substituída pela tabela AuditLog abaixo, que oferece
+-- encadeamento criptográfico de hash (blockchain-like) garantindo integridade.
+-- Mantida no schema apenas para compatibilidade com ambientes existentes.
+-- NÃO inserir dados aqui — use AuditLogRepository em vez disso.
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Auditoria]') AND type = N'U')
 BEGIN
     CREATE TABLE [dbo].[Auditoria] (

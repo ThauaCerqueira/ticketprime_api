@@ -118,6 +118,29 @@ docker compose exec backup /backup-restore.sh --restore weekly/TicketPrime_20240
 
 ---
 
+## 📧 E-mails Transacionais
+
+A TicketPrime envia e-mails para:
+- Confirmação de cadastro (link de verificação)
+- Confirmação de compra
+- Cancelamento de ingresso
+- Redefinição de senha
+- Notificação de vaga na fila de espera
+
+**Em desenvolvimento (sem SMTP):** Os e-mails são exibidos no console do backend (`ConsoleEmailService`).
+Para testar o fluxo completo, configure SMTP via variáveis de ambiente:
+
+```bash
+$env:EmailSettings__SmtpHost = "smtp.exemplo.com"
+$env:EmailSettings__SmtpPort = "587"
+$env:EmailSettings__SmtpUsername = "seu@email.com"
+$env:EmailSettings__SmtpPassword = "sua_senha"
+$env:EmailSettings__FromEmail = "nao-responder@ticketprime.com.br"
+```
+
+> ⚠️ **Fila de espera:** A notificação de vaga disponível na fila de espera depende de SMTP
+> configurado. Sem SMTP, o sistema registra a tentativa nos logs, mas o e-mail não é enviado.
+
 ## ⚠️ Segurança
 
 | Item | Status |

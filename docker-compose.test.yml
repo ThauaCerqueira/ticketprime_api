@@ -3,6 +3,9 @@ services:
   # ── SQL Server para testes de integração ──────────────────────────────
   # ATENÇÃO: Esta senha é usada APENAS em ambiente de testes isolado (porta 1434).
   # Em produção, sempre use a variável de ambiente SA_PASSWORD.
+  # ⚠️ Altere a senha padrão em CI/CD pipelines variável SA_PASSWORD_TEST.
+  #    A senha "TicketPrime@2024!" é um fallback para desenvolvimento local
+  #    e NÃO deve ser usada em ambientes compartilhados ou de produção.
   sqlserver-test:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: ticketprime_sqlserver_test
