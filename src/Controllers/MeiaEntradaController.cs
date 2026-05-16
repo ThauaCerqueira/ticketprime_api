@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using src.DTOs;
 using src.Infrastructure.IRepository;
 using src.Service;
@@ -14,6 +15,7 @@ namespace src.Controllers;
 [ApiController]
 [Route("api/meia-entrada")]
 [Authorize(Roles = "ADMIN")]
+[EnableRateLimiting("geral")]
 public class MeiaEntradaController : ControllerBase
 {
     private readonly IMeiaEntradaRepository _repository;

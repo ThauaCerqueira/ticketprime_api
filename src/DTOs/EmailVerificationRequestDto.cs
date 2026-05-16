@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace src.DTOs;
 
 /// <summary>
@@ -5,5 +7,7 @@ namespace src.DTOs;
 /// </summary>
 public class EmailVerificationRequestDto
 {
+    [Required(ErrorMessage = "O e-mail é obrigatório.")]
+    [EmailAddress(ErrorMessage = "Formato de e-mail inválido.")]
     public string Email { get; set; } = string.Empty;
 }

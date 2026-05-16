@@ -1,13 +1,19 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace src.DTOs;
 
-public class PurchaseTicketDto
+public class PurchaseTicketDto : IValidatableObject
 {
+    /// <summary>ID do evento. Obrigatório.</summary>
+    [Required(ErrorMessage = "O ID do evento é obrigatório.")]
+    [Range(1, int.MaxValue, ErrorMessage = "O ID do evento deve ser um valor positivo.")]
     public int EventoId { get; set; }
 
     /// <summary>
     /// ID do tipo de ingresso (setor) escolhido pelo comprador.
     /// Obrigatório quando o evento possui múltiplos tipos de ingresso.
     /// </summary>
+    [Range(0, int.MaxValue, ErrorMessage = "O ID do tipo de ingresso deve ser um valor válido.")]
     public int TicketTypeId { get; set; }
 
     public string? CupomUtilizado { get; set; }
@@ -49,6 +55,8 @@ public class PurchaseTicketDto
     // ── Dados de pagamento ────────────────────────────────────────────────
 
     /// <summary>"pix" | "cartao_credito" | "cartao_debito". Padrão: "pix".</summary>
+    [Required(ErrorMessage = "O método de pagamento é obrigatório.")]
+    [RegularExpression("^(pix|cartao_credito|cartao_debito)$", ErrorMessage = "Método de pagamento inválido. Use pix, cartao_credito ou cartao_debito.")]
     public string MetodoPagamento { get; set; } = "pix";
 
     /// <summary>
@@ -70,5 +78,35 @@ public class PurchaseTicketDto
 
     /// <summary>Validade do cartão no formato MM/AA (opcional, apenas para exibição no recibo).</summary>
     public string? ValidadeCartao { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // ── Validação condicional: cartão exige token + nome do titular ──
+        if (MetodoPagamento is "cartao_credito" or "cartao_debito")
+        {
+            if (string.IsNullOrWhiteSpace(CardToken))
+                yield return new ValidationResult(
+                    "O token do cartão é obrigatório para pagamento com cartão. Utilize o SDK Mercado Pago no frontend.",
+                    [nameof(CardToken)]);
+
+            if (string.IsNullOrWhiteSpace(NomeTitular))
+                yield return new ValidationResult(
+                    "O nome do titular do cartão é obrigatório.",
+                    [nameof(NomeTitular)]);
+
+            if (string.IsNullOrWhiteSpace(Ultimos4Cartao))
+                yield return new ValidationResult(
+                    "Os últimos 4 dígitos do cartão são obrigatórios.",
+                    [nameof(Ultimos4Cartao)]);
+        }
+
+        // ── Validação condicional: meia-entrada exige documento ─────────
+        if (EhMeiaEntrada && string.IsNullOrWhiteSpace(DocumentoBase64))
+        {
+            yield return new ValidationResult(
+                "O documento comprobatório é obrigatório para meia-entrada (Lei 12.933/2013).",
+                [nameof(DocumentoBase64)]);
+        }
+    }
 }
 

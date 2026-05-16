@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using src.DTOs;
 using src.Infrastructure.IRepository;
 using src.Service;
@@ -17,6 +18,7 @@ namespace src.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/pagamento")]
+[EnableRateLimiting("webhook")]
 public class PagamentoController : ControllerBase
 {
     private readonly IReservaRepository _reservaRepo;

@@ -51,4 +51,10 @@ public class ReservationDetailDto
 
     /// <summary>Data/hora do estorno processado.</summary>
     public DateTime? DataEstorno { get; set; }
+
+    /// <summary>
+    /// Chave PIX para pagamento (criptografada em repouso, decriptada ao ser retornada).
+    /// Presente apenas quando MetodoPagamento = "pix" e pagamento ainda não confirmado.
+    /// </summary>
+    public string? ChavePix { get; set; }
 }

@@ -1,9 +1,22 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace src.DTOs;
-  
+
 public class LoginDTO
 {
+    [Required(ErrorMessage = "O CPF é obrigatório.")]
+    [StringLength(11, MinimumLength = 11, ErrorMessage = "O CPF deve ter exatamente 11 dígitos.")]
+    [RegularExpression(@"^\d{11}$", ErrorMessage = "O CPF deve conter apenas números (11 dígitos).")]
     public string Cpf { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "A senha é obrigatória.")]
     public string Senha { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Quando true, estende a validade do JWT e do cookie de 30 minutos para 7 dias.
+    /// Útil para dispositivos confiáveis (computador pessoal, celular próprio).
+    /// </summary>
+    public bool Lembrar { get; set; }
 }
   
 public class LoginResponseDTO
@@ -42,13 +55,21 @@ public class LoginResponseDTO
 
 public class TrocarSenhaDTO
 {
+    [Required(ErrorMessage = "O CPF é obrigatório.")]
+    [StringLength(11, MinimumLength = 11, ErrorMessage = "O CPF deve ter exatamente 11 dígitos.")]
     public string Cpf { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "A senha atual é obrigatória.")]
     public string SenhaAtual { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "A nova senha é obrigatória.")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "A nova senha deve ter no mínimo 8 caracteres.")]
     public string SenhaNova { get; set; } = string.Empty;
 }
 
 public class RefreshTokenRequestDTO
 {
+    [Required(ErrorMessage = "O refresh token é obrigatório.")]
     public string RefreshToken { get; set; } = string.Empty;
 }
 

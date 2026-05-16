@@ -59,10 +59,15 @@ public class ProfileController : ControllerBase
         if (string.IsNullOrEmpty(cpf))
             return Results.Unauthorized();
 
-        // Validação simples: apenas dígitos, parênteses, hifens, espaços e '+'
-        if (!string.IsNullOrEmpty(dto.Telefone) &&
-            !System.Text.RegularExpressions.Regex.IsMatch(dto.Telefone, @"^[\d\s\(\)\+\-]{7,20}$"))
-            return Results.BadRequest(new { mensagem = "Telefone inválido. Use o formato (11) 91234-5678." });
+        // Validação: requer ao menos 10 dígitos numéricos (DDD + número), máximo 11 (com 9 dígito)
+        if (!string.IsNullOrEmpty(dto.Telefone))
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(dto.Telefone, @"^[\d\s\(\)\+\-]{7,20}$"))
+                return Results.BadRequest(new { mensagem = "Telefone inválido. Use o formato (11) 91234-5678." });
+            var digits = System.Text.RegularExpressions.Regex.Replace(dto.Telefone, @"[^\d]", "");
+            if (digits.Length < 10 || digits.Length > 11)
+                return Results.BadRequest(new { mensagem = "Telefone inválido. Informe DDD + número (10 ou 11 dígitos)." });
+        }
 
         await _usuarioRepo.AtualizarTelefone(cpf, dto.Telefone);
         return Results.Ok(new { mensagem = "Telefone atualizado com sucesso." });
