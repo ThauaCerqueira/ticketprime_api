@@ -71,10 +71,12 @@ public sealed class TransacaoCompraExecutor : ITransacaoCompraExecutor
             const string insertSql = @"
                 INSERT INTO Reservas (UsuarioCpf, EventoId, DataCompra, CupomUtilizado, ValorFinalPago,
                                       TaxaServicoPago, TemSeguro, ValorSeguroPago, CodigoIngresso,
-                                      EhMeiaEntrada, TicketTypeId, LoteId, CodigoTransacaoGateway)
+                                      EhMeiaEntrada, TicketTypeId, LoteId, CodigoTransacaoGateway,
+                                      IdempotencyKey, StatusPagamento)
                 VALUES (@UsuarioCpf, @EventoId, GETDATE(), @CupomUtilizado, @ValorFinalPago,
                         @TaxaServicoPago, @TemSeguro, @ValorSeguroPago, @CodigoIngresso,
-                        @EhMeiaEntrada, @TicketTypeId, @LoteId, @CodigoTransacaoGateway);
+                        @EhMeiaEntrada, @TicketTypeId, @LoteId, @CodigoTransacaoGateway,
+                        @IdempotencyKey, @StatusPagamento);
                 SELECT CAST(SCOPE_IDENTITY() AS INT)";
 
             var id = await connection.QuerySingleAsync<int>(insertSql, reserva, transaction);

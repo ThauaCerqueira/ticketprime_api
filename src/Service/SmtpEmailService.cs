@@ -32,6 +32,20 @@ public class SmtpEmailService : IEmailService
         _port = int.Parse(section["SmtpPort"] ?? "587");
         _username = section["SmtpUsername"] ?? "";
         _password = section["SmtpPassword"] ?? "";
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TODO SEGURANÇA: Substituir por SecureString para evitar exposição
+        //   da senha SMTP em dumps de memória. Strings são imutáveis e
+        //   ficam na memória do processo até o GC coletar.
+        //   SecureString é limpo da memória ao ser descartado.
+        // ═══════════════════════════════════════════════════════════════════
+        if (!string.IsNullOrEmpty(_password))
+        {
+            logger.LogWarning(
+                "⚠️ SMTP password carregada como string simples (plaintext). " +
+                "Considere usar SecureString ou Azure Key Vault para produção.");
+        }
+
         _fromEmail = section["FromEmail"] ?? "";
         _fromName = section["FromName"] ?? "TicketPrime";
         _useSsl = bool.Parse(section["UseSsl"] ?? "true");

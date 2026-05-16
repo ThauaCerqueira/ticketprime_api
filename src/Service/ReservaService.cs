@@ -22,6 +22,7 @@ public class ReservationService
     private readonly IPaymentGateway _paymentGateway;
     private readonly IMeiaEntradaRepository _meiaEntradaRepository;
     private readonly IMeiaEntradaStorageService _meiaEntradaStorageService;
+    private readonly PixCryptoService _pixCryptoService;
 
     public ReservationService(
         IReservaRepository reservaRepository,
@@ -36,7 +37,8 @@ public class ReservationService
         AuditLogService auditLog,
         IPaymentGateway paymentGateway,
         IMeiaEntradaRepository meiaEntradaRepository,
-        IMeiaEntradaStorageService meiaEntradaStorageService)
+        IMeiaEntradaStorageService meiaEntradaStorageService,
+        PixCryptoService pixCryptoService)
     {
         _reservaRepository = reservaRepository;
         _eventoRepository = eventoRepository;
@@ -51,6 +53,7 @@ public class ReservationService
         _paymentGateway = paymentGateway;
         _meiaEntradaRepository = meiaEntradaRepository;
         _meiaEntradaStorageService = meiaEntradaStorageService;
+        _pixCryptoService = pixCryptoService;
     }
 
     public async Task<Reservation> ComprarIngressoAsync(
@@ -194,6 +197,12 @@ public class ReservationService
         // ── Processa pagamento antes de criar a reserva ────────────────
         if (reserva.ValorFinalPago > 0)
         {
+            // Gera chave de idempotência UMA VEZ por tentativa de compra.
+            // Em caso de timeout + retry, a mesma chave é reenviada ao gateway,
+            // garantindo que o MercadoPago não cobre duas vezes.
+            var idempotencyKey = Guid.NewGuid().ToString();
+            reserva.IdempotencyKey = idempotencyKey;
+
             var payReq = new PaymentRequest
             {
                 MetodoPagamento = metodoPagamento,
@@ -203,7 +212,8 @@ public class ReservationService
                 Ultimos4Cartao  = ultimos4Cartao,
                 NomeTitular     = nomeTitular,
                 ValidadeCartao  = validadeCartao,
-                PagadorEmail    = usuario.Email
+                PagadorEmail    = usuario.Email,
+                IdempotencyKey  = idempotencyKey
             };
             var payResult = await _paymentGateway.ProcessarAsync(payReq);
             if (!payResult.Sucesso)
@@ -212,8 +222,12 @@ public class ReservationService
             // Persiste o código da transação para possibilitar estornos futuros
             reserva.CodigoTransacaoGateway = payResult.CodigoTransacao;
 
-            // Para PIX, captura o QR Code (texto "copia e cola") para exibir ao comprador
-            reserva.ChavePix = payResult.ChavePix;
+            // Para PIX, captura o QR Code (texto "copia e cola") e
+            // CRIPTOGRAFA antes de persistir no banco (AES-256-GCM).
+            // A descriptografia ocorre antes de retornar ao frontend.
+            reserva.ChavePix = !string.IsNullOrEmpty(payResult.ChavePix)
+                ? _pixCryptoService.Encrypt(payResult.ChavePix)
+                : null;
         }
 
         // R2 + R3 + Incremento cupom + Criação de reserva — delega para executor transacional
@@ -297,6 +311,16 @@ public class ReservationService
                     "O usuário precisará enviar o documento posteriormente.",
                     reservaCriada.Id);
             }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SEGURANÇA: Descriptografa a ChavePix antes de retornar ao frontend.
+        //   No banco, a ChavePix está criptografada com AES-256-GCM.
+        //   O usuário vê o QR Code Pix apenas uma vez neste response.
+        // ═══════════════════════════════════════════════════════════════════
+        if (!string.IsNullOrEmpty(reservaCriada.ChavePix))
+        {
+            reservaCriada.ChavePix = _pixCryptoService.Decrypt(reservaCriada.ChavePix);
         }
 
         return reservaCriada;

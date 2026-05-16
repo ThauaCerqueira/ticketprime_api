@@ -1,8 +1,11 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Distributed;
 using src.DTOs;
 using src.Infrastructure.IRepository;
+using src.Models;
 using src.Service;
 
 namespace src.Controllers;
@@ -10,19 +13,24 @@ namespace src.Controllers;
 [ApiController]
 [Route("api/eventos")]
 [EnableRateLimiting("geral")]
-public class EventController : ControllerBase
+public class EventoController : ControllerBase
 {
-    private readonly EventService _eventService;
+    private readonly EventoService _eventService;
     private readonly IEventoRepository _eventoRepository;
     private readonly IStorageService _storage;
-    private readonly ILogger<EventController> _logger;
+    private readonly ILogger<EventoController> _logger;
+    private readonly IDistributedCache _cache;
 
-    public EventController(EventService eventService, IEventoRepository eventoRepository, IStorageService storage, ILogger<EventController> logger)
+    private const string CacheKeyEventos = "EventosDisponiveis";
+    private static readonly TimeSpan CacheEventosDuration = TimeSpan.FromMinutes(2);
+
+    public EventoController(EventoService eventService, IEventoRepository eventoRepository, IStorageService storage, ILogger<EventoController> logger, IDistributedCache cache)
     {
         _eventService = eventService;
         _eventoRepository = eventoRepository;
         _storage = storage;
         _logger = logger;
+        _cache = cache;
     }
 
     /// <summary>
@@ -58,7 +66,16 @@ public class EventController : ControllerBase
     }
 
     /// <summary>
-    /// Lista eventos com paginação.
+    /// Lista eventos com paginação (cache distribuído de 2 minutos).
+    /// ═══════════════════════════════════════════════════════════════════
+    /// ANTES: IMemoryCache — cache local por réplica.
+    ///   Em deploy multi-instância, cada réplica tinha seu próprio cache,
+    ///   causando dados inconsistentes entre requisições.
+    ///
+    /// AGORA: IDistributedCache — cache compartilhado via Redis (se configurado)
+    ///   ou DistributedMemoryCache (fallback para single-instance).
+    ///   Dados consistentes independentemente de quantas réplicas.
+    /// ═══════════════════════════════════════════════════════════════════
     /// </summary>
     [HttpGet]
     public async Task<IResult> Listar(int pagina = 1, int tamanhoPagina = 20)
@@ -67,7 +84,28 @@ public class EventController : ControllerBase
         if (tamanhoPagina > 100) tamanhoPagina = 100;
         if (pagina < 1) pagina = 1;
 
+        var cacheKey = $"{CacheKeyEventos}_p{pagina}_s{tamanhoPagina}";
+
+        // Tenta obter do cache distribuído
+        var cachedBytes = await _cache.GetAsync(cacheKey);
+        if (cachedBytes != null)
+        {
+            var cached = JsonSerializer.Deserialize<PaginatedResult<TicketEvent>>(cachedBytes);
+            if (cached != null)
+                return Results.Ok(cached);
+        }
+
+        // Cache miss — consulta o banco
         var eventos = await _eventService.ListarEventos(pagina, tamanhoPagina);
+
+        // Armazena no cache distribuído
+        var options = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = CacheEventosDuration
+        };
+        var serialized = JsonSerializer.SerializeToUtf8Bytes(eventos);
+        await _cache.SetAsync(cacheKey, serialized, options);
+
         return Results.Ok(eventos);
     }
 

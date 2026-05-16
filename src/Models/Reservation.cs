@@ -58,6 +58,18 @@ public class Reservation
     /// <summary>Data/hora do estorno processado pelo gateway.</summary>
     public DateTime? DataEstorno { get; set; }
 
+    /// <summary>
+    /// Status do pagamento conforme retornado pelo gateway (ex: 'approved', 'pending', 'rejected', 'refunded').
+    /// Atualizado via webhook de confirmação do MercadoPago.
+    /// </summary>
+    public string? StatusPagamento { get; set; }
+
+    /// <summary>
+    /// Chave de idempotência enviada ao gateway de pagamento para evitar cobrança duplicada.
+    /// Gerada uma única vez por tentativa de compra e reutilizada em retentativas.
+    /// </summary>
+    public string? IdempotencyKey { get; set; }
+
     // ── PIX ─────────────────────────────────────────────────────────────────
 
     /// <summary>

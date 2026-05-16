@@ -8,12 +8,28 @@ namespace src.Service;
 /// <summary>
 /// Serviço singleton que coleta métricas reais da aplicação para exposição
 /// no formato Prometheus via endpoint GET /metrics.
+///
+/// ═══════════════════════════════════════════════════════════════════
+/// AGORA: Também coleta métricas de Redis e integra com OpenTelemetry.
+/// ═══════════════════════════════════════════════════════════════════
 /// </summary>
 public class MetricsService
 {
     private readonly DbConnectionFactory _dbFactory;
+    private readonly RedisHealthCheck? _redisHealth;
     private readonly ILogger<MetricsService> _logger;
     private readonly DateTime _startTime = DateTime.UtcNow;
+
+    // Contagem de vendas (ingressos)
+    private long _totalSales;
+    private long _totalRevenueCents; // Receita em centavos (int64) para evitar Interlocked com decimal
+
+    // Contagem de usuários cadastrados (atualizado periodicamente)
+    private long _totalUsers;
+
+    // Último erro conhecido
+    private string? _lastError;
+    private DateTime _lastErrorTime;
 
     // Contador de requisições por endpoint
     private readonly ConcurrentDictionary<string, long> _requestCounts = new();
@@ -37,9 +53,13 @@ public class MetricsService
     private readonly TimeSpan _dbCheckInterval = TimeSpan.FromSeconds(30);
     private readonly object _dbLock = new();
 
-    public MetricsService(DbConnectionFactory dbFactory, ILogger<MetricsService> logger)
+    public MetricsService(
+        DbConnectionFactory dbFactory,
+        ILogger<MetricsService> logger,
+        RedisHealthCheck? redisHealth = null)
     {
         _dbFactory = dbFactory;
+        _redisHealth = redisHealth;
         _logger = logger;
 
         // Inicializa buckets do histograma
@@ -145,6 +165,48 @@ public class MetricsService
         lines.Add($"ticketprime_database_up {(IsDatabaseUp() ? 1 : 0)}");
         lines.Add("");
 
+        // ─── ticketprime_cache_up ────────────────────────────────────────
+        lines.Add("# HELP ticketprime_cache_up 1 if Redis/distributed cache is accessible");
+        lines.Add("# TYPE ticketprime_cache_up gauge");
+        var cacheUp = _redisHealth?.IsAvailable ?? false;
+        lines.Add($"ticketprime_cache_up {(cacheUp ? 1 : 0)}");
+        lines.Add("");
+
+        // ─── ticketprime_cache_type ──────────────────────────────────────
+        lines.Add("# HELP ticketprime_cache_type Type of cache in use (redis or memory)");
+        lines.Add("# TYPE ticketprime_cache_type gauge");
+        var cacheType = _redisHealth != null ? "redis" : "memory";
+        lines.Add($"ticketprime_cache_type{{type=\"{cacheType}\"}} 1");
+        lines.Add("");
+
+        // ─── ticketprime_total_sales ─────────────────────────────────────
+        lines.Add("# HELP ticketprime_total_sales Total number of tickets sold");
+        lines.Add("# TYPE ticketprime_total_sales counter");
+        lines.Add($"ticketprime_total_sales {Interlocked.Read(ref _totalSales)}");
+        lines.Add("");
+
+        // ─── ticketprime_total_revenue ───────────────────────────────────
+        lines.Add("# HELP ticketprime_total_revenue Total revenue from ticket sales");
+        lines.Add("# TYPE ticketprime_total_revenue counter");
+        var totalRevenue = Interlocked.Read(ref _totalRevenueCents) / 100m;
+        lines.Add($"ticketprime_total_revenue {totalRevenue:F2}");
+        lines.Add("");
+
+        // ─── ticketprime_total_users ────────────────────────────────────
+        lines.Add("# HELP ticketprime_total_users Total registered users");
+        lines.Add("# TYPE ticketprime_total_users gauge");
+        lines.Add($"ticketprime_total_users {Interlocked.Read(ref _totalUsers)}");
+        lines.Add("");
+
+        // ─── ticketprime_last_error ──────────────────────────────────────
+        if (_lastError != null)
+        {
+            lines.Add("# HELP ticketprime_last_error Timestamp and message of last error");
+            lines.Add("# TYPE ticketprime_last_error gauge");
+            lines.Add($"ticketprime_last_error{{error=\"{_lastError}\"}} {new DateTimeOffset(_lastErrorTime).ToUnixTimeSeconds()}");
+            lines.Add("");
+        }
+
         // ─── ticketprime_requests_total ──────────────────────────────────
         lines.Add("# HELP ticketprime_requests_total Total requests by endpoint");
         lines.Add("# TYPE ticketprime_requests_total counter");
@@ -191,5 +253,31 @@ public class MetricsService
         lines.Add("");
 
         return string.Join("\n", lines);
+    }
+
+    /// <summary>
+    /// Registra uma venda de ingresso (para métrica de vendas).
+    /// </summary>
+    public void RecordSale(decimal valor)
+    {
+        Interlocked.Increment(ref _totalSales);
+        Interlocked.Add(ref _totalRevenueCents, (long)(valor * 100));
+    }
+
+    /// <summary>
+    /// Atualiza o contador de usuários cadastrados.
+    /// </summary>
+    public void UpdateUserCount(long count)
+    {
+        Interlocked.Exchange(ref _totalUsers, count);
+    }
+
+    /// <summary>
+    /// Registra um erro para exposição nas métricas.
+    /// </summary>
+    public void RecordError(string errorMessage)
+    {
+        _lastError = errorMessage;
+        _lastErrorTime = DateTime.UtcNow;
     }
 }

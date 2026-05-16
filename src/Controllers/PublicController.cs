@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Memory;
 using src.DTOs;
 using src.Infrastructure.IRepository;
 
@@ -16,33 +17,51 @@ public class PublicController : ControllerBase
     private readonly IEventoRepository _eventoRepo;
     private readonly IReservaRepository _reservaRepo;
     private readonly IUsuarioRepository _usuarioRepo;
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<PublicController> _logger;
+
+    private const string CacheKeyStats = "PublicStats";
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
     public PublicController(
         IEventoRepository eventoRepo,
         IReservaRepository reservaRepo,
-        IUsuarioRepository usuarioRepo)
+        IUsuarioRepository usuarioRepo,
+        IMemoryCache cache,
+        ILogger<PublicController> logger)
     {
         _eventoRepo = eventoRepo;
         _reservaRepo = reservaRepo;
         _usuarioRepo = usuarioRepo;
+        _cache = cache;
+        _logger = logger;
     }
 
     /// <summary>
     /// Estatísticas públicas exibidas na Home (eventos publicados, ingressos vendidos, usuários cadastrados).
+    /// Cache de 5 minutos — as estatísticas não mudam a cada requisição.
     /// </summary>
     [HttpGet("stats")]
     public async Task<IResult> HomeStats()
     {
-        var eventosPublicados = (await _eventoRepo.ObterDisponiveisAsync()).Count();
-        var totalReservas     = await _reservaRepo.ContarReservasAsync();
-        var totalUsuarios     = await _usuarioRepo.ContarUsuariosAsync();
-
-        return Results.Ok(new HomeStatsDTO
+        var stats = await _cache.GetOrCreateAsync(CacheKeyStats, async entry =>
         {
-            TotalEventosPublicados  = eventosPublicados,
-            TotalIngressosVendidos  = totalReservas,
-            TotalUsuarios           = totalUsuarios,
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            _logger.LogDebug("Cache miss para {CacheKey}. Consultando banco...", CacheKeyStats);
+
+            var eventosPublicados = (await _eventoRepo.ObterDisponiveisAsync()).Count();
+            var totalReservas     = await _reservaRepo.ContarReservasAsync();
+            var totalUsuarios     = await _usuarioRepo.ContarUsuariosAsync();
+
+            return new HomeStatsDTO
+            {
+                TotalEventosPublicados  = eventosPublicados,
+                TotalIngressosVendidos  = totalReservas,
+                TotalUsuarios           = totalUsuarios,
+            };
         });
+
+        return Results.Ok(stats);
     }
 
     /// <summary>

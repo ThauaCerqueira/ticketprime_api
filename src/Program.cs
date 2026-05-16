@@ -5,6 +5,8 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using src.Infrastructure;
 using src.Infrastructure.IRepository;
 using src.Infrastructure.Repository;
@@ -16,7 +18,7 @@ public class Program
 {
     private static ILogger<Program>? _logger;
 
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +31,35 @@ public class Program
             options.IncludeScopes = true;
             options.TimestampFormat = "yyyy-MM-ddTHH:mm:ssZ";
         });
+
+        // ════════════════════════════════════════════════════════════
+        //  HashiCorp Vault — secrets externas (chaves cripto, etc.)
+        //
+        //  Carrega secrets do Vault ANTES de qualquer outro serviço,
+        //  para que fiquem disponíveis via IConfiguration.
+        //  Se o Vault não estiver acessível (desenvolvimento), a
+        //  aplicação continua com appsettings.json / env vars.
+        //
+        //  Configuração necessária em appsettings.json:
+        //    "Vault": {
+        //      "Address": "https://vault:8200",
+        //      "AuthMethod": "token",
+        //      "Token": "hvs...",
+        //      "MountPoint": "secret",
+        //      "SecretPath": "ticketprime/crypto"
+        //    }
+        // ════════════════════════════════════════════════════════════
+        var vaultOptions = builder.Configuration
+            .GetSection(VaultOptions.SectionName)
+            .Get<VaultOptions>();
+
+        if (vaultOptions != null)
+        {
+            // VaultConfigurationProvider.Load() é chamado automaticamente
+            // durante a construção do host, antes de qualquer serviço.
+            // As secrets ficam disponíveis via IConfiguration.
+            builder.Configuration.AddVaultConfiguration(vaultOptions);
+        }
 
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
@@ -180,24 +211,112 @@ public class Program
 
         // ── DI Registrations ───────────────────────────────────────────────
         builder.Services.AddSingleton(new DbConnectionFactory(connectionString));
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  Cache Distribuído (Redis com fallback para memória local)
+        //
+        //  ANTES: AddMemoryCache() — single-instance apenas.
+        //    Cada réplica da API tinha seu próprio cache, causando
+        //    inconsistência de dados em deployments multi-instância.
+        //
+        //  AGORA: AddTicketPrimeCache()
+        //    Usa Redis se configurado (Redis:Connection ou Redis__Connection).
+        //    Faz fallback para DistributedMemoryCache se Redis não configurado.
+        //    Compatível com escalabilidade horizontal (múltiplas réplicas).
+        //
+        //  Configuração via appsettings.json ou variável de ambiente:
+        //    "Redis:Connection": "localhost:6379"
+        //    Redis__Connection=localhost:6379  (Docker)
+        // ═══════════════════════════════════════════════════════════════════
+        builder.Services.AddTicketPrimeCache(builder.Configuration);
+        // Mantém IMemoryCache para caches locais de curta duração (ex: thumbnails)
+        builder.Services.AddMemoryCache();
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  OpenTelemetry — observabilidade estruturada
+        //
+        //  ANTES: Apenas logs JSON no console. Sem métricas exportáveis.
+        //    Em produção, time de DevOps opera no escuro — sem alertas,
+        //    sem dashboards, sem rastreamento de lentidão.
+        //
+        //  AGORA: OpenTelemetry com:
+        //    - Métricas HTTP (taxa de requisição, latência, erros)
+        //    - Métricas de runtime (GC, memória, threads)
+        //    - Métricas de HttpClient (chamadas externas)
+        //    - Exportação Prometheus em /metrics (já existente)
+        //    - Resource attributes para identificar a instância
+        //
+        //  Futuro: Adicionar OTLP exporter para enviar para Grafana/NewRelic/etc.
+        // ═══════════════════════════════════════════════════════════════════
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource
+                .AddService("TicketPrime",
+                    serviceVersion: "1.0.0",
+                    serviceInstanceId: Environment.MachineName)
+                .AddAttributes(new Dictionary<string, object>
+                {
+                    ["deployment.environment"] = builder.Environment.EnvironmentName
+                }))
+            .WithMetrics(metrics => metrics
+                .AddAspNetCoreInstrumentation()   // Métricas HTTP (duração, taxa, status)
+                .AddHttpClientInstrumentation()    // Métricas de chamadas externas (MercadoPago, etc.)
+                .AddRuntimeInstrumentation()       // Métricas .NET runtime (GC, CPU, memória)
+                .AddMeter("Microsoft.AspNetCore.Hosting")
+                .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
+                .AddMeter("System.Net.Http")
+                // Prometheus exporter — expõe em /metrics (administrativo)
+                .AddPrometheusExporter());
+
         builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         builder.Services.AddScoped<ICupomRepository, CupomRepository>();
         builder.Services.AddScoped<IEventoRepository, EventoRepository>();
         builder.Services.AddScoped<IReservaRepository, ReservaRepository>();
         builder.Services.AddScoped<IFilaEsperaRepository, FilaEsperaRepository>();
+        builder.Services.AddScoped<IFavoritoRepository, FavoritoRepository>();
         builder.Services.AddScoped<UserService>();
-        builder.Services.AddScoped<CouponService>();
-        builder.Services.AddScoped<EventService>();
+        builder.Services.AddScoped<CupomService>();
+        builder.Services.AddScoped<EventoService>();
         builder.Services.AddScoped<AuthService>();
         builder.Services.AddScoped<ITransacaoCompraExecutor, TransacaoCompraExecutor>();
         builder.Services.AddScoped<ReservationService>();
         builder.Services.AddScoped<IWaitingQueueService, WaitingQueueService>();
         builder.Services.AddSingleton<CryptoKeyService>();
+        builder.Services.AddSingleton<PixCryptoService>();
         builder.Services.AddSingleton<MetricsService>();
         builder.Services.AddHostedService<RefreshTokenCleanupService>();
+        builder.Services.AddHostedService<BackgroundEmailService>();
+
+        // ── Webhook Security ────────────────────────────────────────────────
+        // Validador de assinatura HMAC-SHA256 para webhooks do MercadoPago.
+        // Configuração: MercadoPago:WebhookSecret (ou MercadoPago__WebhookSecret)
+        builder.Services.AddSingleton<MercadoPagoWebhookValidator>();
+
+        // ── Admin Security ──────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
+        // Verifica na inicialização se o admin padrão ainda está com senha
+        // original ('admin123'). Em produção, bloqueia endpoints admin até
+        // que a senha seja trocada.
+        // ═══════════════════════════════════════════════════════════════════
+        builder.Services.AddScoped<AdminSecurityService>();
 
         // ── Gateway de pagamento ────────────────────────────────────────────
         var mpToken = builder.Configuration["MercadoPago:AccessToken"];
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SEGURANÇA: Validação obrigatória em produção
+        // Se estamos em produção (ASPNETCORE_ENVIRONMENT=Production) e o
+        // token do MercadoPago não foi configurado, a aplicação NÃO INICIA.
+        // Isso evita o uso acidental do SimulatedPaymentGateway em produção.
+        // ═══════════════════════════════════════════════════════════════════
+        if (builder.Environment.IsProduction() && string.IsNullOrWhiteSpace(mpToken))
+        {
+            throw new InvalidOperationException(
+                "MercadoPago AccessToken é OBRIGATÓRIO em produção. " +
+                "Configure a variável de ambiente 'MercadoPago__AccessToken' " +
+                "com o token de acesso da sua conta Mercado Pago. " +
+                "NUNCA utilize SimulatedPaymentGateway em ambiente de produção.");
+        }
+
         if (!string.IsNullOrWhiteSpace(mpToken))
         {
             builder.Services.AddHttpClient("MercadoPago", c =>
@@ -211,11 +330,24 @@ public class Program
         }
         else
         {
-            builder.Services.AddSingleton<IPaymentGateway, SimulatedPaymentGateway>();
+            builder.Services.AddSingleton<IPaymentGateway>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<SimulatedPaymentGateway>>();
+                return new SimulatedPaymentGateway(logger);
+            });
         }
 
         // ── Armazenamento de arquivos ───────────────────────────────────────
-        builder.Services.AddScoped<IStorageService, LocalFileStorageService>();
+        if (!string.IsNullOrWhiteSpace(builder.Configuration["Minio:Endpoint"]))
+        {
+            builder.Services.AddScoped<IStorageService, MinioStorageService>();
+            Console.WriteLine($"[Storage] MinIO ({builder.Configuration["Minio:Endpoint"]})");
+        }
+        else
+        {
+            builder.Services.AddScoped<IStorageService, LocalFileStorageService>();
+            Console.WriteLine("[Storage] LocalFileStorageService (fallback)");
+        }
 
         // ── Meia-entrada (Lei 12.933/2013) ─────────────────────────────────
         builder.Services.AddScoped<IMeiaEntradaRepository, MeiaEntradaRepository>();
@@ -251,6 +383,24 @@ public class Program
         // Logger disponível a partir daqui para logs estruturados
         _logger = app.Services.GetRequiredService<ILogger<Program>>();
 
+        // ═══════════════════════════════════════════════════════════════════
+        //  Admin Security Check — Startup
+        //
+        //  Verifica se o admin padrão (CPF 00000000191) ainda está com a
+        //  senha original 'admin123'. Se estiver, emite um alerta nos logs
+        //  e, em produção, o middleware AdminPasswordChangeMiddleware
+        //  bloqueia endpoints administrativos até a troca.
+        // ═══════════════════════════════════════════════════════════════════
+        try
+        {
+            var adminSecurity = app.Services.GetRequiredService<AdminSecurityService>();
+            await adminSecurity.CheckAndForcePasswordChangeAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao verificar segurança do admin na inicialização (não crítico).");
+        }
+
         // ════════════════════════════════════════════════════════════
         //  Swagger — apenas em Development e Staging.
         //  Em produção (ASPNETCORE_ENVIRONMENT=Production) o endpoint
@@ -279,41 +429,41 @@ public class Program
         app.UseHttpsRedirection();
         app.UseHsts();
 
-        // ── Security Headers ────────────────────────────────────────────────
-        app.Use(async (ctx, next) =>
-        {
-            ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
-            ctx.Response.Headers["X-Frame-Options"]        = "DENY";
-            ctx.Response.Headers["Referrer-Policy"]        = "strict-origin-when-cross-origin";
-            ctx.Response.Headers["Permissions-Policy"]     = "camera=(), microphone=(), geolocation=()";
-            ctx.Response.Headers["Content-Security-Policy"] =
-                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none';";
-            await next();
-        });
+        // ── Security Headers (extraído para SecurityHeadersMiddleware.cs) ────
+        app.UseMiddleware<SecurityHeadersMiddleware>();
 
         app.UseCors("AllowFrontend");
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // ── Metrics Middleware ──────────────────────────────────────────────
-        // Registra métricas de todas as requisições HTTP (endpoint, status, duração)
-        app.Use(async (context, next) =>
+        // ═══════════════════════════════════════════════════════════════════
+        //  Admin Password Change Middleware
+        //
+        //  Em produção, BLOQUEIA endpoints administrativos se o admin
+        //  ainda estiver com a senha padrão ('admin123').
+        //  O admin é forçado a trocar a senha em /trocar-senha antes
+        //  de acessar qualquer funcionalidade administrativa.
+        // ═══════════════════════════════════════════════════════════════════
+        app.UseMiddleware<AdminPasswordChangeMiddleware>();
+
+        // ── Metrics Middleware (extraído para MetricsMiddleware.cs) ──────────
+        app.UseMiddleware<MetricsMiddleware>();
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  OpenTelemetry Prometheus Scraping Endpoint
+        //
+        //  Expõe métricas no formato Prometheus em GET /metrics.
+        //  Requer autenticação ADMIN (já configurada no HealthController).
+        //
+        //  ANTES: /metrics gerava texto manualmente via MetricsService.
+        //  AGORA: /metrics usa OpenTelemetry + MetricsService combinados.
+        // ═══════════════════════════════════════════════════════════════════
+        app.UseOpenTelemetryPrometheusScrapingEndpoint(context =>
         {
-            var metrics = context.RequestServices.GetRequiredService<MetricsService>();
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            try
-            {
-                await next(context);
-            }
-            finally
-            {
-                sw.Stop();
-                metrics.RecordRequest(
-                    context.Request.Path,
-                    context.Response.StatusCode,
-                    sw.ElapsedTicks);
-            }
+            // Só expõe métricas se autenticado como ADMIN
+            return context.User?.Identity?.IsAuthenticated == true
+                && context.User.IsInRole("ADMIN");
         });
 
         // ── Controllers ────────────────────────────────────────────────────
@@ -324,6 +474,19 @@ public class Program
 
     private static void InitializeDatabase(string connectionString)
     {
+        // ═══════════════════════════════════════════════════════════════
+        // SEGURANÇA: Não executa script.sql em produção.
+        //   Em produção, o banco já deve estar provisionado via
+        //   migrations versionadas (DbUp/Flyway) ou scripts manuais.
+        //   Este método só executa em Development.
+        // ═══════════════════════════════════════════════════════════════
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+        if (env == "Production")
+        {
+            Console.WriteLine("[DB Init] Production mode detected. Skipping database initialization.");
+            return;
+        }
+
         // Antes do builder.Build(), usamos Console.Write como fallback
         // (ILogger ainda não está disponível)
         // Try multiple candidate paths — the relative ../db path works for local dev

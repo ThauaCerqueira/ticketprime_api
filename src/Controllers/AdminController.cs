@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Memory;
 using src.DTOs;
 using src.Infrastructure.IRepository;
 using System.Text;
@@ -30,18 +31,22 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Dashboard admin resumido (cards) — mantido para compatibilidade.
+    /// Dashboard admin resumido (cards) — com cache de 2 minutos.
     /// </summary>
     [HttpGet("dashboard")]
     [Authorize(Roles = "ADMIN")]
-    public async Task<IResult> Dashboard()
+    public async Task<IResult> Dashboard([FromServices] IMemoryCache cache)
     {
+        const string cacheKey = "admin_dashboard";
+        if (cache.TryGetValue(cacheKey, out object? cached))
+            return Results.Ok(cached);
+
         var eventos = (await _eventoRepo.ObterTodosAsync()).Itens.ToList();
         var cupons  = (await _cupomRepo.ListarAsync()).ToList();
         var usuarios = (await _usuarioRepo.ListarUsuarios()).ToList();
         var receitaTotal = await _reservaRepo.ObterReceitaTotalAsync();
 
-        return Results.Ok(new
+        var result = new
         {
             totalEventos      = eventos.Count,
             eventosPublicados = eventos.Count(e => e.Status == "Publicado"),
@@ -49,16 +54,23 @@ public class AdminController : ControllerBase
             totalCupons       = cupons.Count,
             totalUsuarios     = usuarios.Count,
             receitaTotal      = receitaTotal,
-        });
+        };
+
+        cache.Set(cacheKey, result, TimeSpan.FromMinutes(2));
+        return Results.Ok(result);
     }
 
     /// <summary>
-    /// Dashboard completo com gráficos, tabelas e métricas.
+    /// Dashboard completo com gráficos — cache 2 min.
     /// </summary>
     [HttpGet("dashboard/completo")]
     [Authorize(Roles = "ADMIN")]
-    public async Task<IResult> DashboardCompleto()
+    public async Task<IResult> DashboardCompleto([FromServices] IMemoryCache cache)
     {
+        const string cacheKey = "admin_dashboard_completo";
+        if (cache.TryGetValue(cacheKey, out object? cached))
+            return Results.Ok(cached);
+
         var eventos = (await _eventoRepo.ObterTodosAsync()).Itens.ToList();
         var cupons  = (await _cupomRepo.ListarAsync()).ToList();
         var usuarios = (await _usuarioRepo.ListarUsuarios()).ToList();
@@ -89,6 +101,7 @@ public class AdminController : ControllerBase
             DemandaPorLocal     = demandaPorLocal,
         };
 
+        cache.Set(cacheKey, completo, TimeSpan.FromMinutes(2));
         return Results.Ok(completo);
     }
 
@@ -116,7 +129,12 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Exporta relatório financeiro em CSV.
+    /// Exporta relatório financeiro em CSV — com proteção contra CSV Formula Injection.
+    /// ══════════════════════════════════════════════════════════════════════════════
+    /// SEGURANÇA: Campos de texto são escapados (aspas duplicadas) e prefixos
+    /// de fórmula (= + - @) são removidos para prevenir CSV Injection (também
+    /// conhecido como Formula Injection) que pode executar comandos no Excel.
+    /// ══════════════════════════════════════════════════════════════════════════════
     /// </summary>
     [HttpGet("relatorio-financeiro/csv")]
     [Authorize(Roles = "ADMIN")]
@@ -130,27 +148,50 @@ public class AdminController : ControllerBase
         var linhas = (await _reservaRepo.ObterLinhasRelatorioFinanceiroAsync(inicio, fim)).ToList();
 
         var sb = new StringBuilder();
+        // BOM (Byte Order Mark) para Excel reconhecer UTF-8 corretamente
+        sb.Append('\uFEFF');
         sb.AppendLine("ReservaId,Evento,DataCompra,CPF,Usuario,ValorIngresso,Desconto,TaxaServico,Seguro,ValorPago,Cupom,Status");
 
         foreach (var l in linhas)
         {
             sb.AppendLine(
                 $"{l.ReservaId}," +
-                $"\"{l.EventoNome}\"," +
+                $"{EscapeCsvField(l.EventoNome)}," +
                 $"{l.DataCompra:yyyy-MM-dd HH:mm}," +
-                $"\"{l.UsuarioCpf}\"," +
-                $"\"{l.UsuarioNome}\"," +
+                $"{EscapeCsvField(l.UsuarioCpf)}," +
+                $"{EscapeCsvField(l.UsuarioNome)}," +
                 $"{l.ValorIngresso:F2}," +
                 $"{l.Desconto:F2}," +
                 $"{l.TaxaServico:F2}," +
                 $"{l.Seguro:F2}," +
                 $"{l.ValorPago:F2}," +
-                $"\"{l.Cupom}\"," +
+                $"{EscapeCsvField(l.Cupom)}," +
                 $"{l.Status}");
         }
 
         var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-        return Results.File(bytes, "text/csv", $"relatorio-financeiro-{DateTime.UtcNow:yyyyMMdd}.csv");
+        return Results.File(bytes, "text/csv; charset=utf-8", $"relatorio-financeiro-{DateTime.UtcNow:yyyyMMdd}.csv");
+    }
+
+    /// <summary>
+    /// Escapa um campo CSV: duplica aspas, remove prefixos de fórmula maliciosa (= + - @).
+    /// </summary>
+    private static string EscapeCsvField(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "\"\"";
+
+        // Remove prefixos de fórmula do Excel/Google Sheets (CSV Formula Injection)
+        var sanitized = value.TrimStart();
+        if (sanitized.Length > 0 && (sanitized[0] == '=' || sanitized[0] == '+' || sanitized[0] == '-' || sanitized[0] == '@'))
+        {
+            sanitized = "'" + sanitized; // Prefixa com aspas simples para neutralizar
+        }
+
+        // Escapa aspas duplicando-as
+        sanitized = sanitized.Replace("\"", "\"\"");
+
+        return $"\"{sanitized}\"";
     }
 
     /// <summary>

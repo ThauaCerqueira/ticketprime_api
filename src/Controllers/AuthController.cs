@@ -63,7 +63,21 @@ public class AuthController : ControllerBase
             Path = "/"
         });
 
-        // Refresh token também definido como cookie httpOnly — nunca exposto no body JSON.
+        // ═══════════════════════════════════════════════════════════════════
+        // SEGURANÇA: Refresh token em cookie httpOnly (NUNCA em localStorage).
+        //
+        // ANTES: Path = "/api/auth/refresh" (restrito)
+        //   Isso impedia o endpoint /api/auth/logout de ler o cookie,
+        //   forçando o frontend a enviar o refresh token no body da
+        //   requisição de logout — o que anulava a segurança do cookie.
+        //
+        // AGORA: Path = "/"
+        //   O cookie fica acessível para TODOS os endpoints da API,
+        //   mas como é httpOnly + Secure + SameSite=Strict, NENHUM
+        //   código JavaScript consegue lê-lo. Imune a XSS.
+        //
+        //   O refresh token nunca mais aparece no body de nenhuma resposta.
+        // ═══════════════════════════════════════════════════════════════════
         if (!string.IsNullOrEmpty(resultado.RefreshToken))
         {
             HttpContext.Response.Cookies.Append("ticketprime_refresh", resultado.RefreshToken, new CookieOptions
@@ -72,7 +86,7 @@ public class AuthController : ControllerBase
                 Secure = true,
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTimeOffset.UtcNow.AddDays(30),
-                Path = "/api/auth/refresh"
+                Path = "/"
             });
         }
 
@@ -100,14 +114,14 @@ public class AuthController : ControllerBase
         if (resultado == null)
             return Results.Json(new { mensagem = "Refresh token inválido ou expirado." }, statusCode: 401);
 
-        // Rotaciona o cookie do refresh token
+        // Rotaciona o cookie do refresh token (httpOnly — nunca no body)
         HttpContext.Response.Cookies.Append("ticketprime_refresh", resultado.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.AddDays(30),
-            Path = "/api/auth/refresh"
+            Path = "/"
         });
 
         return Results.Ok(resultado);
@@ -130,7 +144,7 @@ public class AuthController : ControllerBase
 
         await _authService.RevogarRefreshTokenAsync(rawToken, cpf);
 
-        // Remove cookies de sessão
+        // Remove cookies de sessão (Path="/" para garantir que ambos sejam limpos)
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
@@ -140,14 +154,7 @@ public class AuthController : ControllerBase
             Path = "/"
         };
         HttpContext.Response.Cookies.Append("ticketprime_token", "", cookieOptions);
-        HttpContext.Response.Cookies.Append("ticketprime_refresh", "", new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
-            Expires = DateTimeOffset.UnixEpoch,
-            Path = "/api/auth/refresh"
-        });
+        HttpContext.Response.Cookies.Append("ticketprime_refresh", "", cookieOptions);
 
         return Results.Ok(new { mensagem = "Logout realizado com sucesso." });
     }

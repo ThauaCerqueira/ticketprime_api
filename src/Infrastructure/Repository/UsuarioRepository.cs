@@ -20,25 +20,31 @@ public class UsuarioRepository : IUsuarioRepository
         return await connection.QueryFirstOrDefaultAsync<User>(sql, new { Cpf = cpf });
     }
 
-    // ObterPorCpfESenha: mantido na interface por compatibilidade.
-    // A verificação do hash bcrypt é feita no AuthService após buscar pelo CPF.
-    public Task<User?> ObterPorCpfESenha(string cpf, string senha)
-        => ObterPorCpf(cpf);
-
     public async Task<string> CriarUsuario(User usuario)
     {
         using var connection = _connectionFactory.CreateConnection();
-        // Verifica unicidade de email antes de inserir
-        var emailExiste = await connection.QuerySingleAsync<int>(
-            "SELECT COUNT(1) FROM Usuarios WHERE Email = @Email", new { usuario.Email });
-        if (emailExiste > 0)
-            throw new InvalidOperationException("Este e-mail já está cadastrado.");
 
-        var sql = @"INSERT INTO Usuarios (Cpf, Nome, Email, Senha, Perfil, Telefone, Slug)
-                    VALUES (@Cpf, @Nome, @Email, @Senha, @Perfil, @Telefone, @Slug)";
-        await connection.ExecuteAsync(sql, usuario);
-
-        return usuario.Cpf;
+        // ═══════════════════════════════════════════════════════════════════
+        // ANTES: SELECT COUNT(*) + INSERT (2 queries, race condition possível)
+        //   Entre o SELECT e o INSERT, outro request podia inserir o mesmo
+        //   email → violação de UNIQUE constraint.
+        //
+        // AGORA: INSERT direto com tratamento de exceção de UNIQUE constraint.
+        //   O UNIQUE INDEX no banco (UX_Usuarios_Email) já garante unicidade.
+        //   Se violar, capturamos SqlException.Number == 2601.
+        // ═══════════════════════════════════════════════════════════════════
+        try
+        {
+            var sql = @"INSERT INTO Usuarios (Cpf, Nome, Email, Senha, Perfil, Telefone, Slug)
+                        VALUES (@Cpf, @Nome, @Email, @Senha, @Perfil, @Telefone, @Slug)";
+            await connection.ExecuteAsync(sql, usuario);
+            return usuario.Cpf;
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 2601)
+        {
+            // 2601 = Cannot insert duplicate key row in object with unique index
+            throw new InvalidOperationException("Este e-mail ou CPF já está cadastrado.");
+        }
     }
 
     public async Task<IEnumerable<User>> ListarUsuarios()

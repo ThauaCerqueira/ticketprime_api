@@ -97,4 +97,10 @@ public interface IEventoRepository
     /// Atualiza a URL da imagem de capa do evento.
     /// </summary>
     Task AtualizarImagemUrlAsync(int eventoId, string imagemUrl);
+
+    /// <summary>
+    /// Cria um evento completo em uma única transação SQL, incluindo tipos de ingresso,
+    /// lotes progressivos e fotos criptografadas. Se qualquer etapa falhar, faz rollback.
+    /// </summary>
+    Task<int> CriarEventoComTransacaoAsync(TicketEvent evento, List<TicketType>? tipos, List<Lote>? lotes, List<EncryptedPhotoDto>? fotos);
 }

@@ -1,5 +1,6 @@
 using System.Text;
 using QRCoder;
+using src.Infrastructure;
 
 namespace src.Service;
 
@@ -10,12 +11,32 @@ namespace src.Service;
 public class EmailTemplateService
 {
     private readonly IEmailService _emailService;
+    private readonly BackgroundEmailService _backgroundEmail;
     private readonly ILogger<EmailTemplateService> _logger;
 
-    public EmailTemplateService(IEmailService emailService, ILogger<EmailTemplateService> logger)
+    public EmailTemplateService(
+        IEmailService emailService,
+        BackgroundEmailService backgroundEmail,
+        ILogger<EmailTemplateService> logger)
     {
         _emailService = emailService;
+        _backgroundEmail = backgroundEmail;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Enfileira um email para envio em background em vez de enviar síncrono.
+    /// Isso libera a requisição HTTP imediatamente.
+    /// </summary>
+    private async Task EnviarEmBackground(EmailJobType type, string to, string subject, string body)
+    {
+        await _backgroundEmail.EnqueueAsync(new EmailJobItem
+        {
+            Type = type,
+            To = to,
+            Subject = subject,
+            Body = body
+        });
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
@@ -126,7 +147,8 @@ public class EmailTemplateService
         <p>Se você não criou uma conta no TicketPrime, ignore este email.</p>
         """;
 
-        await _emailService.SendAsync(to, "TicketPrime — Confirme seu email 📧", TemplateBase("Confirme seu email", conteudo));
+        await EnviarEmBackground(EmailJobType.EmailVerification, to,
+            "TicketPrime — Confirme seu email 📧", TemplateBase("Confirme seu email", conteudo));
         _logger.LogInformation("Email de verificação enviado para {Email}", to);
     }
 
@@ -142,7 +164,8 @@ public class EmailTemplateService
         <p>Se você não solicitou a redefinição de senha, ignore este email.</p>
         """;
 
-        await _emailService.SendAsync(to, "TicketPrime — Redefinição de senha 🔑", TemplateBase("Redefinição de senha", conteudo));
+        await EnviarEmBackground(EmailJobType.PasswordRecovery, to,
+            "TicketPrime — Redefinição de senha 🔑", TemplateBase("Redefinição de senha", conteudo));
         _logger.LogInformation("Email de redefinição de senha enviado para {Email}", to);
     }
 
@@ -182,7 +205,8 @@ public class EmailTemplateService
         <p style="text-align:center;color:#6b7280;font-size:12px;">Código: <strong>{codigoIngresso}</strong></p>
         """;
 
-        await _emailService.SendAsync(to, $"TicketPrime — Ingresso confirmado: {eventoNome} 🎫",
+        await EnviarEmBackground(EmailJobType.PurchaseConfirmation, to,
+            $"TicketPrime — Ingresso confirmado: {eventoNome} 🎫",
             TemplateBase("Compra confirmada ✅", conteudo));
         _logger.LogInformation("Confirmação de compra enviada para {Email} | Evento: {Evento}", to, eventoNome);
     }
@@ -216,7 +240,8 @@ public class EmailTemplateService
         </p>
         """;
 
-        await _emailService.SendAsync(to, $"TicketPrime — Cancelamento: {eventoNome} ❌",
+        await EnviarEmBackground(EmailJobType.CancellationConfirmation, to,
+            $"TicketPrime — Cancelamento: {eventoNome} ❌",
             TemplateBase("Cancelamento confirmado", conteudo));
         _logger.LogInformation("Confirmação de cancelamento enviada para {Email} | Evento: {Evento}", to, eventoNome);
     }
@@ -254,7 +279,8 @@ public class EmailTemplateService
         </p>
         """;
 
-        await _emailService.SendAsync(to, $"TicketPrime — Alteração no evento: {eventoNome} {icone}",
+        await EnviarEmBackground(EmailJobType.EventUpdateNotification, to,
+            $"TicketPrime — Alteração no evento: {eventoNome} {icone}",
             TemplateBase("Evento alterado ⚠️", conteudo));
         _logger.LogInformation("Notificação de alteração enviada para {Email} | Evento: {Evento}", to, eventoNome);
     }
@@ -288,7 +314,8 @@ public class EmailTemplateService
         </p>
         """;
 
-        await _emailService.SendAsync(to, $"TicketPrime — Evento cancelado: {eventoNome} 🚫",
+        await EnviarEmBackground(EmailJobType.EventCancellationNotification, to,
+            $"TicketPrime — Evento cancelado: {eventoNome} 🚫",
             TemplateBase("Evento cancelado", conteudo));
         _logger.LogInformation("Notificação de cancelamento enviada para {Email} | Evento: {Evento}", to, eventoNome);
     }
@@ -332,7 +359,8 @@ public class EmailTemplateService
         </p>
         """;
 
-        await _emailService.SendAsync(to, $"TicketPrime — Vaga liberada: {eventoNome} 🎉",
+        await EnviarEmBackground(EmailJobType.WaitingQueueNotification, to,
+            $"TicketPrime — Vaga liberada: {eventoNome} 🎉",
             TemplateBase("Vaga disponível! 🎫", conteudo));
         _logger.LogInformation("Notificação de fila de espera enviada para {Email} | Evento: {Evento}", to, eventoNome);
     }

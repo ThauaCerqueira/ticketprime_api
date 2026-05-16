@@ -5,7 +5,7 @@ using src.Infrastructure.IRepository;
 
 namespace src.Service;
 
-public class EventService
+public class EventoService
 {
     private const decimal TaxaServicoMaxPct = 0.05m; // 5% do preço do ingresso
     private const int MaxEventosPublicados = 5; // limite de eventos publicados simultaneamente
@@ -14,14 +14,14 @@ public class EventService
     private readonly IReservaRepository _reservaRepository;
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly EmailTemplateService _emailTemplate;
-    private readonly ILogger<EventService> _logger;
+    private readonly ILogger<EventoService> _logger;
 
-    public EventService(
+    public EventoService(
         IEventoRepository repository,
         IReservaRepository reservaRepository,
         IUsuarioRepository usuarioRepository,
         EmailTemplateService emailTemplate,
-        ILogger<EventService> logger)
+        ILogger<EventoService> logger)
     {
         _Repository = repository;
         _reservaRepository = reservaRepository;
@@ -82,56 +82,26 @@ public class EventService
                     $"Limite de {MaxEventosPublicados} eventos publicados atingido. Encerre ou arquive um evento antes de publicar um novo.");
         }
 
-        await _Repository.AdicionarAsync(novoEvento);
+        // ── Criação transacional: evento + tipos + lotes + fotos em uma única
+        // transação SQL — se qualquer etapa falhar, tudo sofre rollback,
+        // evitando registros órfãos no banco.
+        var tipos = dto.TiposIngresso is { Count: > 0 }
+            ? dto.TiposIngresso.Select(t => new TicketType(
+                t.Nome, t.Preco, t.CapacidadeTotal, t.Ordem) { Descricao = t.Descricao }).ToList()
+            : null;
 
-        // ── Salva tipos de ingresso (setores) ────────────────────────────────
-        if (dto.TiposIngresso is { Count: > 0 })
+        List<Lote>? lotes = null;
+        if (dto.Lotes is { Count: > 0 } && tipos is { Count: > 0 })
         {
-            var tipos = dto.TiposIngresso.Select(t => new TicketType(
-                t.Nome, t.Preco, t.CapacidadeTotal, t.Ordem)
+            lotes = dto.Lotes.Select(l => new Lote(
+                l.Nome, l.Preco, l.QuantidadeMaxima, l.TicketTypeId)
             {
-                Descricao = t.Descricao
+                DataInicio = l.DataInicio,
+                DataFim = l.DataFim
             }).ToList();
-
-            await _Repository.AdicionarTiposIngressoAsync(novoEvento.Id, tipos);
-
-            // ── Salva lotes progressivos ─────────────────────────────────────
-            if (dto.Lotes is { Count: > 0 })
-            {
-                var lotes = dto.Lotes.Select(l => new Lote(
-                    l.Nome, l.Preco, l.QuantidadeMaxima, l.TicketTypeId)
-                {
-                    DataInicio = l.DataInicio,
-                    DataFim = l.DataFim
-                }).ToList();
-
-                // Associa lotes específicos aos tipos de ingresso criados
-                foreach (var lote in lotes)
-                {
-                    if (lote.TicketTypeId.HasValue && lote.TicketTypeId > 0)
-                    {
-                        // Mapeia o TicketTypeId informado no DTO para o ID real gerado pelo banco
-                        // O DTO pode conter IDs temporários (índice 1-based) ou reais
-                        // Neste caso, como os TicketTypeDto não têm Id, assumimos que
-                        // lote.TicketTypeId referencia o TicketType pela ordem (1-based)
-                        var ticketTypeIndex = lote.TicketTypeId.Value - 1;
-                        if (ticketTypeIndex >= 0 && ticketTypeIndex < tipos.Count)
-                        {
-                            lote.TicketTypeId = tipos[ticketTypeIndex].Id;
-                        }
-                    }
-                }
-
-                await _Repository.AdicionarLotesAsync(novoEvento.Id, lotes);
-            }
         }
 
-        // ── Salva fotos criptografadas (E2E encryption) ──────────────────────
-        if (dto.Fotos is { Count: > 0 })
-        {
-            // novoEvento.Id foi preenchido pelo OUTPUT INSERTED.Id no repositório
-            await _Repository.AdicionarFotosAsync(novoEvento.Id, dto.Fotos);
-        }
+        await _Repository.CriarEventoComTransacaoAsync(novoEvento, tipos, lotes, dto.Fotos);
 
         return novoEvento;
     }
@@ -218,7 +188,7 @@ public class EventService
         // Altera status para Cancelado
         await _Repository.AtualizarStatusAsync(eventoId, "Cancelado");
 
-        // Notifica todos os compradores
+        // Notifica todos os compradores em paralelo (o envio real é background)
         try
         {
             var emails = await _reservaRepository.ObterEmailsUsuariosPorEventoAsync(eventoId);
@@ -226,7 +196,10 @@ public class EventService
 
             _logger.LogInformation("Notificando {Count} compradores sobre cancelamento do evento {EventoId}", emailsList.Count, eventoId);
 
-            foreach (var email in emailsList)
+            // Como EmailTemplateService agora enfileira em BackgroundEmailService
+            // (Channel em memória), o custo de cada chamada é ~1ms.
+            // Podemos disparar todas em paralelo sem medo.
+            var tasks = emailsList.Select(async email =>
             {
                 try
                 {
@@ -243,7 +216,11 @@ public class EventService
                 {
                     _logger.LogWarning(ex, "Falha ao notificar {Email} sobre cancelamento do evento {EventoId}", email, eventoId);
                 }
-            }
+            });
+
+            await Task.WhenAll(tasks);
+
+            _logger.LogInformation("Notificações de cancelamento enfileiradas para {Count} compradores do evento {EventoId}", emailsList.Count, eventoId);
         }
         catch (Exception ex)
         {

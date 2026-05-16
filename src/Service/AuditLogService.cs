@@ -51,6 +51,16 @@ public class AuditLogService
             ingressoGratuito = valorFinalPago == 0
         };
 
+        var detalhesJson = JsonSerializer.Serialize(detalhes);
+
+        // ═══════════════════════════════════════════════════════════════
+        // SEGURANÇA: Limita o tamanho do campo Detalhes para evitar
+        // estouro de coluna NVARCHAR(MAX) e lentidão no banco.
+        // 4000 chars é suficiente para qualquer transação financeira.
+        // ═══════════════════════════════════════════════════════════════
+        if (detalhesJson.Length > 4000)
+            detalhesJson = detalhesJson[..4000];
+
         var entry = new AuditLogEntry
         {
             ActionType = "CompraIngresso",
@@ -60,7 +70,7 @@ public class AuditLogService
             ValorTransacionado = valorFinalPago,
             IpAddress = ipAddress,
             UserAgent = userAgent,
-            Detalhes = JsonSerializer.Serialize(detalhes)
+            Detalhes = detalhesJson
         };
 
         await LogAsync(entry);
@@ -223,6 +233,34 @@ public class AuditLogService
             ReservaId = reservaId,
             IpAddress = ipAddress,
             UserAgent = userAgent
+        };
+
+        await LogAsync(entry);
+    }
+
+    /// <summary>
+    /// Registra falha de pagamento detectada via webhook (pagamento rejeitado ou cancelado).
+    /// </summary>
+    public async Task LogPagamentoFalhaAsync(
+        string usuarioCpf,
+        int eventoId,
+        int reservaId,
+        string codigoTransacao,
+        string statusPagamento)
+    {
+        var detalhes = new
+        {
+            codigoTransacao,
+            statusPagamento
+        };
+
+        var entry = new AuditLogEntry
+        {
+            ActionType = "PagamentoFalha",
+            UsuarioCpf = usuarioCpf,
+            EventoId = eventoId,
+            ReservaId = reservaId,
+            Detalhes = JsonSerializer.Serialize(detalhes)
         };
 
         await LogAsync(entry);

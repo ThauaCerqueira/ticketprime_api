@@ -1,7 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using src.Models;
+using src.Infrastructure;
 using src.Infrastructure.IRepository;
+using src.Models;
  
 namespace src.Service;
   
@@ -19,21 +20,58 @@ public class UserService
         @"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    /// <summary>
+    /// Regex que rejeita caracteres comprovadamente perigosos em emails.
+    /// Diferente da blacklist anterior (case-sensitive, frágil, falsos positivos),
+    /// esta abordagem usa whitelist: permite qualquer caractere RFC-compliant
+    /// e só rejeita os que são universalmente perigosos (&lt; &gt; &quot; ; ' \).
+    /// Dapper já protege contra SQL injection via parâmetros nomeados (@param),
+    /// então esta validação é apenas uma camada adicional de defesa.
+    /// </summary>
+    private static readonly Regex EmailInjectionRegex = new(
+        @"[<>"";'\\]",
+        RegexOptions.Compiled);
+
     private readonly IUsuarioRepository _repository;
     private readonly IEmailService _emailService;
+    private readonly BackgroundEmailService _backgroundEmail;
     private readonly int _bcryptWorkFactor;
     private readonly AuditLogService? _auditLog;
 
     public UserService(
         IUsuarioRepository repository,
         IEmailService emailService,
+        BackgroundEmailService? backgroundEmail = null,
         IConfiguration? configuration = null,
         AuditLogService? auditLog = null)
     {
         _repository = repository;
         _emailService = emailService;
+        _backgroundEmail = backgroundEmail!;
         _bcryptWorkFactor = configuration?.GetValue<int>("Bcrypt:WorkFactor", 11) ?? 11;
         _auditLog = auditLog;
+    }
+
+    /// <summary>
+    /// Enfileira um email em background ou envia direto se o serviço não estiver disponível.
+    /// </summary>
+    private async Task EnviarEmailAsync(string to, string subject, string body)
+    {
+        if (_backgroundEmail != null)
+        {
+            await _backgroundEmail.EnqueueAsync(new EmailJobItem
+            {
+                Type = EmailJobType.EmailVerification,
+                To = to,
+                Subject = subject,
+                Body = body
+            });
+        }
+        else
+        {
+            // Fallback: envia síncrono (testes sem DI)
+            await _emailService.SendAsync(to, subject, body);
+        }
     }
  
     /// <summary>
@@ -67,17 +105,26 @@ public class UserService
 
     /// <summary>
     /// Valida o formato do email e rejeita caracteres de injeção (SQL/XSS).
+    /// ═══════════════════════════════════════════════════════════════════════
+    /// SEGURANÇA: Usa whitelist (regex) em vez de blacklist case-sensitive.
+    /// ANTES: blacklist frágil com Contains("exec "), Contains("drop ") etc.
+    ///   - Case-sensitive: "EXEC " passava
+    ///   - Falso positivo: "joao@select.com.br" era rejeitado
+    ///   - Falso negativo: "selECt" burlava
+    /// AGORA: Rejeita apenas caracteres comprovadamente perigosos + valida
+    /// formato RFC 5322 simplificado. Dapper (via @param) já é a defesa
+    /// principal contra SQL injection — esta é apenas uma camada extra.
+    /// ═══════════════════════════════════════════════════════════════════════
     /// </summary>
     private static void ValidarEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("O email é obrigatório.");
 
-        // Rejeita caracteres de injeção SQL/XSS
-        if (email.Any(c => c is '<' or '>' or '"' or ';' or '\'' or '\\') ||
-            email.Contains("--") || email.Contains("/*") || email.Contains("*/") ||
-            email.Contains("@@") || email.Contains("char(") ||
-            email.Contains("exec ") || email.Contains("drop ") || email.Contains("select "))
+        // Rejeita apenas caracteres comprovadamente perigosos em qualquer contexto
+        // Dapper já protege contra SQL injection via parâmetros nomeados (@param).
+        // Esta validação é uma camada adicional de defesa, não a principal.
+        if (EmailInjectionRegex.IsMatch(email))
             throw new ArgumentException("O email informado contém caracteres inválidos.");
 
         if (!EmailValidoRegex.IsMatch(email))
@@ -142,7 +189,20 @@ public class UserService
     <p style='color: #9ca3af; font-size: 12px;'>TicketPrime — Sua plataforma de eventos</p>
 </body>
 </html>";
-        await _emailService.SendAsync(novoUsuario.Email, assuntoVerificacao, corpoVerificacao);
+        if (_backgroundEmail != null)
+        {
+            await _backgroundEmail.EnqueueAsync(new EmailJobItem
+            {
+                Type = EmailJobType.EmailVerification,
+                To = novoUsuario.Email,
+                Subject = assuntoVerificacao,
+                Body = corpoVerificacao
+            });
+        }
+        else
+        {
+            await _emailService.SendAsync(novoUsuario.Email, assuntoVerificacao, corpoVerificacao);
+        }
 
         // Registra cadastro de usuário na auditoria
         if (_auditLog != null)
@@ -182,7 +242,20 @@ public class UserService
     <p style='color: #9ca3af; font-size: 12px;'>TicketPrime — Sua plataforma de eventos</p>
 </body>
 </html>";
-        await _emailService.SendAsync(email, assunto, corpo);
+        if (_backgroundEmail != null)
+        {
+            await _backgroundEmail.EnqueueAsync(new EmailJobItem
+            {
+                Type = EmailJobType.EmailVerification,
+                To = email,
+                Subject = assunto,
+                Body = corpo
+            });
+        }
+        else
+        {
+            await _emailService.SendAsync(email, assunto, corpo);
+        }
 
         return token;
     }
@@ -216,7 +289,20 @@ public class UserService
     <p style='color: #9ca3af; font-size: 12px;'>TicketPrime — Sua plataforma de eventos</p>
 </body>
 </html>";
-        await _emailService.SendAsync(email, assunto, corpo);
+        if (_backgroundEmail != null)
+        {
+            await _backgroundEmail.EnqueueAsync(new EmailJobItem
+            {
+                Type = EmailJobType.PasswordRecovery,
+                To = email,
+                Subject = assunto,
+                Body = corpo
+            });
+        }
+        else
+        {
+            await _emailService.SendAsync(email, assunto, corpo);
+        }
 
         return token;
     }

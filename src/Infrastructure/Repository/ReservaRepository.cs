@@ -19,10 +19,10 @@ public class ReservaRepository : IReservaRepository
         using var connection = _connectionFactory.CreateConnection();
         var sql = @"INSERT INTO Reservas (UsuarioCpf, EventoId, DataCompra, CupomUtilizado, ValorFinalPago,
                                           TaxaServicoPago, TemSeguro, ValorSeguroPago, CodigoIngresso, Status,
-                                          EhMeiaEntrada, TicketTypeId, LoteId)
+                                          EhMeiaEntrada, TicketTypeId, LoteId, IdempotencyKey, StatusPagamento)
                     VALUES (@UsuarioCpf, @EventoId, GETDATE(), @CupomUtilizado, @ValorFinalPago,
                             @TaxaServicoPago, @TemSeguro, @ValorSeguroPago, @CodigoIngresso, 'Ativa',
-                            @EhMeiaEntrada, @TicketTypeId, @LoteId);
+                            @EhMeiaEntrada, @TicketTypeId, @LoteId, @IdempotencyKey, @StatusPagamento);
                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
         var id = await connection.QuerySingleAsync<int>(sql, reserva);
         reserva.Id = id;
@@ -181,7 +181,8 @@ public class ReservaRepository : IReservaRepository
             GROUP BY YEAR(r.DataCompra), MONTH(r.DataCompra), FORMAT(r.DataCompra, 'yyyy-MM')
             ORDER BY Ano ASC, Mes ASC";
         return await conn.QueryAsync<VendaPorPeriodoDTO>(sql,
-            new { Inicio = inicio, Fim = fim });
+            new { Inicio = inicio, Fim = fim },
+            commandTimeout: DbConnectionFactory.AnalyticsCommandTimeout);
     }
 
     public async Task<IEnumerable<EventoMaisVendidoDTO>> ObterEventosMaisVendidosAsync(int top = 10)
@@ -199,7 +200,8 @@ public class ReservaRepository : IReservaRepository
             LEFT JOIN Reservas r ON r.EventoId = e.Id AND r.Status IN ('Ativa', 'Usada')
             GROUP BY e.Id, e.Nome, e.DataEvento, e.CapacidadeTotal
             ORDER BY IngressosVendidos DESC";
-        return await conn.QueryAsync<EventoMaisVendidoDTO>(sql, new { Top = top });
+        return await conn.QueryAsync<EventoMaisVendidoDTO>(sql, new { Top = top },
+            commandTimeout: DbConnectionFactory.AnalyticsCommandTimeout);
     }
 
     public async Task<CancelamentoStatsDTO> ObterCancelamentoStatsAsync()
@@ -213,7 +215,8 @@ public class ReservaRepository : IReservaRepository
                 ISNULL(SUM(CASE WHEN Status = 'Usada' THEN 1 ELSE 0 END), 0) AS TotalUsadas,
                 ISNULL(SUM(CASE WHEN Status = 'Cancelada' THEN ValorFinalPago ELSE 0 END), 0) AS ReceitaPerdidaCancelamentos
             FROM Reservas";
-        return await conn.QuerySingleAsync<CancelamentoStatsDTO>(sql);
+        return await conn.QuerySingleAsync<CancelamentoStatsDTO>(sql,
+            commandTimeout: DbConnectionFactory.AnalyticsCommandTimeout);
     }
 
     public async Task<RelatorioFinanceiroDTO> ObterRelatorioFinanceiroAsync(DateTime? inicio = null, DateTime? fim = null)
@@ -235,7 +238,8 @@ public class ReservaRepository : IReservaRepository
             {
                 Inicio = inicio ?? new DateTime(2000, 1, 1),
                 Fim = fim ?? DateTime.UtcNow.AddYears(1)
-            });
+            },
+            commandTimeout: DbConnectionFactory.AnalyticsCommandTimeout);
     }
 
     public async Task<IEnumerable<DemandaLocalDTO>> ObterDemandaPorLocalAsync()
@@ -251,7 +255,8 @@ public class ReservaRepository : IReservaRepository
             LEFT JOIN Reservas r ON r.EventoId = e.Id
             GROUP BY e.Local
             ORDER BY IngressosVendidos DESC";
-        return await conn.QueryAsync<DemandaLocalDTO>(sql);
+        return await conn.QueryAsync<DemandaLocalDTO>(sql,
+            commandTimeout: DbConnectionFactory.AnalyticsCommandTimeout);
     }
 
     public async Task<IEnumerable<RelatorioFinanceiroLinhaDTO>> ObterLinhasRelatorioFinanceiroAsync(DateTime? inicio = null, DateTime? fim = null)
@@ -283,7 +288,8 @@ public class ReservaRepository : IReservaRepository
             {
                 Inicio = inicio ?? new DateTime(2000, 1, 1),
                 Fim = fim ?? DateTime.UtcNow.AddYears(1)
-            });
+            },
+            commandTimeout: DbConnectionFactory.AnalyticsCommandTimeout);
     }
 
     public async Task<bool> TransferirAsync(int reservaId, string cpfRemetente, string cpfDestinatario)
@@ -324,5 +330,36 @@ public class ReservaRepository : IReservaRepository
               WHERE r.EventoId = @EventoId
               ORDER BY r.DataCompra",
             new { EventoId = eventoId });
+    }
+
+    // ── Webhook de pagamento ────────────────────────────────────────
+
+    public async Task<Reservation?> ObterPorCodigoTransacaoAsync(string codigoTransacao)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "SELECT * FROM Reservas WHERE CodigoTransacaoGateway = @CodigoTransacao";
+        return await connection.QueryFirstOrDefaultAsync<Reservation>(sql,
+            new { CodigoTransacao = codigoTransacao });
+    }
+
+    public async Task AtualizarStatusPagamentoAsync(int reservaId, string statusPagamento)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = @"
+            UPDATE Reservas
+            SET StatusPagamento = @StatusPagamento
+            WHERE Id = @ReservaId";
+        await connection.ExecuteAsync(sql,
+            new { ReservaId = reservaId, StatusPagamento = statusPagamento });
+    }
+
+    public async Task<int> ContarReservasPorCupomAsync(string codigoCupom)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = @"
+            SELECT COUNT(1) FROM Reservas
+            WHERE CupomUtilizado = @Codigo AND Status = 'Ativa'";
+        return await connection.QuerySingleAsync<int>(sql,
+            new { Codigo = codigoCupom });
     }
 }

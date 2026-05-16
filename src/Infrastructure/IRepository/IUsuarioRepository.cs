@@ -5,7 +5,6 @@ namespace src.Infrastructure.IRepository;
 public interface IUsuarioRepository
 {
     Task<User?> ObterPorCpf(string cpf);
-    Task<User?> ObterPorCpfESenha(string cpf, string senha);
     Task<string> CriarUsuario(User usuario);
     Task<IEnumerable<User>> ListarUsuarios();
     Task<int> ContarUsuariosAsync();

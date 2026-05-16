@@ -5,14 +5,16 @@ using src.Infrastructure.IRepository;
 using src.DTOs;
 using src.Models;
 
-public class CouponService
+public class CupomService
 {
     private readonly ICupomRepository _repository;
+    private readonly IReservaRepository _reservaRepository;
     private static readonly Regex _codigoRegex = new(@"^[a-zA-Z0-9]+$", RegexOptions.Compiled);
 
-    public CouponService(ICupomRepository repository)
+    public CupomService(ICupomRepository repository, IReservaRepository? reservaRepository = null)
     {
         _repository = repository;
+        _reservaRepository = reservaRepository!;
     }
 
     public async Task<bool> CriarAsync(CreateCouponDto dto)
@@ -77,6 +79,21 @@ public class CouponService
         var existente = await _repository.ObterPorCodigoAsync(codigo);
         if (existente == null)
             return false;
+
+        // ═══════════════════════════════════════════════════════════════
+        // SEGURANÇA: Verifica se existem reservas ATIVAS usando este cupom
+        // ANTES de deletar. Se houver, retorna false e o controller retorna
+        // um 400 amigável em vez de um 500 genérico (FK violation).
+        // ═══════════════════════════════════════════════════════════════
+        if (_reservaRepository != null)
+        {
+            var reservasAtivas = await _reservaRepository.ContarReservasPorCupomAsync(codigo);
+            if (reservasAtivas > 0)
+                throw new InvalidOperationException(
+                    $"Não é possível excluir o cupom '{codigo}': " +
+                    $"existem {reservasAtivas} reserva(s) ativa(s) utilizando este cupom. " +
+                    $"Cancele as reservas primeiro ou aguarde os eventos ocorrerem.");
+        }
 
         return await _repository.DeletarAsync(codigo);
     }

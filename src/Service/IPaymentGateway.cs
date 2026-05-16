@@ -29,6 +29,12 @@ public sealed class PaymentRequest
 
     /// <summary>Token de cartão gerado pelo SDK Mercado Pago no frontend (nunca dados raw).</summary>
     public string? CardToken { get; init; }
+
+    /// <summary>
+    /// Chave de idempotência gerada pelo servidor antes da chamada ao gateway.
+    /// Reutilizada em retentativas para evitar cobrança duplicada em caso de timeout.
+    /// </summary>
+    public string? IdempotencyKey { get; init; }
 }
 
 /// <summary>

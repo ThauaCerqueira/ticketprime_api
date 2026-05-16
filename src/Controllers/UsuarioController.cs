@@ -2,6 +2,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using src.DTOs;
 using src.Infrastructure;
 using src.Models;
 using src.Service;
@@ -26,15 +27,28 @@ public class UserController : ControllerBase
 
     /// <summary>
     /// Auto-cadastro de usuário (perfil sempre CLIENTE).
+    /// ═══════════════════════════════════════════════════════════════════
+    /// SEGURANÇA: Usa CreateUserDto em vez de User para prevenir over-posting.
+    ///   O DTO contém APENAS os campos permitidos no cadastro (Cpf, Nome, Email, Senha).
+    ///   Qualquer tentativa de enviar Perfil, Slug, EmailVerificado etc.
+    ///   é automaticamente ignorada pelo model binding.
+    /// ═══════════════════════════════════════════════════════════════════
     /// </summary>
     [HttpPost]
     [EnableRateLimiting("escrita")]
-    public async Task<IResult> Cadastrar([FromBody] User usuario)
+    public async Task<IResult> Cadastrar([FromBody] CreateUserDto dto)
     {
         try
         {
-            // Perfil é sempre CLIENTE em auto-cadastro — nunca aceitar valor enviado pelo cliente
-            usuario.Perfil = "CLIENTE";
+            // Mapeia o DTO para o model User (apenas campos permitidos)
+            var usuario = new User
+            {
+                Cpf = dto.Cpf,
+                Nome = dto.Nome,
+                Email = dto.Email,
+                Senha = dto.Senha,
+                Perfil = "CLIENTE"  // Segurança: sempre força CLIENTE
+            };
 
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
             var userAgent = HttpContext.Request.Headers.UserAgent.FirstOrDefault();

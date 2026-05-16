@@ -61,10 +61,17 @@ public sealed class MercadoPagoPaymentGateway : IPaymentGateway
             payer = new { email = request.PagadorEmail }
         };
 
-        var (sucesso, id, responseBody) = await PostPaymentAsync(body);
+        var (sucesso, id, responseBody) = await PostPaymentAsync(body, request.IdempotencyKey);
         if (!sucesso)
         {
-            _logger.LogError("MP Pix falhou. Body: {Body}", responseBody);
+            // ═══════════════════════════════════════════════════════════════════
+            // SEGURANÇA: NUNCA logar o responseBody completo do gateway.
+            //   O body pode conter dados sensíveis como erros de processamento
+            //   de cartão, códigos de autorização, ou metadados do comprador.
+            //   Logamos apenas status code e uma referência anonimizada.
+            // ═══════════════════════════════════════════════════════════════════
+            _logger.LogWarning("MP Pix falhou (anônimo). IdempotencyKey={Ik}",
+                AnonymizeKey(request.IdempotencyKey));
             return PaymentResult.Falha("Não foi possível gerar o Pix. Tente novamente.");
         }
 
@@ -103,10 +110,18 @@ public sealed class MercadoPagoPaymentGateway : IPaymentGateway
             payer = new { email = request.PagadorEmail }
         };
 
-        var (sucesso, id, responseBody) = await PostPaymentAsync(body);
+        var (sucesso, id, responseBody) = await PostPaymentAsync(body, request.IdempotencyKey);
         if (!sucesso)
         {
-            _logger.LogError("MP Cartão falhou. Body: {Body}", responseBody);
+            // ═══════════════════════════════════════════════════════════════════
+            // SEGURANÇA: NUNCA logar responseBody do gateway de cartão.
+            //   O body pode conter dados sensíveis como mensagens de recusa
+            //   com informações do portador, códigos de autorização parciais,
+            //   ou metadados do cartão tokenizado.
+            // ═══════════════════════════════════════════════════════════════════
+            _logger.LogWarning("MP Cartão falhou (anônimo). Método={Metodo}, Ik={Ik}",
+                request.MetodoPagamento,
+                AnonymizeKey(request.IdempotencyKey));
             return PaymentResult.Falha("Pagamento recusado. Verifique os dados do cartão e tente novamente.");
         }
 
@@ -140,7 +155,15 @@ public sealed class MercadoPagoPaymentGateway : IPaymentGateway
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("MP Estorno falhou: {Status} — {Body}", response.StatusCode, responseBody);
+                // ══════════════════════════════════════════════════════════
+                // SEGURANÇA: Logar apenas status code, não o body da resposta.
+                //   O body de erro do gateway pode conter metadados da
+                //   transação original que não devem vazar para logs.
+                // ══════════════════════════════════════════════════════════
+                _logger.LogWarning(
+                    "MP Estorno falhou: StatusCode={Status}, Transacao={Tx}",
+                    response.StatusCode,
+                    AnonymizeKey(codigoTransacao));
                 return RefundResult.Falha("Estorno não processado pelo gateway. Contate o suporte.");
             }
 
@@ -148,7 +171,7 @@ public sealed class MercadoPagoPaymentGateway : IPaymentGateway
             var refundId = doc.RootElement.GetProperty("id").GetRawText();
 
             _logger.LogInformation("Estorno MP aprovado. TransacaoId={Tx}, EstornoId={Ref}, Valor={Valor}",
-                codigoTransacao, refundId, valor);
+                AnonymizeKey(codigoTransacao), AnonymizeKey(refundId), valor);
 
             return RefundResult.Ok(refundId);
         }
@@ -169,7 +192,13 @@ public sealed class MercadoPagoPaymentGateway : IPaymentGateway
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("MP ConsultaStatus falhou: {Status} — {Body}", response.StatusCode, responseBody);
+                // ══════════════════════════════════════════════════════════
+                // SEGURANÇA: Logar apenas status code, não o body da resposta.
+                // ══════════════════════════════════════════════════════════
+                _logger.LogWarning(
+                    "MP ConsultaStatus falhou: StatusCode={Status}, Transacao={Tx}",
+                    response.StatusCode,
+                    AnonymizeKey(codigoTransacao));
                 return PaymentStatusResult.Falha("Não foi possível consultar o status do pagamento no gateway.");
             }
 
@@ -193,7 +222,7 @@ public sealed class MercadoPagoPaymentGateway : IPaymentGateway
 
             _logger.LogInformation(
                 "MP ConsultaStatus: Transacao={Tx}, StatusGateway={StatusGateway}, StatusMapeado={StatusMapeado}",
-                codigoTransacao, statusGateway, statusMapeado);
+                AnonymizeKey(codigoTransacao), statusGateway, statusMapeado);
 
             return PaymentStatusResult.Ok(statusMapeado, statusGateway);
         }
@@ -206,13 +235,13 @@ public sealed class MercadoPagoPaymentGateway : IPaymentGateway
 
     // ── Helpers ─────────────────────────────────────────────────────────────
 
-    private async Task<(bool sucesso, string? id, string responseBody)> PostPaymentAsync(object body)
+    private async Task<(bool sucesso, string? id, string responseBody)> PostPaymentAsync(object body, string? idempotencyKey = null)
     {
         var json = JsonSerializer.Serialize(body, _jsonOpts);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         var req = new HttpRequestMessage(HttpMethod.Post, "v1/payments") { Content = content };
-        req.Headers.Add("X-Idempotency-Key", Guid.NewGuid().ToString());
+        req.Headers.Add("X-Idempotency-Key", idempotencyKey ?? Guid.NewGuid().ToString());
 
         var response = await _http.SendAsync(req);
         var responseBody = await response.Content.ReadAsStringAsync();
@@ -224,5 +253,20 @@ public sealed class MercadoPagoPaymentGateway : IPaymentGateway
         var id = doc.RootElement.GetProperty("id").GetRawText();
 
         return (true, id, responseBody);
+    }
+
+    /// <summary>
+    /// Anonimiza chaves de transação/idempotência para logging seguro.
+    /// Retorna apenas os primeiros 8 caracteres + "...", nunca o valor completo.
+    /// Isso previne vazamento de dados sensíveis em logs de erro.
+    /// </summary>
+    private static string AnonymizeKey(string? key)
+    {
+        if (string.IsNullOrEmpty(key))
+            return "(empty)";
+
+        return key.Length <= 8
+            ? key
+            : string.Concat(key.AsSpan(0, 8), "...");
     }
 }

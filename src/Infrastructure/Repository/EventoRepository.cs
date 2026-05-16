@@ -62,13 +62,14 @@ public class EventoRepository : IEventoRepository
     {
         using var conn = _connectionFactory.CreateConnection();
         string sql = @"
-            SELECT e.*,
-                   (SELECT TOP 1 ef.ThumbnailBase64
-                    FROM EventoFotos ef
-                    WHERE ef.EventoId = e.Id
-                      AND ef.ThumbnailBase64 IS NOT NULL
-                    ORDER BY ef.Id) AS FotoThumbnailBase64
+            SELECT e.*, ft.ThumbnailBase64 AS FotoThumbnailBase64
             FROM Eventos e
+            LEFT JOIN (
+                SELECT EventoId, ThumbnailBase64,
+                       ROW_NUMBER() OVER (PARTITION BY EventoId ORDER BY Id) AS rn
+                FROM EventoFotos
+                WHERE ThumbnailBase64 IS NOT NULL
+            ) ft ON ft.EventoId = e.Id AND ft.rn = 1
             WHERE e.DataEvento > GETDATE()
               AND e.CapacidadeRestante > 0
               AND e.Status = 'Publicado'
@@ -129,13 +130,14 @@ public class EventoRepository : IEventoRepository
             new { Nome = nome, Genero = genero, DataMin = dataMin, DataMax = dataMax });
 
         var sql = @"
-            SELECT e.*,
-                   (SELECT TOP 1 ef.ThumbnailBase64
-                    FROM EventoFotos ef
-                    WHERE ef.EventoId = e.Id
-                      AND ef.ThumbnailBase64 IS NOT NULL
-                    ORDER BY ef.Id) AS FotoThumbnailBase64
+            SELECT e.*, fotos.ThumbnailBase64 AS FotoThumbnailBase64
             FROM Eventos e
+            LEFT JOIN (
+                SELECT EventoId, ThumbnailBase64,
+                       ROW_NUMBER() OVER (PARTITION BY EventoId ORDER BY Id) AS rn
+                FROM EventoFotos
+                WHERE ThumbnailBase64 IS NOT NULL
+            ) fotos ON fotos.EventoId = e.Id AND fotos.rn = 1
             INNER JOIN FREETEXTTABLE(Eventos, (Nome, Descricao, Local, GeneroMusical), @Nome) ft
                 ON e.Id = ft.[KEY]
             WHERE e.DataEvento > GETDATE()
@@ -184,13 +186,14 @@ public class EventoRepository : IEventoRepository
             new { Genero = genero, DataMin = dataMin, DataMax = dataMax, Pattern = likePattern });
 
         var sql = @"
-            SELECT e.*,
-                   (SELECT TOP 1 ef.ThumbnailBase64
-                    FROM EventoFotos ef
-                    WHERE ef.EventoId = e.Id
-                      AND ef.ThumbnailBase64 IS NOT NULL
-                    ORDER BY ef.Id) AS FotoThumbnailBase64
-            FROM Eventos e " + baseWhere + @"
+            SELECT e.*, fotos.ThumbnailBase64 AS FotoThumbnailBase64
+            FROM Eventos e
+            LEFT JOIN (
+                SELECT EventoId, ThumbnailBase64,
+                       ROW_NUMBER() OVER (PARTITION BY EventoId ORDER BY Id) AS rn
+                FROM EventoFotos
+                WHERE ThumbnailBase64 IS NOT NULL
+            ) fotos ON fotos.EventoId = e.Id AND fotos.rn = 1 " + baseWhere + @"
             ORDER BY
                 CASE
                     WHEN e.Nome LIKE @Pattern THEN 0
@@ -234,13 +237,14 @@ public class EventoRepository : IEventoRepository
             new { Genero = genero, DataMin = dataMin, DataMax = dataMax });
 
         var sql = @"
-            SELECT e.*,
-                   (SELECT TOP 1 ef.ThumbnailBase64
-                    FROM EventoFotos ef
-                    WHERE ef.EventoId = e.Id
-                      AND ef.ThumbnailBase64 IS NOT NULL
-                    ORDER BY ef.Id) AS FotoThumbnailBase64
-            FROM Eventos e " + baseWhere + @"
+            SELECT e.*, fotos.ThumbnailBase64 AS FotoThumbnailBase64
+            FROM Eventos e
+            LEFT JOIN (
+                SELECT EventoId, ThumbnailBase64,
+                       ROW_NUMBER() OVER (PARTITION BY EventoId ORDER BY Id) AS rn
+                FROM EventoFotos
+                WHERE ThumbnailBase64 IS NOT NULL
+            ) fotos ON fotos.EventoId = e.Id AND fotos.rn = 1 " + baseWhere + @"
             ORDER BY e.DataEvento ASC
             OFFSET @Offset ROWS FETCH NEXT @TamanhoPagina ROWS ONLY";
 
@@ -550,5 +554,131 @@ public class EventoRepository : IEventoRepository
         await conn.ExecuteAsync(
             "UPDATE Eventos SET ImagemUrl = @Url WHERE Id = @Id",
             new { Url = imagemUrl, Id = eventoId });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Criação transacional de evento (evita registros órfãos)
+    // ══════════════════════════════════════════════════════════════════════
+
+    public async Task<int> CriarEventoComTransacaoAsync(
+        TicketEvent evento, List<TicketType>? tipos, List<Lote>? lotes, List<EncryptedPhotoDto>? fotos)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            // 1. Insere o evento
+            const string sqlEvento = @"
+                INSERT INTO Eventos (
+                    Nome, CapacidadeTotal, CapacidadeRestante, DataEvento, DataTermino, PrecoPadrao,
+                    LimiteIngressosPorUsuario, Local, Descricao, GeneroMusical, EventoGratuito,
+                    Status, TaxaServico, TemMeiaEntrada, OrganizadorCpf, Categoria, ImagemUrl)
+                OUTPUT INSERTED.Id
+                VALUES (
+                    @Nome, @CapacidadeTotal, @CapacidadeTotal, @DataEvento, @DataTermino, @PrecoPadrao,
+                    @LimiteIngressosPorUsuario, @Local, @Descricao, @GeneroMusical, @EventoGratuito,
+                    @Status, @TaxaServico, @TemMeiaEntrada, @OrganizadorCpf, @Categoria, @ImagemUrl)";
+
+            var eventoId = await connection.QuerySingleAsync<int>(sqlEvento, evento, transaction);
+            evento.Id = eventoId;
+
+            // 2. Insere tipos de ingresso (setores)
+            if (tipos is { Count: > 0 })
+            {
+                const string sqlTipo = @"
+                    INSERT INTO TiposIngresso (EventoId, Nome, Descricao, Preco, CapacidadeTotal, CapacidadeRestante, Ordem)
+                    VALUES (@EventoId, @Nome, @Descricao, @Preco, @CapacidadeTotal, @CapacidadeRestante, @Ordem);
+                    SELECT CAST(SCOPE_IDENTITY() AS INT)";
+
+                foreach (var tipo in tipos)
+                {
+                    var tipoId = await connection.QuerySingleAsync<int>(sqlTipo, new
+                    {
+                        EventoId = eventoId,
+                        tipo.Nome,
+                        tipo.Descricao,
+                        tipo.Preco,
+                        tipo.CapacidadeTotal,
+                        tipo.CapacidadeRestante,
+                        tipo.Ordem
+                    }, transaction);
+                    tipo.Id = tipoId;
+                }
+            }
+
+            // 3. Insere lotes progressivos
+            if (lotes is { Count: > 0 })
+            {
+                // Associa lotes específicos aos tipos de ingresso criados
+                foreach (var lote in lotes)
+                {
+                    if (lote.TicketTypeId.HasValue && lote.TicketTypeId > 0 && tipos is { Count: > 0 })
+                    {
+                        var ticketTypeIndex = lote.TicketTypeId.Value - 1;
+                        if (ticketTypeIndex >= 0 && ticketTypeIndex < tipos.Count)
+                            lote.TicketTypeId = tipos[ticketTypeIndex].Id;
+                    }
+                }
+
+                const string sqlLote = @"
+                    INSERT INTO Lotes (EventoId, TicketTypeId, Nome, Preco, QuantidadeMaxima, QuantidadeVendida, DataInicio, DataFim, Ativo)
+                    VALUES (@EventoId, @TicketTypeId, @Nome, @Preco, @QuantidadeMaxima, 0, @DataInicio, @DataFim, 1);
+                    SELECT CAST(SCOPE_IDENTITY() AS INT)";
+
+                foreach (var lote in lotes)
+                {
+                    var loteId = await connection.QuerySingleAsync<int>(sqlLote, new
+                    {
+                        EventoId = eventoId,
+                        lote.TicketTypeId,
+                        lote.Nome,
+                        lote.Preco,
+                        lote.QuantidadeMaxima,
+                        lote.DataInicio,
+                        lote.DataFim
+                    }, transaction);
+                    lote.Id = loteId;
+                }
+            }
+
+            // 4. Insere fotos criptografadas
+            if (fotos is { Count: > 0 })
+            {
+                const string sqlFoto = @"
+                    INSERT INTO EventoFotos (
+                        EventoId, CiphertextBase64, IvBase64, ChaveAesCifradaBase64,
+                        ChavePublicaOrgJwk, HashNomeOriginal, TipoMime, TamanhoBytes, Criptografada,
+                        ThumbnailBase64)
+                    VALUES (
+                        @EventoId, @CiphertextBase64, @IvBase64, @ChaveAesCifradaBase64,
+                        @ChavePublicaOrgJwk, @HashNomeOriginal, @TipoMime, @TamanhoBytes, @Criptografada,
+                        @ThumbnailBase64)";
+
+                var fotoParams = fotos.Select(f => new
+                {
+                    EventoId = eventoId,
+                    f.CiphertextBase64,
+                    f.IvBase64,
+                    f.ChaveAesCifradaBase64,
+                    f.ChavePublicaOrgJwk,
+                    f.HashNomeOriginal,
+                    f.TipoMime,
+                    f.TamanhoBytes,
+                    f.Criptografada,
+                    ThumbnailBase64 = (string?)f.ThumbnailBase64
+                });
+
+                await connection.ExecuteAsync(sqlFoto, fotoParams, transaction);
+            }
+
+            transaction.Commit();
+            return eventoId;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 }

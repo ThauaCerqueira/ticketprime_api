@@ -79,4 +79,22 @@ public interface IReservaRepository
     /// Retorna lista detalhada de participantes de um evento para exportação CSV pelo admin.
     /// </summary>
     Task<IEnumerable<ParticipanteDto>> ListarParticipantesPorEventoAsync(int eventoId);
+
+    /// <summary>
+    /// Busca uma reserva pelo código de transação do gateway de pagamento (MercadoPago).
+    /// Usado pelo webhook de confirmação de pagamento.
+    /// </summary>
+    Task<Reservation?> ObterPorCodigoTransacaoAsync(string codigoTransacao);
+
+    /// <summary>
+    /// Atualiza o status de pagamento de uma reserva (ex: 'approved', 'rejected', 'refunded').
+    /// Usado pelo webhook de confirmação de pagamento.
+    /// </summary>
+    Task AtualizarStatusPagamentoAsync(int reservaId, string statusPagamento);
+
+    /// <summary>
+    /// Conta quantas reservas ATIVAS referenciam um determinado cupom.
+    /// Usado para impedir deleção de cupons com reservas ativas.
+    /// </summary>
+    Task<int> ContarReservasPorCupomAsync(string codigoCupom);
 }

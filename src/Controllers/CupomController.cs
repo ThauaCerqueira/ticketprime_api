@@ -9,14 +9,14 @@ namespace src.Controllers;
 [ApiController]
 [Route("api/cupons")]
 [EnableRateLimiting("geral")]
-public class CouponController : ControllerBase
+public class CupomController : ControllerBase
 {
-    private readonly CouponService _couponService;
-    private readonly ILogger<CouponController> _logger;
+    private readonly CupomService _CupomService;
+    private readonly ILogger<CupomController> _logger;
 
-    public CouponController(CouponService couponService, ILogger<CouponController> logger)
+    public CupomController(CupomService CupomService, ILogger<CupomController> logger)
     {
-        _couponService = couponService;
+        _CupomService = CupomService;
         _logger = logger;
     }
 
@@ -30,7 +30,7 @@ public class CouponController : ControllerBase
     {
         try
         {
-            var sucesso = await _couponService.CriarAsync(dto);
+            var sucesso = await _CupomService.CriarAsync(dto);
             if (sucesso)
                 return Results.Created($"/api/cupons/{dto.Codigo}", dto);
 
@@ -52,22 +52,24 @@ public class CouponController : ControllerBase
     }
 
     /// <summary>
-    /// Lista todos os cupons (autenticado).
+    /// Lista todos os cupons (somente ADMIN).
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IResult> Listar()
     {
-        var cupons = await _couponService.ListarAsync();
+        var cupons = await _CupomService.ListarAsync();
         return Results.Ok(cupons);
     }
 
     /// <summary>
-    /// Obtém um cupom pelo código (autenticado).
+    /// Obtém um cupom pelo código (somente ADMIN).
     /// </summary>
     [HttpGet("{codigo}")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IResult> ObterPorCodigo(string codigo)
     {
-        var cupom = await _couponService.ObterPorCodigoAsync(codigo);
+        var cupom = await _CupomService.ObterPorCodigoAsync(codigo);
         if (cupom == null)
             return Results.NotFound(new { mensagem = "Cupom não encontrado." });
         return Results.Ok(cupom);
@@ -81,9 +83,21 @@ public class CouponController : ControllerBase
     [EnableRateLimiting("escrita")]
     public async Task<IResult> Deletar(string codigo)
     {
-        var removido = await _couponService.DeletarAsync(codigo);
-        if (removido)
-            return Results.NoContent();
-        return Results.NotFound(new { mensagem = "Cupom não encontrado." });
+        try
+        {
+            var removido = await _CupomService.DeletarAsync(codigo);
+            if (removido)
+                return Results.NoContent();
+            return Results.NotFound(new { mensagem = "Cupom não encontrado." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.Conflict(new { mensagem = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao deletar cupom {Codigo}", codigo);
+            return Results.Json(new { mensagem = "Erro interno do servidor." }, statusCode: 500);
+        }
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 
 namespace src.Service;
 
@@ -18,12 +19,45 @@ public sealed class CryptoKeyService : IDisposable
     private readonly ECDiffieHellman _ecdhGlobal;
     private readonly string _chavePublicaGlobalJwk;
 
+    /// <summary>
+    /// Chave de configuração para a chave privada ECDH persistida em Base64 (PKCS#8).
+    /// Configure via appsettings.json ou variável de ambiente:
+    ///   appsettings: "Crypto:PrivateKeyBase64": "base64..."
+    ///   env var:     Crypto__PrivateKeyBase64=base64...
+    /// ═══════════════════════════════════════════════════════════════════
+    /// Se não configurada, uma NOVA chave é gerada na inicialização e
+    /// logada no console para ser salva.
+    /// ═══════════════════════════════════════════════════════════════════
+    /// </summary>
+    private const string ChavePrivadaConfigKey = "Crypto:PrivateKeyBase64";
+
     // Cache de chaves por evento: <eventoId, (ECDiffieHellman, jwk)>
     private readonly ConcurrentDictionary<int, (ECDiffieHellman Key, string Jwk)> _chavesPorEvento = new();
 
-    public CryptoKeyService()
+    public CryptoKeyService(IConfiguration configuration)
     {
-        _ecdhGlobal = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+        var chaveBase64 = configuration[ChavePrivadaConfigKey];
+
+        if (!string.IsNullOrEmpty(chaveBase64))
+        {
+            // Restaura chave existente de configuração persistente
+            var keyBytes = Convert.FromBase64String(chaveBase64);
+            _ecdhGlobal = ECDiffieHellman.Create();
+            _ecdhGlobal.ImportPkcs8PrivateKey(keyBytes, out _);
+        }
+        else
+        {
+            // Gera nova chave (primeira execução ou config não definida)
+            _ecdhGlobal = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+            var privateKey = _ecdhGlobal.ExportPkcs8PrivateKey();
+            var base64 = Convert.ToBase64String(privateKey);
+            Console.WriteLine($"[CryptoKeyService] ╔══════════════════════════════════════════════════════╗");
+            Console.WriteLine($"[CryptoKeyService] ║  NOVA CHAVE ECDH GERADA — Salve em appsettings    ║");
+            Console.WriteLine($"[CryptoKeyService] ║  \"{ChavePrivadaConfigKey}\":                  ║");
+            Console.WriteLine($"[CryptoKeyService] ║  \"{base64}\"  ║");
+            Console.WriteLine($"[CryptoKeyService] ╚══════════════════════════════════════════════════════╝");
+        }
+
         _chavePublicaGlobalJwk = ExportarChavePublicaJwk(_ecdhGlobal);
     }
 
