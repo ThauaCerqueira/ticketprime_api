@@ -13,3 +13,9 @@ ui/TicketPrime.Web/appsettings.Development.json
 
 # Ignora certificados SSL auto-assinados gerados localmente
 docker/nginx/certs/
+
+# Ignora arquivos de ambiente com credenciais
+.env
+
+# Ignora cache do .NET (lscache)
+*.lscache
