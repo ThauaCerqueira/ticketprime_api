@@ -1,0 +1,219 @@
+@page "/privacidade"
+@layout EmptyLayout
+
+<PageTitle>Política de Privacidade - TicketPrime</PageTitle>
+
+<div class="lgpd-wrapper">
+    <div class="lgpd-card">
+        <div class="lgpd-header">
+            <a href="/" class="lgpd-logo">
+                <div class="lgpd-logo-icon">
+                    <svg viewBox="0 0 24 24" role="img" aria-label="Logotipo TicketPrime" width="24" height="24">
+                        <path d="M20 12V22H4V12"/>
+                        <path d="M22 7H2v5h20V7z"/>
+                        <path d="M12 22V7"/>
+                        <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                        <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+                    </svg>
+                </div>
+                <span class="lgpd-logo-name">TicketPrime</span>
+            </a>
+            <h1>Política de Privacidade</h1>
+            <p class="lgpd-subtitle">Última atualização: 16 de maio de 2026</p>
+        </div>
+
+        <div class="lgpd-content">
+            <section>
+                <h2>1. Quem somos</h2>
+                <p>A TicketPrime é uma plataforma de venda de ingressos online. Esta Política de Privacidade descreve como tratamos os dados pessoais dos Usuários da Plataforma, em conformidade com a Lei 13.709/2018 — <strong>Lei Geral de Proteção de Dados Pessoais (LGPD)</strong>.</p>
+                <p><strong>Controlador dos dados:</strong> TicketPrime Tecnologia Ltda.</p>
+                <p><strong>Encarregado (DPO):</strong> dpo@ticketprime.com.br</p>
+            </section>
+
+            <section>
+                <h2>2. Dados coletados</h2>
+                <p>Coletamos os seguintes dados pessoais dos Usuários:</p>
+
+                <h3>2.1. Dados fornecidos pelo Usuário</h3>
+                <ul>
+                    <li><strong>Cadastro:</strong> CPF, nome completo, e-mail, senha (armazenada com hash criptográfico — bcrypt).</li>
+                    <li><strong>Compra de ingressos:</strong> Endereço (opcional), dados de pagamento (processados exclusivamente pelo gateway Mercado Pago — nunca armazenamos números de cartão).</li>
+                    <li><strong>Meia-entrada:</strong> Documento comprobatório (carteirinha estudantil, identidade, laudo médico, etc.).</li>
+                    <li><strong>Avaliações:</strong> Comentários e notas sobre eventos.</li>
+                    <li><strong>Fila de espera:</strong> Manifestação de interesse em eventos esgotados.</li>
+                </ul>
+
+                <h3>2.2. Dados coletados automaticamente</h3>
+                <ul>
+                    <li><strong>Dados de navegação:</strong> Endereço IP, tipo de dispositivo, navegador, páginas acessadas, data e hora das requisições.</li>
+                    <li><strong>Cookies:</strong> Utilizamos cookies essenciais para funcionamento da Plataforma (autenticação, sessão) e cookies analíticos (opt-in).</li>
+                    <li><strong>Logs de auditoria:</strong> Registro imutável de transações financeiras com hash SHA256 para garantia de integridade.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>3. Finalidades do tratamento</h2>
+                <p>Seus dados pessoais são tratados para as seguintes finalidades:</p>
+                <table class="lgpd-table">
+                    <thead>
+                        <tr>
+                            <th>Finalidade</th>
+                            <th>Base legal (LGPD)</th>
+                            <th>Dados utilizados</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Criação e gestão da conta</td>
+                            <td>Execução de contrato (art. 7º, V)</td>
+                            <td>CPF, nome, e-mail</td>
+                        </tr>
+                        <tr>
+                            <td>Processamento de compras</td>
+                            <td>Execução de contrato (art. 7º, V)</td>
+                            <td>Dados de pagamento, CPF</td>
+                        </tr>
+                        <tr>
+                            <td>Controle de meia-entrada</td>
+                            <td>Cumprimento de obrigação legal (art. 7º, II — Lei 12.933/2013)</td>
+                            <td>Documento comprobatório</td>
+                        </tr>
+                        <tr>
+                            <td>Prevenção a fraudes</td>
+                            <td>Legítimo interesse (art. 7º, IX)</td>
+                            <td>IP, logs, padrões de navegação</td>
+                        </tr>
+                        <tr>
+                            <td>Auditoria financeira</td>
+                            <td>Cumprimento de obrigação legal (art. 7º, II)</td>
+                            <td>Logs de transações</td>
+                        </tr>
+                        <tr>
+                            <td>Comunicações transacionais</td>
+                            <td>Execução de contrato (art. 7º, V)</td>
+                            <td>E-mail</td>
+                        </tr>
+                        <tr>
+                            <td>Marketing e newsletters</td>
+                            <td>Consentimento (art. 7º, I)</td>
+                            <td>E-mail (mediante opt-in)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>4. Compartilhamento de dados</h2>
+                <p>Compartilhamos seus dados pessoais apenas com:</p>
+                <ul>
+                    <li><strong>Mercado Pago:</strong> Processamento de pagamentos (número do cartão é enviado diretamente ao gateway — nunca passa pelos nossos servidores).</li>
+                    <li><strong>Organizadores do evento:</strong> Nome e CPF do comprador para controle de entrada e lista de presença.</li>
+                    <li><strong>Autoridades competentes:</strong> Quando exigido por lei, ordem judicial ou regulatória.</li>
+                    <li><strong>Provedores de infraestrutura:</strong> Serviços de cloud computing (Azure/AWS), Redis e MinIO, que atuam como operadores sob nossas instruções.</li>
+                </ul>
+                <p>A TicketPrime não vende dados pessoais a terceiros.</p>
+            </section>
+
+            <section>
+                <h2>5. Prazo de retenção</h2>
+                <p>Mantemos seus dados pessoais apenas pelo tempo necessário às finalidades para as quais foram coletados:</p>
+                <ul>
+                    <li><strong>Dados cadastrais:</strong> Durante a vigência da conta + 5 anos após o encerramento (prazo prescricional legal).</li>
+                    <li><strong>Registros de transações:</strong> 5 anos (prazo fiscal, art. 173 do CTN).</li>
+                    <li><strong>Documentos de meia-entrada:</strong> 90 dias após o evento.</li>
+                    <li><strong>Logs de acesso:</strong> 6 meses (art. 10, §3º do Marco Civil da Internet — Lei 12.965/2014).</li>
+                    <li><strong>Dados de marketing:</strong> Até o cancelamento do consentimento.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>6. Direitos do titular (LGPD)</h2>
+                <p>Nos termos dos arts. 9º, 17 a 22 da LGPD, você tem os seguintes direitos:</p>
+                <table class="lgpd-table">
+                    <thead>
+                        <tr>
+                            <th>Direito</th>
+                            <th>Descrição</th>
+                            <th>Como exercer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Confirmação e acesso</strong></td>
+                            <td>Saber se tratamos seus dados e acessá-los</td>
+                            <td>Perfil → "Meus Dados"</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Retificação</strong></td>
+                            <td>Corrigir dados incompletos ou desatualizados</td>
+                            <td>Perfil → "Editar Dados"</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Exclusão</strong></td>
+                            <td>Solicitar a eliminação dos seus dados</td>
+                            <td>Perfil → "Excluir Conta" ou e-mail para dpo@@ticketprime.com.br</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Portabilidade</strong></td>
+                            <td>Receber seus dados em formato estruturado</td>
+                            <td>Solicitar por e-mail para dpo@@ticketprime.com.br</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Revogação do consentimento</strong></td>
+                            <td>Cancelar autorizações previamente dadas</td>
+                            <td>Configurações da conta ou e-mail para dpo@@ticketprime.com.br</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Informação sobre compartilhamento</strong></td>
+                            <td>Saber com quais entidades compartilhamos seus dados</td>
+                            <td>Esta política (seção 4)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>📧 Para exercer qualquer direito, entre em contato com nosso DPO: <strong>dpo@ticketprime.com.br</strong>. Responderemos em até 15 dias úteis, conforme art. 19 da LGPD.</p>
+            </section>
+
+            <section>
+                <h2>7. Segurança dos dados</h2>
+                <p>A TicketPrime adota as seguintes medidas técnicas e administrativas para proteger seus dados pessoais:</p>
+                <ul>
+                    <li><strong>Criptografia:</strong> Senhas armazenadas com bcrypt; tráfego HTTPS (TLS 1.3); dados sensíveis criptografados em repouso.</li>
+                    <li><strong>Tokenização de cartões:</strong> Números de cartão nunca trafegam por nossos servidores — são enviados diretamente ao Mercado Pago via iframes seguros.</li>
+                    <li><strong>Auditoria:</strong> Logs imutáveis com encadeamento hash SHA256 para todas as transações financeiras.</li>
+                    <li><strong>Controle de acesso:</strong> Princípio do menor privilégio; autenticação multifator para administradores.</li>
+                    <li><strong>Rate limiting:</strong> Proteção contra ataques de força bruta e DDoS.</li>
+                    <li><strong>JWT com blacklist:</strong> Tokens de autenticação podem ser invalidados individualmente em caso de vazamento.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>8. Transferência internacional</h2>
+                <p>Seus dados podem ser armazenados e processados em servidores localizados no Brasil ou em outros países que ofereçam grau de proteção de dados equivalente ao previsto na LGPD (art. 33).</p>
+            </section>
+
+            <section>
+                <h2>9. Cookies</h2>
+                <p>Utilizamos cookies essenciais para o funcionamento da Plataforma (sessão, autenticação, CSRF). Cookies de análise e marketing são opcionais e dependem de consentimento prévio.</p>
+                <p>Você pode gerenciar suas preferências de cookies a qualquer momento nas configurações da conta.</p>
+            </section>
+
+            <section>
+                <h2>10. Alterações nesta política</h2>
+                <p>Esta Política de Privacidade pode ser atualizada periodicamente. Notificaremos os Usuários sobre alterações relevantes por e-mail e na Plataforma. Recomendamos a revisão periódica desta página.</p>
+            </section>
+
+            <section>
+                <h2>11. Contato do DPO</h2>
+                <p>Para exercer seus direitos, esclarecer dúvidas ou reportar incidentes relacionados à proteção de dados, entre em contato:</p>
+                <p>
+                    <strong>Encarregado (DPO):</strong> dpo@ticketprime.com.br<br />
+                </p>
+            </section>
+        </div>
+
+        <div class="lgpd-footer">
+            <a href="/termos">Termos de Uso</a>
+            <a href="/vitrine">← Voltar para vitrine</a>
+        </div>
+    </div>
+</div>
