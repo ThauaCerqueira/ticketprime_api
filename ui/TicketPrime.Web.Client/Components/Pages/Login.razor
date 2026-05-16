@@ -43,7 +43,12 @@
             <input class="login-input" type="password" @bind="senha" placeholder="Digite sua senha" />
         </div>
 
-        <div class="login-row">
+        <div class="login-row" style="display:flex;align-items:center;justify-content:space-between;">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:var(--tp-text-muted);cursor:pointer;">
+                <input type="checkbox" @bind="lembrar"
+                       style="width:16px;height:16px;accent-color:var(--tp-primary);cursor:pointer;" />
+                Lembrar-me
+            </label>
             <a class="login-forgot" href="/recuperar-senha">Esqueceu a senha?</a>
         </div>
 
@@ -68,6 +73,7 @@
 @code {
     private string cpf = "";
     private string senha = "";
+    private bool lembrar = false;
     private string erro = "";
     private bool carregando = false;
 
@@ -87,7 +93,7 @@
 
         try
         {
-            var dto = new LoginRequest { Cpf = cpf, Senha = senha };
+            var dto = new LoginRequest { Cpf = cpf, Senha = senha, Lembrar = lembrar };
             var response = await Http.PostAsJsonAsync("api/auth/login", dto);
 
             if (response.IsSuccessStatusCode)
