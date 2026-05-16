@@ -118,6 +118,17 @@ public class Program
                             context.Token = token;
                         }
                         return Task.CompletedTask;
+                    },
+                    OnTokenValidated = context =>
+                    {
+                        var blacklist = context.HttpContext.RequestServices
+                            .GetRequiredService<JwtBlacklistService>();
+                        var jti = context.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;
+                        if (!string.IsNullOrEmpty(jti) && blacklist.IsRevoked(jti))
+                        {
+                            context.Fail("Token revogado.");
+                        }
+                        return Task.CompletedTask;
                     }
                 };
             });
@@ -179,6 +190,16 @@ public class Program
                 authenticatedLimit: 60,
                 adminLimit: 300,
                 window: TimeSpan.FromMinutes(1));
+
+            // Webhook MercadoPago: 300/min por IP — proteção DoS sem bloquear retries
+            // legítimos. A segurança real vem da validação HMAC-SHA256 do header X-Signature.
+            options.AddFixedWindowLimiter("webhook", o =>
+            {
+                o.Window = TimeSpan.FromMinutes(1);
+                o.PermitLimit = 300;
+                o.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+                o.QueueLimit = 0;
+            });
 
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         });
@@ -283,6 +304,7 @@ public class Program
         builder.Services.AddSingleton<CryptoKeyService>();
         builder.Services.AddSingleton<PixCryptoService>();
         builder.Services.AddSingleton<MetricsService>();
+        builder.Services.AddSingleton<JwtBlacklistService>();
         builder.Services.AddHostedService<RefreshTokenCleanupService>();
         builder.Services.AddHostedService<BackgroundEmailService>();
 

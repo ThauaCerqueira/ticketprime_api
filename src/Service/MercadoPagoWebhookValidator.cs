@@ -39,20 +39,29 @@ public class MercadoPagoWebhookValidator
     {
         if (string.IsNullOrWhiteSpace(_webhookSecret))
         {
-            _logger.LogWarning(
-                "MercadoPago:WebhookSecret não configurado. " +
-                "Webhook validation BYPASSED — aceitando requisição sem assinatura. " +
-                "Risco de segurança! Configure MercadoPago__WebhookSecret em produção.");
+            var isProd = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
 
-            // Se for Produção, loga com Critical — admin precisa agir
-            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
+            if (isProd)
             {
+                // ═══════════════════════════════════════════════════════════════════
+                // SEGURANÇA: Em PRODUÇÃO, webhook secret ausente = BLOQUEIO TOTAL.
+                // Sem a chave de assinatura, qualquer atacante pode forjar notificações
+                // de pagamento e marcar reservas como pagas sem pagar.
+                // Configure MercadoPago__WebhookSecret obrigatoriamente em produção.
+                // ═══════════════════════════════════════════════════════════════════
                 _logger.LogCritical(
-                    "🚨 PRODUÇÃO: Webhook validation DESABILITADA! " +
-                    "Pagamentos podem ser falsificados. Configure MercadoPago__WebhookSecret IMEDIATAMENTE.");
+                    "PRODUÇÃO: MercadoPago:WebhookSecret NÃO configurado. " +
+                    "Todas as notificações de webhook estão BLOQUEADAS até que o secret seja configurado. " +
+                    "Configure a variável de ambiente MercadoPago__WebhookSecret IMEDIATAMENTE.");
+                return false;
             }
 
-            return true; // Permite em dev; em prod, avisa mas não bloqueia
+            // Fora de produção (Development / Staging): permite sem assinatura, mas alerta.
+            _logger.LogWarning(
+                "MercadoPago:WebhookSecret não configurado. " +
+                "Webhook validation DESABILITADA em ambiente não-produção. " +
+                "Nunca use este comportamento em produção.");
+            return true;
         }
 
         if (string.IsNullOrWhiteSpace(signatureHeader))

@@ -38,7 +38,7 @@ public class AuthService
         _auditLog = null;
     }
 
-    public async Task<LoginResponseDTO?> LoginAsync(
+    public virtual async Task<LoginResponseDTO?> LoginAsync(
         LoginDTO dto,
         string? ipAddress = null,
         string? userAgent = null)
@@ -54,7 +54,10 @@ public class AuthService
             return null;
         }
 
-        var token = GerarToken(usuario.Cpf, usuario.Perfil);
+        // Se "Lembrar" estiver marcado, usa token de 7 dias, senão 30 minutos
+        var expireMinutes = dto.Lembrar ? 10080 : 30; // 10080 min = 7 dias
+
+        var token = GerarToken(usuario.Cpf, usuario.Perfil, expireMinutes);
         var refreshToken = await GerarRefreshTokenAsync(usuario.Cpf);
 
         // Registra login bem-sucedido na auditoria
@@ -129,7 +132,7 @@ public class AuthService
     /// Revoga um refresh token específico (logout). Se o token não for fornecido,
     /// revoga TODOS os tokens do usuário (logout de todos os dispositivos).
     /// </summary>
-    public async Task RevogarRefreshTokenAsync(string? rawToken, string? cpf = null)
+    public virtual async Task RevogarRefreshTokenAsync(string? rawToken, string? cpf = null)
     {
         if (_connectionFactory == null)
             return;
@@ -179,15 +182,16 @@ public class AuthService
         return Convert.ToHexString(bytes).ToLower();
     }
 
-    private string GerarToken(string cpf, string perfil)
+    private string GerarToken(string cpf, string perfil, int? expireMinutesOverride = null)
     {
         var jwtKey = _configuration["Jwt:Key"]
             ?? throw new InvalidOperationException(
                 "Chave JWT 'Jwt:Key' não encontrada. Configure em appsettings.json ou User Secrets.");
 
-        // Lê o tempo de expiração da configuração, padrão 30 minutos
-        var expireMinutes = _configuration.GetValue<int>("Jwt:ExpireMinutes", 30);
-        if (expireMinutes <= 0) expireMinutes = 30;
+        // Se expireMinutesOverride foi passado (ex: "Lembrar-me" = 7 dias), usa ele.
+        // Senão, lê da configuração (padrão 30 minutos).
+        var expireMinutes = expireMinutesOverride ?? _configuration.GetValue<int>("Jwt:ExpireMinutes", 30);
+        if (expireMinutes <= 0) expireMinutes = expireMinutesOverride ?? 30;
 
         var issuer = _configuration["Jwt:Issuer"] ?? "TicketPrime";
         var audience = _configuration["Jwt:Audience"] ?? "TicketPrime";
@@ -197,6 +201,7 @@ public class AuthService
 
         var claims = new[]
         {
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(ClaimTypes.NameIdentifier, cpf),
             new Claim(ClaimTypes.Role, perfil),
             new Claim("perfil", perfil),

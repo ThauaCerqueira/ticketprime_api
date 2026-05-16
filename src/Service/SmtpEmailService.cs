@@ -13,48 +13,41 @@ public class SmtpEmailService : IEmailService
     private readonly string _host;
     private readonly int _port;
     private readonly string _username;
-    private readonly string _password;
     private readonly string _fromEmail;
     private readonly string _fromName;
     private readonly bool _useSsl;
+    private readonly IConfigurationSection _emailSettings;
     private readonly ILogger<SmtpEmailService> _logger;
 
     public SmtpEmailService(IConfiguration configuration, ILogger<SmtpEmailService> logger)
     {
         _logger = logger;
-        var section = configuration.GetSection("EmailSettings");
 
         // ⚠️ Config path: EmailSettings:SmtpHost (appsettings.json) → EmailSettings__SmtpHost (env vars).
         //    ⛔ Deploy com EmailSmtpHost (sem "Settings") NÃO funciona com este código.
         //    ✅ Correção: usar sempre EmailSettings__SmtpHost no ambiente de deploy.
         //    O .NET configuration hierarchy (env vars > config) resolve automaticamente.
-        _host = section["SmtpHost"] ?? "";
-        _port = int.Parse(section["SmtpPort"] ?? "587");
-        _username = section["SmtpUsername"] ?? "";
-        _password = section["SmtpPassword"] ?? "";
+        //
+        // SEGURANÇA: A senha SMTP não é armazenada como campo da instância.
+        //   É lida de _emailSettings a cada envio, reduzindo a janela de exposição
+        //   em memória. A proteção definitiva é usar vault (HashiCorp Vault ou
+        //   Azure Key Vault) — SecureString não é adequado no .NET moderno pois
+        //   foi depreciado e não funciona corretamente em plataformas não-Windows.
+        _emailSettings = configuration.GetSection("EmailSettings");
 
-        // ═══════════════════════════════════════════════════════════════════
-        // TODO SEGURANÇA: Substituir por SecureString para evitar exposição
-        //   da senha SMTP em dumps de memória. Strings são imutáveis e
-        //   ficam na memória do processo até o GC coletar.
-        //   SecureString é limpo da memória ao ser descartado.
-        // ═══════════════════════════════════════════════════════════════════
-        if (!string.IsNullOrEmpty(_password))
-        {
-            logger.LogWarning(
-                "⚠️ SMTP password carregada como string simples (plaintext). " +
-                "Considere usar SecureString ou Azure Key Vault para produção.");
-        }
-
-        _fromEmail = section["FromEmail"] ?? "";
-        _fromName = section["FromName"] ?? "TicketPrime";
-        _useSsl = bool.Parse(section["UseSsl"] ?? "true");
+        _host = _emailSettings["SmtpHost"] ?? "";
+        _port = int.Parse(_emailSettings["SmtpPort"] ?? "587");
+        _username = _emailSettings["SmtpUsername"] ?? "";
+        _fromEmail = _emailSettings["FromEmail"] ?? "";
+        _fromName = _emailSettings["FromName"] ?? "TicketPrime";
+        _useSsl = bool.Parse(_emailSettings["UseSsl"] ?? "true");
 
         // Fail-fast: valida que as credenciais SMTP foram configuradas (via env vars, user-secrets ou config)
+        var passwordCheck = _emailSettings["SmtpPassword"] ?? "";
         var missing = new System.Collections.Generic.List<string>();
         if (string.IsNullOrEmpty(_host)) missing.Add("EmailSettings:SmtpHost");
         if (string.IsNullOrEmpty(_username)) missing.Add("EmailSettings:SmtpUsername");
-        if (string.IsNullOrEmpty(_password)) missing.Add("EmailSettings:SmtpPassword");
+        if (string.IsNullOrEmpty(passwordCheck)) missing.Add("EmailSettings:SmtpPassword");
         if (string.IsNullOrEmpty(_fromEmail)) missing.Add("EmailSettings:FromEmail");
 
         if (missing.Count > 0)
@@ -90,7 +83,10 @@ public class SmtpEmailService : IEmailService
 
             if (!string.IsNullOrEmpty(_username))
             {
-                client.Credentials = new NetworkCredential(_username, _password);
+                // Lê a senha de _emailSettings a cada envio em vez de armazená-la
+                // como campo da instância — reduz a janela de exposição em memória.
+                var password = _emailSettings["SmtpPassword"] ?? "";
+                client.Credentials = new NetworkCredential(_username, password);
             }
 
             await client.SendMailAsync(message);

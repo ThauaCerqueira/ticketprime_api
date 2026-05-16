@@ -251,6 +251,8 @@ public sealed class AdminPasswordChangeMiddleware
             if ((DateTime.UtcNow - _lastCheck) < CheckInterval && _adminHasDefaultPassword.HasValue)
                 return _adminHasDefaultPassword;
 
+            var logger = context.RequestServices
+                .GetService<ILogger<AdminPasswordChangeMiddleware>>();
             try
             {
                 var dbFactory = context.RequestServices.GetRequiredService<DbConnectionFactory>();
@@ -260,18 +262,30 @@ public sealed class AdminPasswordChangeMiddleware
                 cmd.CommandText = "SELECT Senha FROM Usuarios WHERE Cpf = '00000000191' AND Perfil = 'ADMIN'";
                 var senha = cmd.ExecuteScalar() as string;
 
-                if (senha != null)
-                {
-                    _adminHasDefaultPassword = BCrypt.Net.BCrypt.Verify("admin123", senha);
-                }
-                else
-                {
-                    _adminHasDefaultPassword = false;
-                }
+                _adminHasDefaultPassword = senha != null
+                    && BCrypt.Net.BCrypt.Verify("admin123", senha);
             }
-            catch
+            catch (Exception ex)
             {
-                _adminHasDefaultPassword = null; // Indeterminado — deixa passar
+                // ═══════════════════════════════════════════════════════════════
+                // SEGURANÇA: fail-safe em produção.
+                //   Se não for possível verificar a senha do admin no banco
+                //   (ex: banco fora do ar), BLOQUEAMOS o endpoint administrativo.
+                //   Isso impede que um admin com senha padrão acesse o sistema
+                //   aproveitando uma falha de conectividade.
+                //   Fora de produção, deixamos passar para não travar o dev.
+                // ═══════════════════════════════════════════════════════════════
+                var isProd = context.RequestServices
+                    .GetRequiredService<IWebHostEnvironment>().IsProduction();
+
+                logger?.LogError(ex,
+                    "Falha ao verificar senha do admin no banco. " +
+                    "Comportamento: {Behavior}",
+                    isProd ? "BLOQUEADO (produção, fail-safe)" : "PERMITIDO (não-produção, fail-open)");
+
+                // Em produção: bloqueia (true = tem senha padrão = bloqueia acesso)
+                // Fora de produção: permite (null = indeterminado = deixa passar)
+                _adminHasDefaultPassword = isProd ? true : null;
             }
 
             _lastCheck = DateTime.UtcNow;

@@ -263,15 +263,17 @@ public class UserService
     // ── Password Recovery ───────────────────────────────────────────
 
     /// <summary>
-    /// Gera um token de redefinição de senha, persiste no banco e envia por email.
+    /// Gera um token de redefinição de senha, persiste o SHA-256 hash no banco e envia o token por email.
+    /// SEGURANÇA: Apenas o hash SHA-256 é armazenado — um dump do banco não expõe tokens utilizáveis.
     /// </summary>
     public async Task<string> GerarResetSenhaToken(string email)
     {
         ValidarEmail(email);
 
-        var token = GerarTokenVerificacao(); // mesmo gerador de 32 bytes
+        var token = GerarTokenVerificacao(); // token criptograficamente aleatório de 32 bytes
+        var tokenHash = HashToken(token);    // armazena apenas o hash no banco
         var expiracao = DateTime.UtcNow.AddHours(1); // expira em 1 hora
-        await _repository.SalvarResetToken(email, token, expiracao);
+        await _repository.SalvarResetToken(email, tokenHash, expiracao);
 
         var assunto = "TicketPrime — Redefinição de senha";
         var corpo = $@"
@@ -309,6 +311,7 @@ public class UserService
 
     /// <summary>
     /// Redefine a senha do usuário usando o token de redefinição.
+    /// SEGURANÇA: O token fornecido é hashed antes da comparação com o hash armazenado no banco.
     /// </summary>
     public async Task<bool> RedefinirSenha(string email, string token, string novaSenha)
     {
@@ -318,8 +321,9 @@ public class UserService
         if (usuario == null)
             return false;
 
-        // Verifica token
-        if (usuario.ResetToken != token)
+        // Compara hashes (nunca compara plaintext com o que está no banco)
+        var tokenHash = HashToken(token);
+        if (usuario.ResetToken != tokenHash)
             return false;
 
         // Verifica expiração
@@ -337,6 +341,17 @@ public class UserService
         await _repository.LimparResetToken(email);
 
         return true;
+    }
+
+    /// <summary>
+    /// Calcula o SHA-256 do token para armazenamento seguro no banco.
+    /// Um dump do banco expõe apenas hashes, não tokens utilizáveis.
+    /// </summary>
+    private static string HashToken(string token)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     /// <summary>

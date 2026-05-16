@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,7 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly AuditLogService _auditLog;
     private readonly ILogger<AuthController> _logger;
+    private readonly JwtBlacklistService _jwtBlacklist;
 
     public AuthController(
         AuthService authService,
@@ -26,7 +28,8 @@ public class AuthController : ControllerBase
         UserService userService,
         IConfiguration configuration,
         AuditLogService auditLog,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        JwtBlacklistService jwtBlacklist)
     {
         _authService = authService;
         _usuarioRepo = usuarioRepo;
@@ -34,6 +37,7 @@ public class AuthController : ControllerBase
         _configuration = configuration;
         _auditLog = auditLog;
         _logger = logger;
+        _jwtBlacklist = jwtBlacklist;
     }
 
     /// <summary>
@@ -51,8 +55,9 @@ public class AuthController : ControllerBase
             return Results.Json(new { mensagem = "CPF ou senha inválidos." }, statusCode: 401);
 
         // Define o token JWT como cookie httpOnly (XSS-safe)
-        var expireMinutes = _configuration.GetValue<int>("Jwt:ExpireMinutes", 30);
-        if (expireMinutes <= 0) expireMinutes = 30;
+        // Se "Lembrar" estiver marcado, o cookie dura 7 dias (igual ao token)
+        var expireMinutes = dto.Lembrar ? 10080 : _configuration.GetValue<int>("Jwt:ExpireMinutes", 30);
+        if (expireMinutes <= 0) expireMinutes = dto.Lembrar ? 10080 : 30;
 
         HttpContext.Response.Cookies.Append("ticketprime_token", resultado.Token, new CookieOptions
         {
@@ -128,7 +133,8 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Logout — revoga o refresh token e limpa os cookies de sessão.
+    /// Logout — revoga o refresh token, invalida o access token via JTI blacklist
+    /// e limpa os cookies de sessão.
     /// </summary>
     [HttpPost("logout")]
     [Authorize]
@@ -143,6 +149,19 @@ public class AuthController : ControllerBase
         var cpf = HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
         await _authService.RevogarRefreshTokenAsync(rawToken, cpf);
+
+        // Revoga o access token atual via blacklist de JTI para que não possa
+        // ser reutilizado pelo tempo restante de vida do token.
+        var jti = HttpContext.User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+        var expClaim = HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Expiration)
+            ?? HttpContext.User.FindFirst("exp");
+        if (!string.IsNullOrEmpty(jti))
+        {
+            var expiry = expClaim is not null && long.TryParse(expClaim.Value, out var expUnix)
+                ? DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime
+                : DateTime.UtcNow.AddMinutes(30);
+            _jwtBlacklist.Revoke(jti, expiry);
+        }
 
         // Remove cookies de sessão (Path="/" para garantir que ambos sejam limpos)
         var cookieOptions = new CookieOptions
