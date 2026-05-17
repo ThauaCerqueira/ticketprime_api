@@ -79,7 +79,7 @@ public class EventoRepository : IEventoRepository
 
     public async Task<PaginatedResult<TicketEvent>> BuscarDisponiveisAsync(
         string? nome, string? genero, DateTime? dataMin, DateTime? dataMax,
-        int pagina = 1, int tamanhoPagina = 20)
+        string? cidade = null, int pagina = 1, int tamanhoPagina = 20)
     {
         using var conn = _connectionFactory.CreateConnection();
         int offset = (pagina - 1) * tamanhoPagina;
@@ -88,7 +88,7 @@ public class EventoRepository : IEventoRepository
         {
             try
             {
-                return await BuscarPorFullTextAsync(conn, nome, genero, dataMin, dataMax, offset, pagina, tamanhoPagina);
+                return await BuscarPorFullTextAsync(conn, nome, genero, dataMin, dataMax, cidade, offset, pagina, tamanhoPagina);
             }
             catch (Exception ex) when (ex.Message.Contains("Full-Text Search", StringComparison.OrdinalIgnoreCase)
                                        || ex.Message.Contains("full-text", StringComparison.OrdinalIgnoreCase)
@@ -98,12 +98,12 @@ public class EventoRepository : IEventoRepository
                     "Full-Text Search indisponível (SQL Server Express?). " +
                     "Fazendo fallback para busca LIKE. Considere usar Developer/Standard+ para full-text search.");
 
-                return await BuscarPorLikeAsync(conn, nome, genero, dataMin, dataMax, offset, pagina, tamanhoPagina);
+                return await BuscarPorLikeAsync(conn, nome, genero, dataMin, dataMax, cidade, offset, pagina, tamanhoPagina);
             }
         }
 
         // ── Sem termo de busca: ordenação por data (comportamento original) ──
-        return await BuscarSemNomeAsync(conn, genero, dataMin, dataMax, offset, pagina, tamanhoPagina);
+        return await BuscarSemNomeAsync(conn, genero, dataMin, dataMax, cidade, offset, pagina, tamanhoPagina);
     }
 
     /// <summary>
@@ -112,9 +112,12 @@ public class EventoRepository : IEventoRepository
     /// </summary>
     private async Task<PaginatedResult<TicketEvent>> BuscarPorFullTextAsync(
         IDbConnection conn, string nome, string? genero, DateTime? dataMin, DateTime? dataMax,
+        string? cidade,
         int offset, int pagina, int tamanhoPagina)
     {
-        var countSql = @"
+        var cidadeFiltro = string.IsNullOrWhiteSpace(cidade) ? "" : " AND e.Cidade LIKE @Cidade";
+
+        var countSql = $@"
             SELECT COUNT(*)
             FROM Eventos e
             INNER JOIN FREETEXTTABLE(Eventos, (Nome, Descricao, Local, GeneroMusical), @Nome) ft
@@ -124,13 +127,14 @@ public class EventoRepository : IEventoRepository
               AND e.Status = 'Publicado'
               AND (@Genero IS NULL OR e.GeneroMusical = @Genero)
               AND (@DataMin IS NULL OR e.DataEvento >= @DataMin)
-              AND (@DataMax IS NULL OR e.DataEvento <= @DataMax)";
+              AND (@DataMax IS NULL OR e.DataEvento <= @DataMax){cidadeFiltro}";
 
         var total = await conn.QuerySingleAsync<int>(countSql,
-            new { Nome = nome, Genero = genero, DataMin = dataMin, DataMax = dataMax });
+            new { Nome = nome, Genero = genero, DataMin = dataMin, DataMax = dataMax, Cidade = $"%{cidade}%" });
 
-        var sql = @"
-            SELECT e.*, fotos.ThumbnailBase64 AS FotoThumbnailBase64
+        var sql = $@"
+            SELECT e.*, fotos.ThumbnailBase64 AS FotoThumbnailBase64,
+                   COALESCE((SELECT AVG(CAST(a.Nota AS FLOAT)) FROM Avaliacoes a WHERE a.EventoId = e.Id), 0) AS NotaMedia
             FROM Eventos e
             LEFT JOIN (
                 SELECT EventoId, ThumbnailBase64,
@@ -145,12 +149,13 @@ public class EventoRepository : IEventoRepository
               AND e.Status = 'Publicado'
               AND (@Genero IS NULL OR e.GeneroMusical = @Genero)
               AND (@DataMin IS NULL OR e.DataEvento >= @DataMin)
-              AND (@DataMax IS NULL OR e.DataEvento <= @DataMax)
+              AND (@DataMax IS NULL OR e.DataEvento <= @DataMax){cidadeFiltro}
             ORDER BY ft.RANK DESC
             OFFSET @Offset ROWS FETCH NEXT @TamanhoPagina ROWS ONLY";
 
         var itens = await conn.QueryAsync<TicketEvent>(sql,
             new { Nome = nome, Genero = genero, DataMin = dataMin, DataMax = dataMax,
+                  Cidade = $"%{cidade}%",
                   Offset = offset, TamanhoPagina = tamanhoPagina });
 
         return new PaginatedResult<TicketEvent>
@@ -168,25 +173,28 @@ public class EventoRepository : IEventoRepository
     /// </summary>
     private async Task<PaginatedResult<TicketEvent>> BuscarPorLikeAsync(
         IDbConnection conn, string nome, string? genero, DateTime? dataMin, DateTime? dataMax,
+        string? cidade,
         int offset, int pagina, int tamanhoPagina)
     {
         var likePattern = $"%{nome}%";
+        var cidadeCond = string.IsNullOrWhiteSpace(cidade) ? "" : " AND Cidade LIKE @Cidade";
 
-        var baseWhere = @"
+        var baseWhere = $@"
             WHERE DataEvento > GETDATE()
               AND CapacidadeRestante > 0
               AND Status = 'Publicado'
               AND (@Genero IS NULL OR GeneroMusical = @Genero)
               AND (@DataMin IS NULL OR DataEvento >= @DataMin)
-              AND (@DataMax IS NULL OR DataEvento <= @DataMax)
+              AND (@DataMax IS NULL OR DataEvento <= @DataMax){cidadeCond}
               AND (Nome LIKE @Pattern OR Descricao LIKE @Pattern OR Local LIKE @Pattern OR GeneroMusical LIKE @Pattern)";
 
         var countSql = "SELECT COUNT(*) FROM Eventos " + baseWhere;
         var total = await conn.QuerySingleAsync<int>(countSql,
-            new { Genero = genero, DataMin = dataMin, DataMax = dataMax, Pattern = likePattern });
+            new { Genero = genero, DataMin = dataMin, DataMax = dataMax, Pattern = likePattern, Cidade = $"%{cidade}%" });
 
         var sql = @"
-            SELECT e.*, fotos.ThumbnailBase64 AS FotoThumbnailBase64
+            SELECT e.*, fotos.ThumbnailBase64 AS FotoThumbnailBase64,
+                   COALESCE((SELECT AVG(CAST(a.Nota AS FLOAT)) FROM Avaliacoes a WHERE a.EventoId = e.Id), 0) AS NotaMedia
             FROM Eventos e
             LEFT JOIN (
                 SELECT EventoId, ThumbnailBase64,
@@ -206,6 +214,7 @@ public class EventoRepository : IEventoRepository
 
         var itens = await conn.QueryAsync<TicketEvent>(sql,
             new { Genero = genero, DataMin = dataMin, DataMax = dataMax, Pattern = likePattern,
+                  Cidade = $"%{cidade}%",
                   Offset = offset, TamanhoPagina = tamanhoPagina });
 
         return new PaginatedResult<TicketEvent>
@@ -222,22 +231,26 @@ public class EventoRepository : IEventoRepository
     /// </summary>
     private async Task<PaginatedResult<TicketEvent>> BuscarSemNomeAsync(
         IDbConnection conn, string? genero, DateTime? dataMin, DateTime? dataMax,
+        string? cidade,
         int offset, int pagina, int tamanhoPagina)
     {
-        var baseWhere = @"
+        var cidadeCond = string.IsNullOrWhiteSpace(cidade) ? "" : " AND Cidade LIKE @Cidade";
+
+        var baseWhere = $@"
             WHERE DataEvento > GETDATE()
               AND CapacidadeRestante > 0
               AND Status = 'Publicado'
               AND (@Genero IS NULL OR GeneroMusical = @Genero)
               AND (@DataMin IS NULL OR DataEvento >= @DataMin)
-              AND (@DataMax IS NULL OR DataEvento <= @DataMax)";
+              AND (@DataMax IS NULL OR DataEvento <= @DataMax){cidadeCond}";
 
         var countSql = "SELECT COUNT(*) FROM Eventos " + baseWhere;
         var total = await conn.QuerySingleAsync<int>(countSql,
-            new { Genero = genero, DataMin = dataMin, DataMax = dataMax });
+            new { Genero = genero, DataMin = dataMin, DataMax = dataMax, Cidade = $"%{cidade}%" });
 
         var sql = @"
-            SELECT e.*, fotos.ThumbnailBase64 AS FotoThumbnailBase64
+            SELECT e.*, fotos.ThumbnailBase64 AS FotoThumbnailBase64,
+                   COALESCE((SELECT AVG(CAST(a.Nota AS FLOAT)) FROM Avaliacoes a WHERE a.EventoId = e.Id), 0) AS NotaMedia
             FROM Eventos e
             LEFT JOIN (
                 SELECT EventoId, ThumbnailBase64,
@@ -250,6 +263,7 @@ public class EventoRepository : IEventoRepository
 
         var itens = await conn.QueryAsync<TicketEvent>(sql,
             new { Genero = genero, DataMin = dataMin, DataMax = dataMax,
+                  Cidade = $"%{cidade}%",
                   Offset = offset, TamanhoPagina = tamanhoPagina });
 
         return new PaginatedResult<TicketEvent>

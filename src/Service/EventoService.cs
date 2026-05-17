@@ -119,9 +119,9 @@ public class EventoService
         return await _Repository.ObterDisponiveisAsync();
     }
 
-    public async Task<PaginatedResult<TicketEvent>> BuscarEventos(string? nome, string? genero, DateTime? dataMin, DateTime? dataMax, int pagina = 1, int tamanhoPagina = 20)
+    public async Task<PaginatedResult<TicketEvent>> BuscarEventos(string? nome, string? genero, DateTime? dataMin, DateTime? dataMax, string? cidade, int pagina = 1, int tamanhoPagina = 20)
     {
-        return await _Repository.BuscarDisponiveisAsync(nome, genero, dataMin, dataMax, pagina, tamanhoPagina);
+        return await _Repository.BuscarDisponiveisAsync(nome, genero, dataMin, dataMax, cidade, pagina, tamanhoPagina);
     }
 
     /// <summary>

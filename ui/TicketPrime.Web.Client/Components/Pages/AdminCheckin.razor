@@ -1,9 +1,11 @@
 @page "/admin/checkin"
 @using System.Net.Http.Json
 @using TicketPrime.Web.Shared.Models
+@using Microsoft.JSInterop
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject TicketPrime.Web.Client.Services.SessionService Session
+@inject IJSRuntime JS
 
 <PageTitle>Check-in - TicketPrime Admin</PageTitle>
 
@@ -15,30 +17,101 @@
         </div>
     </div>
 
-    <div style="background:var(--tp-bg-card);border-radius:18px;border:1.5px solid var(--tp-border-card);padding:2rem;max-width:600px;margin:0 auto;">
-        <div style="text-align:center;margin-bottom:1.5rem;">
-            <div style="font-size:2.5rem;margin-bottom:0.5rem;">🎟️</div>
-            <h3 style="margin-bottom:0.3rem;">Escaneie ou digite o código</h3>
-            <p style="color:var(--tp-text-muted);font-size:0.85rem;">
-                Insira o código do ingresso para validar a entrada
-            </p>
+    <div style="max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem;">
+
+        @* ── Scanner QR Code ──────────────────────────────────────────── *@
+        <div style="background:var(--tp-bg-card);border-radius:18px;border:1.5px solid var(--tp-border-card);padding:1.5rem;text-align:center;">
+            @if (scannerAtivo)
+            {
+                <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:0.8rem;">
+                    <video id="qr-video"
+                           style="width:100%;max-height:300px;display:block;object-fit:cover;"
+                           playsinline autoplay muted></video>
+                    <canvas id="qr-canvas" style="display:none;"></canvas>
+                    @* Viewfinder overlay *@
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+                                width:180px;height:180px;border:3px solid rgba(91,91,214,0.6);
+                                border-radius:16px;pointer-events:none;
+                                box-shadow:0 0 0 9999px rgba(0,0,0,0.3);"></div>
+                    @* Scanning animation line *@
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+                                width:170px;height:2px;background:rgba(91,91,214,0.8);
+                                border-radius:1px;pointer-events:none;
+                                animation:qr-scan-line 1.5s ease-in-out infinite;"></div>
+                </div>
+
+                <div style="display:flex;gap:0.5rem;justify-content:center;">
+                    <button class="login-btn" @onclick="PararScanner" style="font-size:0.85rem;padding:0.5rem 1rem;background:#DC2626;">
+                        ⏹️ Parar scanner
+                    </button>
+                    <button class="login-btn" @onclick="ValidarIngresso" disabled="@processando" style="font-size:0.85rem;padding:0.5rem 1rem;">
+                        @(processando ? "Validando..." : "🔍 Digitar código")
+                    </button>
+                </div>
+                <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--tp-text-muted);">
+                    Aponte a câmera para o QR Code do ingresso
+                </div>
+            }
+            else
+            {
+                <div style="font-size:2.5rem;margin-bottom:0.5rem;">📷</div>
+                <h3 style="margin-bottom:0.3rem;">Escanear QR Code</h3>
+                <p style="color:var(--tp-text-muted);font-size:0.85rem;margin-bottom:1rem;">
+                    Use a câmera para ler o QR Code do ingresso
+                </p>
+                <button class="login-btn" @onclick="IniciarScanner" disabled="@scannerCarregando" style="font-size:0.95rem;padding:0.6rem 1.5rem;">
+                    @if (scannerCarregando)
+                    {
+                        <span style="display:flex;align-items:center;gap:0.4rem;justify-content:center;">
+                            <span style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;"></span>
+                            Ativando câmera...
+                        </span>
+                    }
+                    else
+                    {
+                        <span>📷 Escanear com câmera</span>
+                    }
+                </button>
+                @if (!string.IsNullOrEmpty(scannerErro))
+                {
+                    <div style="margin-top:0.8rem;padding:0.6rem 1rem;background:#FEF2F2;color:#991B1B;border-radius:10px;font-size:0.82rem;">
+                        ⚠️ @scannerErro
+                    </div>
+                }
+            }
         </div>
 
-        <div class="login-input-wrapper" style="margin-bottom:1rem;">
-            <input class="login-input"
-                   type="text"
-                   @bind="codigoIngresso"
-                   placeholder="Código do ingresso"
-                   @onkeydown="HandleKeyDown" />
+        @* ── Ou digitação manual ────────────────────────────────────── *@
+        <div style="text-align:center;font-size:0.82rem;color:var(--tp-text-muted);">
+            — ou digite manualmente —
         </div>
 
-        <button class="login-btn" @onclick="ValidarIngresso" disabled="@processando">
-            @(processando ? "Validando..." : "🔍 Validar Ingresso")
-        </button>
+        <div style="background:var(--tp-bg-card);border-radius:18px;border:1.5px solid var(--tp-border-card);padding:2rem;">
+            <div style="text-align:center;margin-bottom:1.5rem;">
+                <div style="font-size:2rem;margin-bottom:0.5rem;">🎟️</div>
+                <h3 style="margin-bottom:0.3rem;">Digite o código</h3>
+                <p style="color:var(--tp-text-muted);font-size:0.85rem;">
+                    Insira o código do ingresso para validar a entrada
+                </p>
+            </div>
 
+            <div class="login-input-wrapper" style="margin-bottom:1rem;">
+                <input class="login-input"
+                       type="text"
+                       @bind="codigoIngresso"
+                       placeholder="Código do ingresso"
+                       @onkeydown="HandleKeyDown" />
+            </div>
+
+            <button class="login-btn" @onclick="ValidarIngresso" disabled="@processando">
+                @(processando ? "Validando..." : "🔍 Validar Ingresso")
+            </button>
+        </div>
+
+        @* ── Resultado ───────────────────────────────────────────────── *@
         @if (!string.IsNullOrEmpty(resultado))
         {
-            <div style="margin-top:1.5rem;padding:1.5rem;border-radius:12px;border:2px solid;@(checkinValido ? "background:#ECFDF5;border-color:#059669;color:#065F46;" : "background:#FEF2F2;border-color:#DC2626;color:#991B1B;")">
+            <div style="padding:1.5rem;border-radius:12px;border:2px solid;@(checkinValido ? "background:#ECFDF5;border-color:#059669;color:#065F46;" : "background:#FEF2F2;border-color:#DC2626;color:#991B1B;")">
                 <div style="font-size:2rem;text-align:center;margin-bottom:0.5rem;">
                     @(checkinValido ? "✅" : "❌")
                 </div>
@@ -60,6 +133,15 @@
     </div>
 </div>
 
+<style>
+    @@keyframes qr-scan-line {
+        0%, 100% { transform: translate(-50%, -80px); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        50% { transform: translate(-50%, 80px); }
+    }
+</style>
+
 @code {
     private string codigoIngresso = "";
     private string resultado = "";
@@ -67,12 +149,131 @@
     private bool checkinValido;
     private CheckinData? dadosIngresso;
 
+    // ── Scanner state ──────────────────────────────────────────────────
+    private bool scannerAtivo;
+    private bool scannerCarregando;
+    private string? scannerErro;
+
     protected override async Task OnInitializedAsync()
     {
         await Session.CarregarAsync();
         if (!Session.EhAdmin)
             Navigation.NavigateTo("/", replace: true);
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Adiciona animação spin global se não existir
+            await JS.InvokeVoidAsync("eval",
+                @"if (!document.getElementById('qr-spin-style')) {
+                    var s = document.createElement('style');
+                    s.id = 'qr-spin-style';
+                    s.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+                    document.head.appendChild(s);
+                }");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  QR Code Scanner
+    // ═══════════════════════════════════════════════════════════════════
+
+    private async Task IniciarScanner()
+    {
+        scannerCarregando = true;
+        scannerErro = null;
+
+        try
+        {
+            // Verifica suporte a câmera
+            var hasCamera = await JS.InvokeAsync<bool>("eval",
+                "!!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)");
+            if (!hasCamera)
+            {
+                scannerErro = "Seu dispositivo não suporta acesso à câmera. Digite o código manualmente.";
+                return;
+            }
+
+            scannerAtivo = true;
+            await Task.Delay(100); // Aguarda render do video/canvas
+
+            // Inicia o scanner via JSInterop
+            await JS.InvokeVoidAsync("TicketPrimeQrScanner.start",
+                "qr-video", "qr-canvas",
+                DotNetObjectReference.Create(this),
+                "OnQrCodeDetected",
+                new { scanInterval = 300 });
+        }
+        catch (JSException ex)
+        {
+            scannerErro = "Não foi possível acessar a câmera. Verifique as permissões do navegador.";
+            scannerAtivo = false;
+            Console.Error.WriteLine("[QRScanner] Erro JS: " + ex.Message);
+        }
+        catch (Exception ex)
+        {
+            scannerErro = $"Erro ao iniciar scanner: {ex.Message}";
+            scannerAtivo = false;
+        }
+        finally
+        {
+            scannerCarregando = false;
+        }
+    }
+
+    private async Task PararScanner()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TicketPrimeQrScanner.stop");
+        }
+        catch
+        {
+            // Ignora erros ao parar
+        }
+        finally
+        {
+            scannerAtivo = false;
+            scannerErro = null;
+        }
+    }
+
+    /// <summary>
+    /// Callback invocado pelo JSInterop quando um QR Code é detectado.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnQrCodeDetected(string codigo)
+    {
+        if (string.IsNullOrWhiteSpace(codigo) || processando) return;
+
+        codigoIngresso = codigo;
+        await ValidarIngresso();
+
+        // Se válido, reinicia o scanner para o próximo
+        // Se inválido, reinicia também (o usuário pode tentar outro ingresso)
+        if (!string.IsNullOrEmpty(codigoIngresso))
+        {
+            await Task.Delay(500);
+            try
+            {
+                await JS.InvokeVoidAsync("TicketPrimeQrScanner.start",
+                    "qr-video", "qr-canvas",
+                    DotNetObjectReference.Create(this),
+                    "OnQrCodeDetected",
+                    new { scanInterval = 300 });
+            }
+            catch
+            {
+                scannerAtivo = false;
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Manual input
+    // ═══════════════════════════════════════════════════════════════════
 
     private async void HandleKeyDown(KeyboardEventArgs e)
     {
@@ -93,7 +294,7 @@
             if (content != null)
             {
                 checkinValido = content.Valido;
-                resultado = content.Mensagem;
+                resultado = content.Mensagem ?? "";
                 if (content.Valido) codigoIngresso = "";
             }
         }
@@ -107,6 +308,10 @@
             processando = false;
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  DTOs
+    // ═══════════════════════════════════════════════════════════════════
 
     public class CheckinResponse
     {

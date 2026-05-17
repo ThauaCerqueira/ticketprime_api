@@ -13,11 +13,13 @@ public class ProfileController : ControllerBase
 {
     private readonly UserService _userService;
     private readonly IUsuarioRepository _usuarioRepo;
+    private readonly IStorageService _storage;
 
-    public ProfileController(UserService userService, IUsuarioRepository usuarioRepo)
+    public ProfileController(UserService userService, IUsuarioRepository usuarioRepo, IStorageService storage)
     {
         _userService = userService;
         _usuarioRepo = usuarioRepo;
+        _storage = storage;
     }
 
     /// <summary>
@@ -43,7 +45,10 @@ public class ProfileController : ControllerBase
             usuario.Nome,
             usuario.Email,
             usuario.Perfil,
-            usuario.Telefone
+            usuario.Telefone,
+            usuario.Bio,
+            usuario.FotoUrl,
+            usuario.BannerUrl
         });
     }
 
@@ -72,6 +77,74 @@ public class ProfileController : ControllerBase
         await _usuarioRepo.AtualizarTelefone(cpf, dto.Telefone);
         return Results.Ok(new { mensagem = "Telefone atualizado com sucesso." });
     }
+
+    /// <summary>
+    /// Upload da foto de perfil ou banner do organizador.
+    /// POST /api/perfil/organizador/upload?tipo=foto
+    /// POST /api/perfil/organizador/upload?tipo=banner
+    /// </summary>
+    [HttpPost("organizador/upload")]
+    [Authorize(Roles = "ADMIN")]
+    [EnableRateLimiting("escrita")]
+    [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB
+    public async Task<IResult> UploadOrganizadorFoto(
+        IFormFile file,
+        [FromQuery] string tipo = "foto")
+    {
+        if (file == null || file.Length == 0)
+            return Results.BadRequest(new { mensagem = "Nenhum arquivo enviado." });
+
+        if (tipo != "foto" && tipo != "banner")
+            return Results.BadRequest(new { mensagem = "Tipo inválido. Use 'foto' ou 'banner'." });
+
+        var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/webp" };
+        if (!allowedTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+            return Results.BadRequest(new { mensagem = "Formato não aceito. Use JPEG, PNG ou WebP." });
+
+        var cpf = HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(cpf))
+            return Results.Unauthorized();
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            var subpasta = tipo == "foto" ? "organizadores/fotos" : "organizadores/banners";
+            var nomeArquivo = $"{cpf}_{DateTime.UtcNow:yyyyMMddHHmmss}.{file.ContentType.Split('/')[1]}";
+
+            var url = await _storage.SalvarAsync(stream, nomeArquivo, file.ContentType, subpasta);
+
+            if (tipo == "foto")
+                await _usuarioRepo.AtualizarFotoUrl(cpf, url);
+            else
+                await _usuarioRepo.AtualizarBannerUrl(cpf, url);
+
+            return Results.Ok(new { mensagem = $"{tipo} atualizado com sucesso.", url });
+        }
+        catch (Exception ex)
+        {
+            return Results.Json(new { mensagem = $"Erro ao fazer upload: {ex.Message}" }, statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Atualiza a biografia do organizador.
+    /// </summary>
+    [HttpPatch("organizador/bio")]
+    [Authorize(Roles = "ADMIN")]
+    [EnableRateLimiting("escrita")]
+    public async Task<IResult> AtualizarBio([FromBody] AtualizarBioDto dto)
+    {
+        var cpf = HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(cpf))
+            return Results.Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(dto.Bio))
+            return Results.BadRequest(new { mensagem = "A biografia não pode estar vazia." });
+
+        await _usuarioRepo.AtualizarBio(cpf, dto.Bio.Trim());
+        return Results.Ok(new { mensagem = "Biografia atualizada com sucesso." });
+    }
 }
 
 public record AtualizarTelefoneDto(string? Telefone);
+public record AtualizarBioDto(string Bio);

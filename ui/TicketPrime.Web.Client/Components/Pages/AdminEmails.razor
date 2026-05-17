@@ -1,0 +1,166 @@
+@page "/admin/emails"
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject TicketPrime.Web.Client.Services.SessionService Session
+
+<PageTitle>E-mails - TicketPrime Admin</PageTitle>
+
+<div class="dash-wrapper">
+    <div class="dash-header">
+        <div>
+            <h2>📧 Painel de E-mails</h2>
+            <p>E-mails enviados pelo ConsoleEmailService (apenas desenvolvimento)</p>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+            <button class="login-btn" @onclick="CarregarEmails" disabled="@carregando" style="font-size:0.82rem;padding:0.4rem 1rem;">
+                @(carregando ? "Carregando..." : "🔄 Atualizar")
+            </button>
+            <button class="login-btn" @onclick="LimparEmails" disabled="@carregando" style="font-size:0.82rem;padding:0.4rem 1rem;background:#DC2626;">
+                @(carregando ? "Limpando..." : "🗑️ Limpar tudo")
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div style="padding:0.8rem 1.2rem;border-radius:10px;margin-bottom:1rem;font-size:0.85rem;font-weight:500;
+                    @(mensagem.Contains("sucesso") || mensagem.Contains("limpos") ? "background:#ECFDF5;color:#065F46;" : "background:#FEF2F2;color:#991B1B;")">
+            @mensagem
+        </div>
+    }
+
+    @if (carregando)
+    {
+        <div style="text-align:center;padding:3rem;color:var(--tp-text-muted);">
+            <div style="width:36px;height:36px;border:3px solid var(--tp-border);border-top-color:var(--tp-primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1rem;"></div>
+            Carregando e-mails...
+        </div>
+    }
+    else if (emails == null || emails.Count == 0)
+    {
+        <div style="text-align:center;padding:3rem;background:var(--tp-bg-card);border-radius:16px;border:1.5px solid var(--tp-border-card);">
+            <div style="font-size:3rem;margin-bottom:0.5rem;">📭</div>
+            <h3>Nenhum e-mail enviado</h3>
+            <p style="color:var(--tp-text-muted);font-size:0.9rem;">
+                Cadastre um usuário, compre um ingresso ou solicite redefinição de senha para gerar e-mails.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div style="display:flex;flex-direction:column;gap:0.8rem;">
+            @foreach (var email in emails)
+            {
+                <div class="dash-card" style="cursor:pointer;@(emailSelecionado == email.Id ? "border-color:var(--tp-primary);" : "")"
+                     @onclick="() => ToggleEmail(email.Id)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <strong>📧 @email.Subject</strong>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:1rem;">
+                            <span style="font-size:0.78rem;color:var(--tp-text-muted);">Para: @email.To</span>
+                            <span style="font-size:0.75rem;color:var(--tp-text-light);">@email.SentAt.ToString("dd/MM/yyyy HH:mm:ss")</span>
+                        </div>
+                    </div>
+
+                    @if (emailSelecionado == email.Id)
+                    {
+                        <div style="margin-top:0.8rem;padding:1rem;background:var(--tp-bg-page);border-radius:10px;font-size:0.82rem;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:400px;overflow-y:auto;font-family:monospace;">
+                            @email.Body
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div style="margin-top:1rem;font-size:0.78rem;color:var(--tp-text-muted);text-align:center;">
+            Total: @emails.Count e-mail@(emails.Count != 1 ? "s" : "") · Clique em um e-mail para ver o conteúdo
+        </div>
+    }
+</div>
+
+@code {
+    private List<EmailItem>? emails;
+    private bool carregando;
+    private string? mensagem;
+    private string? emailSelecionado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.CarregarAsync();
+        if (!Session.EhAdmin)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+        await CarregarEmails();
+    }
+
+    private async Task CarregarEmails()
+    {
+        carregando = true;
+        mensagem = null;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<EmailListResponse>("api/admin/emails");
+            emails = response?.Emails ?? [];
+            if (response != null && !string.IsNullOrEmpty(response.Mensagem))
+                mensagem = response.Mensagem;
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"Erro ao carregar e-mails: {ex.Message}";
+            emails = [];
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task LimparEmails()
+    {
+        carregando = true;
+        try
+        {
+            var response = await Http.DeleteAsync("api/admin/emails");
+            if (response.IsSuccessStatusCode)
+            {
+                mensagem = "E-mails limpos com sucesso.";
+                emails = [];
+                emailSelecionado = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"Erro ao limpar: {ex.Message}";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private void ToggleEmail(string id)
+    {
+        emailSelecionado = emailSelecionado == id ? null : id;
+    }
+
+    public class EmailListResponse
+    {
+        public int Total { get; set; }
+        public string? Mensagem { get; set; }
+        public List<EmailItem>? Emails { get; set; }
+    }
+
+    public class EmailItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string To { get; set; } = string.Empty;
+        public string Subject { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
+        public DateTime SentAt { get; set; }
+    }
+}

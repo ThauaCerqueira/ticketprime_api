@@ -388,6 +388,37 @@ public class Program
 
         // Email service: usa SmtpEmailService se configurado, senão ConsoleEmailService (dev)
         var smtpHost = builder.Configuration["EmailSettings:SmtpHost"];
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SEGURANÇA: Validação de SMTP em produção
+        // Se estamos em produção e o SMTP não foi configurado, a aplicação
+        // NÃO INICIA. Emails transacionais são essenciais para:
+        //   - Confirmação de cadastro (verificação de email)
+        //   - Confirmação de compra
+        //   - Notificação de cancelamento
+        //   - Notificação de vaga na fila de espera
+        // ═══════════════════════════════════════════════════════════════════
+        if (builder.Environment.IsProduction() && string.IsNullOrWhiteSpace(smtpHost))
+        {
+            throw new InvalidOperationException(
+                "SMTP é OBRIGATÓRIO em produção. " +
+                "Configure as variáveis de ambiente 'EmailSettings__SmtpHost', " +
+                "'EmailSettings__SmtpPort', 'EmailSettings__SmtpUsername', " +
+                "'EmailSettings__SmtpPassword' e 'EmailSettings__FromEmail' " +
+                "com os dados do seu servidor SMTP. " +
+                "O ConsoleEmailService não é adequado para ambientes de produção.");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SEGURANÇA: InMemoryEmailStore só é registrado em não-produção
+        //   Para evitar vazamento de dados de email em produção, o store
+        //   em memória não é registrado quando SMTP está configurado.
+        // ═══════════════════════════════════════════════════════════════════
+        if (!builder.Environment.IsProduction() || string.IsNullOrWhiteSpace(smtpHost))
+        {
+            builder.Services.AddSingleton<InMemoryEmailStore>();
+        }
+
         if (!string.IsNullOrEmpty(smtpHost))
         {
             builder.Services.AddSingleton<IEmailService, SmtpEmailService>();
@@ -447,9 +478,12 @@ public class Program
             "EmailService: {Service}",
             smtpHost is { Length: > 0 } ? "SmtpEmailService (SMTP configurado)" : "ConsoleEmailService (modo dev — emails exibidos no console)");
 
-        // HTTPS enforcement
-        app.UseHttpsRedirection();
-        app.UseHsts();
+        // HTTPS enforcement (apenas em produção — em staging/dev, pode não haver TLS)
+        if (app.Environment.IsProduction())
+        {
+            app.UseHttpsRedirection();
+            app.UseHsts();
+        }
 
         // ── Security Headers (extraído para SecurityHeadersMiddleware.cs) ────
         app.UseMiddleware<SecurityHeadersMiddleware>();

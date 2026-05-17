@@ -20,6 +20,9 @@ public class TicketEvent
     [JsonPropertyName("capacidadeRestante")]
     public int CapacidadeRestante { get; set; }
 
+    [JsonPropertyName("notaMedia")]
+    public double NotaMedia { get; set; }
+
     [JsonPropertyName("dataEvento")]
     public DateTime DataEvento { get; set; }
 
@@ -49,6 +52,12 @@ public class TicketEvent
 
     [JsonPropertyName("temMeiaEntrada")]
     public bool TemMeiaEntrada { get; set; }
+
+    [JsonPropertyName("cidade")]
+    public string Cidade { get; set; } = string.Empty;
+
+    [JsonPropertyName("estado")]
+    public string Estado { get; set; } = string.Empty;
 
     /// <summary>
     /// Preço da meia-entrada (50% do PrecoPadrao, conforme Lei 12.933/2013).
@@ -654,6 +663,15 @@ public class OrganizadorPerfilDto
     [JsonPropertyName("nome")]
     public string Nome { get; set; } = string.Empty;
 
+    [JsonPropertyName("bio")]
+    public string? Bio { get; set; }
+
+    [JsonPropertyName("fotoUrl")]
+    public string? FotoUrl { get; set; }
+
+    [JsonPropertyName("bannerUrl")]
+    public string? BannerUrl { get; set; }
+
     [JsonPropertyName("eventosPublicados")]
     public List<EventoResumoDto> EventosPublicados { get; set; } = [];
 }
@@ -697,6 +715,9 @@ public class WaitingQueueDto
 
     [JsonPropertyName("posicao")]
     public int Posicao { get; set; }
+
+    [JsonPropertyName("totalNaFila")]
+    public int TotalNaFila { get; set; }
 }
 
 /// <summary>DTO de resumo de evento para exibição no perfil do organizador.</summary>

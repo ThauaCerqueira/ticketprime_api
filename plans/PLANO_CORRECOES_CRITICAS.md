@@ -1,72 +1,55 @@
-# Plano de Correções Críticas — TicketPrime
-> Gerado em: 16/05/2026 — Baseado em auditoria completa do projeto
-> ⚠️ **ATUALIZADO EM 16/05/2026** — Após auditoria de código no projeto real
+# Plano de Correções — TicketPrime
+> 📋 Apenas itens pendentes — atualizado em 16/05/2026
+
+## ✅ Itens Concluídos (27/27 do plano original)
+
+Todos os itens do plano original foram implementados. O que resta abaixo são **melhorias e próximos passos**.
 
 ---
 
-## Legenda de Prioridade
-- 🔴 **BLOQUEADOR** — Impede lançamento / viola lei / quebra funcionalidade core
-- 🟠 **SÉRIO** — Degrada qualidade do produto de forma visível ao usuário
-- 🟡 **DEFICIÊNCIA** — Feature incompleta ou ausente esperada numa bilheteria
+## 📋 Pendentes — Próximos Passos
+
+### 🥇 Prioridade Alta
+
+| Item | O quê | Observação |
+|------|-------|------------|
+| **Rebuild Docker frontend** | Reconstruir imagem com Dockerfile corrigido (projetos Client/Shared copiados) | `docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build frontend` |
+| **Rodar testes E2E** | Validar fluxos completos com Playwright | `$env:TICKETPRIME_BASE_URL="http://localhost:5194"; dotnet test tests/E2E` |
+
+### 🥈 Prioridade Média
+
+| Item | O quê | Esforço |
+|------|-------|---------|
+| **Publicar imagem Docker** | `docker build -f src/Dockerfile -t ticketprime-api:latest .` + push registry | 30 min |
+| **Atualizar NuGet** | OpenTelemetry.Api 1.11.2 (vulnerabilidade moderada NU1902) | 15 min |
+| **Notificações Push (WebPush)** | Implementar subscription + service worker (D4) | 4-6h |
+| **E-mail pós-evento** | Enviar e-mail automático após check-in com link para avaliar | 2-3h |
+| **Upload banner criação evento** | Reutilizar `IStorageService` na tela de criação | 2-3h |
+| **Exportar relatório PDF** | Relatório de participantes em PDF | 3-4h |
+
+### 🥉 Prioridade Baixa
+
+| Item | O quê | Esforço |
+|------|-------|---------|
+| **Configurar domínio + DNS** | Apontar domínio (ex: ticketprime.com.br) para servidor de produção | 1h |
+| **Adicionar badges ao README** | Build status, cobertura de testes, licença | 30 min |
+| **Suporte a múltiplos idiomas** | i18n para expandir para outros mercados | Grande |
 
 ---
 
-## ✅ Status da Auditoria — Resumo
+### Como Rodar os Testes
 
-| Item | Plano Dizia | Realidade no Código | Status | Ação |
-|------|-------------|---------------------|--------|------|
-| **B1** icon-512.png | Ausente | ✅ **Confirmado** — não existe | ❌ A CORRIGIR | ✅ Feito (criado icon-512.svg) |
-| **B2** Termos/Privacidade | Ausente | ✅ **Confirmado** — links levam a 404 | ❌ A CORRIGIR | 🔧 Em andamento |
-| **B3** Tokenização cartão | Não implementada | ❌ **JÁ IMPLEMENTADA** — `mercadopago.js` com SDK v2 Secure Fields, carregado via `App.razor` | ✅ OK | Nenhuma |
-| **B4** Check-in QR code | Só manual | ✅ **Confirmado** — só input manual | 📋 Melhoria futura | Nenhuma agora |
-| **S1** Erro em inglês | Inglês | ✅ **Confirmado** — 3 arquivos em inglês | ❌ A CORRIGIR | 🔧 Pendente |
-| **S2** IMemoryCache | IMemoryCache | ✅ **Confirmado** — AdminController usa IMemoryCache | ❌ A CORRIGIR | 🔧 Pendente |
-| **S3** CI/CD | Não configurado | ❌ **JÁ CONFIGURADO** — `.github/workflows/ci.yml` completo | ✅ OK | Nenhuma |
-| **S4** Paginação | Ausente | ❌ **JÁ IMPLEMENTADA** — server-side com página 12 itens | ✅ OK | Nenhuma |
-| **S5** Footer | Ausente | ✅ **Confirmado** — não existe | ❌ A CORRIGIR | 🔧 Pendente |
-| **S6** AuditLog Admin | Ausente | ✅ **Confirmado** — AuditLogService existe mas não é injetado | ❌ A CORRIGIR | 🔧 Pendente |
-| **D1-D5** | Diversos | Funcionalidades de backlog, sem bloqueio | 📋 Backlog | Nenhuma agora |
+```powershell
+# Unitários (requer SQL Server)
+$env:TEST_DB_CONNECTION="Server=localhost,1433;Database=TicketPrime;User Id=sa;Password=<senha>;TrustServerCertificate=True;"
+dotnet test tests/tests.csproj --configuration Release
 
----
+# E2E (requer frontend rodando)
+$env:TICKETPRIME_BASE_URL="http://localhost:5194"
+dotnet test tests/E2E/TicketPrime.E2E.csproj --configuration Release
+```
 
-## 🔴 BLOQUEADORES (resolver antes de qualquer deploy em produção)
 
----
-
-### B1 — ✅ RESOLVIDO — `icon-512` ausente (PWA quebrado)
-**Arquivo:** `ui/TicketPrime.Web.Client/wwwroot/manifest.json`
-
-**Problema:** O manifest referenciava `/icon-512.png` (512×512) que não existia em `wwwroot/`.
-
-**Solução aplicada:**
-1. ✅ Criado `ui/TicketPrime.Web.Client/wwwroot/icon-512.svg` — ícone SVG 512×512 com a marca TicketPrime (gradiente roxo + ingresso).
-2. ✅ Atualizado `manifest.json` para referenciar `/icon-512.svg` com `type: image/svg+xml`.
-3. ✅ `icon-192.png` existente permanece inalterado.
-
-**Critério de aceite:** Abrir o site no Chrome mobile → menu "Instalar app" → ícone aparece corretamente na tela inicial.
-
----
-
-### B2 — 🔧 EM ANDAMENTO — Páginas `/termos` e `/privacidade` não existem (violação LGPD)
-**Arquivo:** `ui/TicketPrime.Web.Client/Components/Pages/CadastroUser.razor` (links para as páginas)
-
-**Problema:** O cadastro exige aceite dos "Termos de Uso" e "Política de Privacidade", mas clicar nos links redireciona para 404. Isso viola o Art. 9 da LGPD (obrigação de informar o titular antes de coletar o consentimento) e invalida juridicamente qualquer dado coletado.
-
-**O que fazer:**
-1. 🔧 Criar `ui/TicketPrime.Web.Client/Components/Pages/Termos.razor` com rota `@page "/termos"`.
-2. 🔧 Criar `ui/TicketPrime.Web.Client/Components/Pages/Privacidade.razor` com rota `@page "/privacidade"`.
-3. Ambas as páginas devem usar `@layout EmptyLayout` e conter o texto legal real da plataforma (não placeholder).
-4. Incluir no conteúdo: finalidade da coleta de dados, quais dados são coletados, prazo de retenção, direitos do titular (acesso, retificação, exclusão — já implementados no backend), contato do DPO.
-5. As páginas devem ser acessíveis sem login (públicas).
-
-**Critério de aceite:** Clicar em "Termos de Uso" e "Política de Privacidade" no cadastro exibe páginas com conteúdo real, não 404.
-
----
-
-### B3 — ✅ JÁ IMPLEMENTADO — Pagamento por cartão (tokenização real via SDK MercadoPago)
-**Arquivo:** `ui/TicketPrime.Web.Client/wwwroot/js/mercadopago.js`, `ui/TicketPrime.Web/Components/App.razor`
-
-**O plano original dizia:** "O backend aceita `cardToken`, mas o frontend não integra o SDK JavaScript do MercadoPago para tokenização."
 
 **Realidade no código:** ❌ **O plano estava desatualizado.** A tokenização já está implementada:
 
@@ -513,18 +496,62 @@ Após análise aprofundada do código-fonte, foram encontrados os seguintes prob
 
 ---
 
-## Ordem de Execução Recomendada (Atualizada)
+## 📊 Revisão Final — Status dos Próximos Passos (16/05/2026)
+
+### 🔒 Segurança e Infraestrutura
+| Item | Status | Observação |
+|------|--------|------------|
+| Redis em produção | ✅ **Concluído** | Serviço Redis no `docker-compose.yml` + `Redis__Connection` + healthcheck |
+| SMTP real | ✅ **Concluído** | Bloqueio de startup sem SMTP em produção + `docs/seguranca.md` |
+| Let's Encrypt | ⏩ **Pré-configurado** | Certbot no compose, precisa de domínio real para ativar |
+| HashiCorp Vault | ⏩ **Pré-configurado** | Script `docker/vault-setup.sh` + `docker-compose.vault.yml` |
+| **docs/seguranca.md** | ✅ **Novo** | Documento completo de segurança |
+| **.env.example** | ✅ **Expandido** | Todas as variáveis documentadas |
+
+### 🧪 Qualidade e Testes
+| Item | Status | Observação |
+|------|--------|------------|
+| dotnet test completo | ✅ **Concluído** | 459/475 aprovados (96.6%) — 16 integração com seed pendente |
+| Testes E2E Playwright | ✅ **Setup concluído** | Browsers instalados, Dockerfile corrigido, 5 arquivos de teste |
+| Fluxo PIX manual | ⏳ **Pendente** | Teste manual com ambiente rodando |
+| Scanner QR Code | ⏳ **Pendente** | Requer dispositivo mobile real |
+
+### 🚀 Deploy e Operação
+| Item | Status | Observação |
+|------|--------|------------|
+| docker-compose.yml revisado | ✅ **Concluído** | Redis adicionado, healthchecks corrigidos |
+| Migrations V006-V009 | ✅ **Aplicadas** | + correção V006 (QUOTED_IDENTIFIER) + HealthController fix |
+| docker-compose.staging.yml | ✅ **Criado** | Portas expostas, Swagger, ambiente Staging |
+| Dockerfile frontend | ✅ **Corrigido** | Cópia dos projetos Client e Shared |
+| Publicar imagem Docker | ⏳ **Pendente** | `docker build -f src/Dockerfile -t ticketprime-api:latest .` |
+| Configurar domínio + DNS | ⏳ **Pendente** | Apontar domínio para servidor de produção |
+
+### 🎨 UX e Features Futuras (Backlog)
+| Item | Esforço | Observação |
+|------|---------|------------|
+| WebPush (D4) | Médio | Implementar subscription + notificações no service worker |
+| E-mail de avaliação pós-evento | Pequeno | Enviar e-mail após check-in |
+| Upload banner criação evento | Pequeno | Reutilizar `IStorageService` |
+| Exportar relatório PDF | Médio | Relatório de participantes em PDF |
+| Suporte a múltiplos idiomas | Grande | i18n |
+
+### 📝 Manutenção
+| Item | Status | Observação |
+|------|--------|------------|
+| Warnings do compilador | ✅ **Zero CS warnings** | Apenas NU1902 (OpenTelemetry.Api NuGet) |
+| File naming consistente | ✅ **Corrigido** | `ReservaService.cs` → `ReservationService.cs`, `FilaEsperaService.cs` → `WaitingQueueService.cs` |
+| Código duplicado | ✅ **Removido** | `ObterTodosEventosAsync()` extraído no `AdminController` |
+| Atualizar dependências NuGet | ⏳ **Pendente** | OpenTelemetry.Api 1.11.2 com vulnerabilidade moderada |
+| Adicionar badges ao README | ⏳ **Pendente** | Build status, coverage, licença |
+
+---
+
+### 🏆 Recomendação para Próxima Sessão
 
 ```
-✅ TODOS OS ITENS IMPLEMENTADOS
-  ├── 🟠🔴 B1, B2, S1, S2, S5, S6, N1, N2, UX1, UX2 (10 críticos/médios)
-  ├── 🟡⚪ N4, N6, UX4, UX5, UX6, UX7, UX9 (7 baixos/mínimos)
-  └── N8 (docker-compose.test.yml doc)
-
-📋 PRÓXIMA SPRINT (se desejar)
-  ├── UX3 🟠 Email funcional em dev (ConsoleEmailService → painel /admin/emails)
-  ├── UX8 ⚪ Busca por localização (cidade/estado)
-  ├── N3 🟡 String enums → enums reais
-  ├── N5 🟡 Timestamps de auditoria (CreatedAt/UpdatedAt)
-  └── B4 (QR scanner check-in), D1-D5 (Features)
+1. 🥇 Rebuild do frontend Docker (Dockerfile já corrigido com projetos Client/Shared)
+2. 🥇 Rodar testes E2E (após frontend no ar: dotnet test tests/E2E)
+3. 🥈 Publicar imagem Docker no registry
+4. 🥈 Atualizar NuGet OpenTelemetry.Api (warning NU1902)
+5. 🥉 Adicionar badges ao README (build status, coverage, licença)
 ```

@@ -51,4 +51,19 @@ public interface IUsuarioRepository
     /// Atualiza (ou gera) o slug público de um usuário.
     /// </summary>
     Task AtualizarSlug(string cpf, string slug);
+
+    /// <summary>
+    /// Atualiza a URL da foto de perfil do organizador.
+    /// </summary>
+    Task AtualizarFotoUrl(string cpf, string url);
+
+    /// <summary>
+    /// Atualiza a URL do banner do organizador.
+    /// </summary>
+    Task AtualizarBannerUrl(string cpf, string url);
+
+    /// <summary>
+    /// Atualiza a biografia do organizador.
+    /// </summary>
+    Task AtualizarBio(string cpf, string bio);
 }

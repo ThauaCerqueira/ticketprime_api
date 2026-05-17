@@ -125,4 +125,25 @@ public class UsuarioRepository : IUsuarioRepository
         var sql = @"UPDATE Usuarios SET Slug = @Slug WHERE Cpf = @Cpf";
         await connection.ExecuteAsync(sql, new { Cpf = cpf, Slug = slug });
     }
+
+    public async Task AtualizarFotoUrl(string cpf, string url)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var sql = @"UPDATE Usuarios SET FotoUrl = @Url WHERE Cpf = @Cpf";
+        await connection.ExecuteAsync(sql, new { Cpf = cpf, Url = url });
+    }
+
+    public async Task AtualizarBannerUrl(string cpf, string url)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var sql = @"UPDATE Usuarios SET BannerUrl = @Url WHERE Cpf = @Cpf";
+        await connection.ExecuteAsync(sql, new { Cpf = cpf, Url = url });
+    }
+
+    public async Task AtualizarBio(string cpf, string bio)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var sql = @"UPDATE Usuarios SET Bio = @Bio WHERE Cpf = @Cpf";
+        await connection.ExecuteAsync(sql, new { Cpf = cpf, Bio = bio });
+    }
 }

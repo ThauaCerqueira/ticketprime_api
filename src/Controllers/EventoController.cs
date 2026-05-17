@@ -184,13 +184,14 @@ public class EventoController : ControllerBase
     public async Task<IResult> BuscarDisponiveis(
         string? nome, string? genero,
         DateTime? dataMin, DateTime? dataMax,
+        string? cidade,
         int pagina = 1, int tamanhoPagina = 20)
     {
         if (tamanhoPagina < 1) tamanhoPagina = 1;
         if (tamanhoPagina > 100) tamanhoPagina = 100;
         if (pagina < 1) pagina = 1;
 
-        var eventos = await _eventService.BuscarEventos(nome, genero, dataMin, dataMax, pagina, tamanhoPagina);
+        var eventos = await _eventService.BuscarEventos(nome, genero, dataMin, dataMax, cidade, pagina, tamanhoPagina);
         return Results.Ok(eventos);
     }
 

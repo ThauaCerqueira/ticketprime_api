@@ -4,14 +4,16 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 
 # Restaura dependências (camada de cache separada)
-# A UI referencia src/src.csproj, então ambos os projetos são copiados primeiro
+# A UI referencia src/src.csproj, TicketPrime.Web.Client e TicketPrime.Web.Shared
 COPY src/src.csproj src/
 COPY ui/TicketPrime.Web/TicketPrime.Web.csproj ui/TicketPrime.Web/
+COPY ui/TicketPrime.Web.Client/TicketPrime.Web.Client.csproj ui/TicketPrime.Web.Client/
+COPY ui/TicketPrime.Web.Shared/TicketPrime.Web.Shared.csproj ui/TicketPrime.Web.Shared/
 RUN dotnet restore ui/TicketPrime.Web/TicketPrime.Web.csproj
 
 # Copia o restante e publica
 COPY src/ src/
-COPY ui/TicketPrime.Web/ ui/TicketPrime.Web/
+COPY ui/ ui/
 
 # Remove appsettings duplicados da src/ (conflito com os da UI ao publicar)
 RUN rm -f src/appsettings.json src/appsettings.Development.json
@@ -28,7 +30,12 @@ COPY --from=build /publish .
 EXPOSE 8080
 
 # Executa como usuário não-root para reduzir superfície de ataque
-RUN adduser --disabled-password --gecos "" appuser
+RUN useradd --system --create-home --shell /sbin/nologin appuser
+
+# Instala curl para healthcheck (como root, depois volta para appuser)
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 USER appuser
 
 ENTRYPOINT ["dotnet", "TicketPrime.Web.dll"]

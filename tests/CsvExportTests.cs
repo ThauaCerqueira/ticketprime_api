@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using src.Controllers;
 using src.DTOs;
@@ -37,14 +39,34 @@ public class CsvExportTests
         var auditMock = new Mock<AuditLogService>(
             Mock.Of<src.Infrastructure.IRepository.IAuditLogRepository>(),
             Mock.Of<Microsoft.Extensions.Logging.ILogger<AuditLogService>>());
+        var emailStore = new InMemoryEmailStore();
 
-        return new AdminController(
+        var controller = new AdminController(
             eventoMock.Object,
             reservaMock.Object,
             cupomMock.Object,
             usuarioMock.Object,
             cacheMock.Object,
-            auditMock.Object);
+            auditMock.Object,
+            emailStore);
+
+        // Configura HttpContext com usuário fictício (necessário para audit logging)
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, "00000000191"),
+            new Claim(ClaimTypes.Role, "ADMIN")
+        }, "mock"));
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = user,
+                Connection = { RemoteIpAddress = System.Net.IPAddress.Parse("127.0.0.1") }
+            }
+        };
+
+        return controller;
     }
 
     // ════════════════════════════════════════════════════════════════════════

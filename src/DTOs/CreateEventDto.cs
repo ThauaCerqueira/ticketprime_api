@@ -118,6 +118,14 @@ public record CreateEventDto
     /// <summary>Indica se o evento oferece meia-entrada (Lei 12.933/2013).</summary>
     public bool TemMeiaEntrada { get; set; }
 
+    /// <summary>Cidade do evento. Ex: "São Paulo".</summary>
+    [StringLength(100, ErrorMessage = "O nome da cidade é muito longo.")]
+    public string Cidade { get; set; } = string.Empty;
+
+    /// <summary>Estado (UF) do evento. Ex: "SP".</summary>
+    [StringLength(2, ErrorMessage = "Use a sigla do estado (2 caracteres).")]
+    public string Estado { get; set; } = string.Empty;
+
     /// <summary>
     /// Fotos criptografadas ponta a ponta (E2E) usando ECDH P-256 + AES-GCM-256 + AES-KW.
     /// Cada foto é criptografada individualmente no navegador antes do envio.

@@ -51,6 +51,9 @@ public class TicketEvent
     /// </summary>
     public string? FotoThumbnailBase64 { get; set; }
 
+    /// <summary>Nota média das avaliações do evento (0 = sem avaliações).</summary>
+    public double NotaMedia { get; set; }
+
     /// <summary>CPF do admin/organizador que criou o evento. Permite exibir o perfil público do organizador.</summary>
     public string? OrganizadorCpf { get; set; }
 
@@ -66,6 +69,18 @@ public class TicketEvent
     /// Mantemos GeneroMusical por compatibilidade — Categoria é o campo primário.
     /// </summary>
     public string Categoria { get; set; } = string.Empty;
+
+    /// <summary>Cidade onde o evento será realizado. Ex: "São Paulo".</summary>
+    public string Cidade { get; set; } = string.Empty;
+
+    /// <summary>Estado (UF) onde o evento será realizado. Ex: "SP".</summary>
+    public string Estado { get; set; } = string.Empty;
+
+    /// <summary>Data/hora de criação do registro (UTC).</summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Data/hora da última atualização (UTC). Atualizado via trigger.</summary>
+    public DateTime? UpdatedAt { get; set; }
 
     public TicketEvent() { }
 }

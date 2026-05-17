@@ -74,6 +74,12 @@
             <input type="date" class="vitrine-filtro-date"
                    @bind="filtroDataMax" @bind:after="FiltrarEventos" />
         </div>
+        <div>
+            <input class="vitrine-filtro-input"
+                   placeholder="📍 Cidade..."
+                   @bind="filtroCidade" @bind:after="FiltrarEventos"
+                   style="max-width:160px;" />
+        </div>
         <button class="vitrine-filtro-btn-limpar"
                 @onclick="LimparFiltros" aria-label="Limpar filtros de busca">Limpar</button>
     </div>
@@ -173,6 +179,21 @@
                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                             </svg>
                             @evento.CapacidadeTotal vagas
+                            @if (evento.NotaMedia > 0)
+                            {
+                                <div class="vitrine-card-row" style="font-size:0.82rem;color:#F59E0B;">
+                                    @string.Concat(Enumerable.Repeat("⭐", (int)Math.Round(evento.NotaMedia)))
+                                    <span style="font-size:0.7rem;color:var(--tp-text-light);margin-left:0.2rem;">
+                                        @evento.NotaMedia.ToString("0.0")
+                                    </span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(evento.Cidade) || !string.IsNullOrEmpty(evento.Estado))
+                            {
+                                <div class="vitrine-card-row" style="font-size:0.78rem;color:var(--tp-text-muted);">
+                                    📍 @evento.Cidade@(evento.Cidade != "" && evento.Estado != "" ? ", " : "")@evento.Estado
+                                </div>
+                            }
                             @if (!evento.EventoGratuito && evento.CapacidadeRestante > 0 && evento.CapacidadeRestante <= 20)
                             {
                                 <span style="display:inline-block;margin-top:0.2rem;font-size:0.7rem;font-weight:700;color:#DC2626;background:#FEF2F2;padding:0.15rem 0.5rem;border-radius:20px;">
@@ -237,6 +258,7 @@
     private string filtroGenero = "";
     private DateTime? filtroDataMin;
     private DateTime? filtroDataMax;
+    private string filtroCidade = "";
 
     // ── Favoritos ─────────────────────────────────────────────────────
     private HashSet<int> _favoritosIds = [];
@@ -324,6 +346,7 @@
         filtroGenero = "";
         filtroDataMin = null;
         filtroDataMax = null;
+        filtroCidade = "";
         paginaAtual = 1;
         await CarregarEventos();
     }
@@ -351,6 +374,7 @@
             if (!string.IsNullOrWhiteSpace(filtroGenero)) qs.Add($"genero={Uri.EscapeDataString(filtroGenero)}");
             if (filtroDataMin.HasValue) qs.Add($"dataMin={filtroDataMin.Value:yyyy-MM-dd}");
             if (filtroDataMax.HasValue) qs.Add($"dataMax={filtroDataMax.Value:yyyy-MM-dd}");
+            if (!string.IsNullOrWhiteSpace(filtroCidade)) qs.Add($"cidade={Uri.EscapeDataString(filtroCidade)}");
             qs.Add($"pagina={paginaAtual}");
             qs.Add($"tamanhoPagina={TamanhoPagina}");
             var url = "api/eventos/disponiveis" + (qs.Any() ? "?" + string.Join("&", qs) : "");

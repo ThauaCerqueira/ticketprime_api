@@ -257,7 +257,7 @@ public class JwtTokenSecurityTests
         var method = typeof(AuthService).GetMethod("GerarToken",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-        var token = method!.Invoke(authService, new object[] { "52998224725", "ADMIN" }) as string;
+        var token = method!.Invoke(authService, new object[] { "52998224725", "ADMIN", null }) as string;
 
         // Assert
         Assert.NotNull(token);
@@ -284,7 +284,7 @@ public class JwtTokenSecurityTests
         var method = typeof(AuthService).GetMethod("GerarToken",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-        var token = method!.Invoke(authService, new object[] { "52998224725", "CLIENTE" }) as string;
+        var token = method!.Invoke(authService, new object[] { "52998224725", "CLIENTE", null }) as string;
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -308,7 +308,7 @@ public class JwtTokenSecurityTests
         var method = typeof(AuthService).GetMethod("GerarToken",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-        var token = method!.Invoke(authService, new object[] { "52998224725", "ADMIN" }) as string;
+        var token = method!.Invoke(authService, new object[] { "52998224725", "ADMIN", null }) as string;
 
         // Assert — verifica que o token pode ser validado com a mesma chave
         var handler = new JwtSecurityTokenHandler();
@@ -552,7 +552,7 @@ public class JwtTokenValidationTests
         var method = typeof(AuthService).GetMethod("GerarToken",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-        var tokenOriginal = method!.Invoke(authService, new object[] { "52998224725", "ADMIN" }) as string;
+        var tokenOriginal = method!.Invoke(authService, new object[] { "52998224725", "ADMIN", null }) as string;
         Assert.NotNull(tokenOriginal);
 
         // Adultera o token: troca o角色 de ADMIN para CLIENTE no payload (muda o meio do token)
@@ -634,7 +634,7 @@ public class JwtTokenValidationTests
         var method = typeof(AuthService).GetMethod("GerarToken",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-        var token = method!.Invoke(authService, new object[] { "52998224725", "ADMIN" }) as string;
+        var token = method!.Invoke(authService, new object[] { "52998224725", "ADMIN", null }) as string;
         Assert.NotNull(token);
 
         // Act — usa chave DIFERENTE para validar
@@ -666,7 +666,7 @@ public class JwtTokenValidationTests
         var method = typeof(AuthService).GetMethod("GerarToken",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-        var token = method!.Invoke(authService, new object[] { "52998224725", "CLIENTE" }) as string;
+        var token = method!.Invoke(authService, new object[] { "52998224725", "CLIENTE", null }) as string;
         Assert.NotNull(token);
 
         // Act — valida com issuer diferente
@@ -749,7 +749,7 @@ public class AuthorizationTests
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
         // Act — gera token para ADMIN
-        var token = method!.Invoke(authService, new object[] { "00000000191", "ADMIN" }) as string;
+        var token = method!.Invoke(authService, new object[] { "00000000191", "ADMIN", null }) as string;
         Assert.NotNull(token);
 
         var handler = new JwtSecurityTokenHandler();
@@ -784,7 +784,7 @@ public class AuthorizationTests
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
         // Act — gera token para CLIENTE
-        var token = method!.Invoke(authService, new object[] { "52998224725", "CLIENTE" }) as string;
+        var token = method!.Invoke(authService, new object[] { "52998224725", "CLIENTE", null }) as string;
         Assert.NotNull(token);
 
         var handler = new JwtSecurityTokenHandler();
@@ -813,7 +813,7 @@ public class AuthorizationTests
         var method = typeof(AuthService).GetMethod("GerarToken",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-        var token = method!.Invoke(authService, new object[] { "52998224725", "CLIENTE" }) as string;
+        var token = method!.Invoke(authService, new object[] { "52998224725", "CLIENTE", null }) as string;
         Assert.NotNull(token);
 
         var handler = new JwtSecurityTokenHandler();

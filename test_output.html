@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/">
+    <link rel="stylesheet" href="app.ak7rovv4ra.css" />
+    <link rel="stylesheet" href="TicketPrime.Web.styles.css" />
+    <link rel="icon" type="image/png" href="favicon.png">
+    <title>TicketPrime - Sua plataforma de ingressos online</title>
+    
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet">
+    <title>Erro — TicketPrime</title></head>
+
+<body><div class="dev-warning-banner" role="alert"><div class="dev-warning-content"><span class="dev-warning-icon">⚠️</span>
+            <div class="dev-warning-text"><strong>Ambiente de Desenvolvimento</strong>
+                <span>Pagamentos estão sendo processados pelo <strong>SimulatedPaymentGateway</strong> — nenhum pagamento real é cobrado.</span></div>
+            <button class="dev-warning-close" aria-label="Fechar aviso"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div></div>
+
+<div class="app-layout" b-1y35pydj30><style b-ulq3ci16rs>
+    .navbar-top {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 64px;
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 2rem;
+        background: var(--tp-navbar-bg);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--tp-navbar-border);
+    }
+
+    .navbar-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .navbar-logo-icon {
+        width: 36px; height: 36px;
+        background: var(--tp-primary);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .navbar-logo-icon svg { width: 18px; height: 18px; fill: white; }
+
+    .navbar-logo-name {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--tp-text-heading);
+    }
+
+    .navbar-right {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        position: relative;
+    }
+
+    .navbar-user-info {
+        font-size: 0.875rem;
+        color: var(--tp-text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-width: 0;
+    }
+
+    .navbar-user-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .navbar-user-badge {
+        background: var(--tp-primary-light);
+        color: var(--tp-primary);
+        padding: 0.2rem 0.6rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .navbar-dots-btn {
+        width: 40px; height: 40px;
+        background: transparent;
+        border: 1.5px solid var(--tp-border);
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-direction: column;
+        gap: 4px;
+        padding: 0;
+    }
+
+    .navbar-dots-btn:hover {
+        background: var(--tp-primary-light);
+        border-color: var(--tp-primary);
+    }
+
+    .navbar-dots-btn span {
+        width: 4px; height: 4px;
+        background: var(--tp-text-body);
+        border-radius: 50%;
+        display: block;
+        transition: background 0.2s;
+    }
+
+    .navbar-dots-btn:hover span { background: var(--tp-primary); }
+
+    /* ── Botão de alternância de tema ─────────────────────────────────── */
+    .navbar-theme-btn {
+        width: 40px; height: 40px;
+        background: transparent;
+        border: 1.5px solid var(--tp-border);
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        padding: 0;
+        color: var(--tp-text-body);
+        flex-shrink: 0;
+    }
+
+    .navbar-theme-btn:hover {
+        background: var(--tp-primary-light);
+        border-color: var(--tp-primary);
+        color: var(--tp-primary);
+    }
+
+    .navbar-theme-btn svg {
+        width: 20px;
+        height: 20px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .navbar-theme-btn .theme-sun { display: block; }
+    .navbar-theme-btn .theme-moon { display: none; }
+
+    [data-theme="dark"] .navbar-theme-btn .theme-sun { display: none; }
+    [data-theme="dark"] .navbar-theme-btn .theme-moon { display: block; }
+
+    .navbar-dropdown {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        background: var(--tp-bg-card);
+        border-radius: 16px;
+        box-shadow: var(--tp-shadow-lg);
+        border: 1.5px solid var(--tp-border-card);
+        min-width: 220px;
+        overflow: hidden;
+        animation: dropIn 0.15s ease;
+        z-index: 300;
+    }
+
+    @keyframes dropIn {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .navbar-dropdown-header {
+        padding: 1rem 1.2rem 0.8rem;
+        border-bottom: 1px solid var(--tp-border-card);
+    }
+
+    .navbar-dropdown-name {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--tp-text-heading);
+    }
+
+    .navbar-dropdown-role {
+        font-size: 0.75rem;
+        color: var(--tp-text-muted);
+        margin-top: 0.1rem;
+    }
+
+    .navbar-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 0.8rem 1.2rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--tp-text-body);
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        width: 100%;
+        text-align: left;
+        text-decoration: none;
+        transition: background 0.15s;
+    }
+
+    .navbar-dropdown-item:hover { background: var(--tp-bg-page); color: var(--tp-primary); }
+
+    .navbar-dropdown-item svg {
+        width: 17px; height: 17px;
+        flex-shrink: 0;
+        stroke: currentColor;
+    }
+
+    .navbar-dropdown-divider {
+        height: 1px;
+        background: var(--tp-border-card);
+        margin: 0.3rem 0;
+    }
+
+    .navbar-dropdown-item-danger {
+        color: #DC2626 !important;
+    }
+
+    .navbar-dropdown-item-danger:hover { background: #FEF2F2 !important; color: #DC2626 !important; }
+
+    [data-theme="dark"] .navbar-dropdown-item-danger:hover { background: #3B1A1A !important; color: #FCA5A5 !important; }
+
+    .navbar-dropdown-section {
+        padding: 0.3rem 0;
+    }
+
+    .navbar-dropdown-section-label {
+        padding: 0.4rem 1.2rem 0.2rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--tp-text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .navbar-login-btn {
+        padding: 0.5rem 1.2rem;
+        background: var(--tp-primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        text-decoration: none;
+    }
+
+    .navbar-login-btn:hover { background: var(--tp-primary-hover); color: white; }
+
+    .navbar-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 199;
+    }
+
+    /* ── Responsivo: Tablet (≤768px) ────────────────────────────────── */
+    @media (max-width: 768px) {
+        .navbar-top {
+            padding: 0 1.25rem;
+        }
+    }
+
+    /* ── Responsivo: Mobile (≤480px) ────────────────────────────────── */
+    @media (max-width: 480px) {
+        .navbar-top {
+            padding: 0 0.875rem;
+            height: 56px;
+        }
+
+        .navbar-logo-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .navbar-logo-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .navbar-logo-name {
+            font-size: 0.95rem;
+        }
+
+        .navbar-user-info {
+            gap: 0.3rem;
+        }
+
+        .navbar-user-name {
+            display: none;
+        }
+
+        .navbar-user-badge {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.5rem;
+        }
+
+        .navbar-dots-btn {
+            width: 36px;
+            height: 36px;
+            gap: 3px;
+        }
+
+        .navbar-dots-btn span {
+            width: 3.5px;
+            height: 3.5px;
+        }
+
+        .navbar-theme-btn {
+            width: 36px;
+            height: 36px;
+        }
+
+        .navbar-theme-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .navbar-dropdown {
+            position: fixed;
+            top: 56px;
+            left: 0.75rem;
+            right: 0.75rem;
+            min-width: unset;
+            width: auto;
+            border-radius: 14px;
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+
+        .navbar-dropdown-item {
+            padding: 0.9rem 1rem;
+            font-size: 0.95rem;
+            min-height: 44px;
+        }
+
+        .navbar-dropdown-header {
+            padding: 0.85rem 1rem 0.7rem;
+        }
+
+        .navbar-login-btn {
+            padding: 0.45rem 1rem;
+            font-size: 0.8rem;
+        }
+    }
+
+    /* ── Responsivo: Mobile muito pequeno (≤360px) ──────────────────── */
+    @media (max-width: 360px) {
+        .navbar-top {
+            padding: 0 0.625rem;
+        }
+
+        .navbar-logo-name {
+            font-size: 0.85rem;
+        }
+
+        .navbar-logo-icon {
+            width: 28px;
+            height: 28px;
+        }
+
+        .navbar-logo-icon svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .navbar-dropdown {
+            left: 0.5rem;
+            right: 0.5rem;
+        }
+    }
+</style>
+
+<nav class="navbar-top" b-ulq3ci16rs><div class="navbar-logo" role="button" tabindex="0" aria-label="Ir para p&#xE1;gina inicial" b-ulq3ci16rs><div class="navbar-logo-icon" b-ulq3ci16rs><svg viewBox="0 0 24 24" role="img" aria-label="Logotipo TicketPrime" b-ulq3ci16rs><path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a2 2 0 0 0 0 4v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0 0-4zM12 17.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0-7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" b-ulq3ci16rs></path></svg></div>
+        <span class="navbar-logo-name" b-ulq3ci16rs>TicketPrime</span></div>
+
+    <div class="navbar-right" b-ulq3ci16rs><button class="navbar-theme-btn" title="Alternar tema" aria-label="Alternar tema do site" b-ulq3ci16rs><svg class="theme-sun" viewBox="0 0 24 24" fill="none" role="img" aria-label="Alternar para tema claro" b-ulq3ci16rs><circle cx="12" cy="12" r="5" b-ulq3ci16rs></circle>
+                <line x1="12" y1="1" x2="12" y2="3" b-ulq3ci16rs></line>
+                <line x1="12" y1="21" x2="12" y2="23" b-ulq3ci16rs></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" b-ulq3ci16rs></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" b-ulq3ci16rs></line>
+                <line x1="1" y1="12" x2="3" y2="12" b-ulq3ci16rs></line>
+                <line x1="21" y1="12" x2="23" y2="12" b-ulq3ci16rs></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" b-ulq3ci16rs></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" b-ulq3ci16rs></line></svg>
+            
+            <svg class="theme-moon" viewBox="0 0 24 24" fill="none" role="img" aria-label="Alternar para tema escuro" b-ulq3ci16rs><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" b-ulq3ci16rs></path></svg></button></div></nav>
+    <main class="app-main" b-1y35pydj30>
+
+<div class="error-container" style="text-align: center; padding: 4rem 2rem;"><svg class="mud-icon-root mud-svg-icon mud-error-text mud-icon-size-large" focusable="false" viewBox="0 0 24 24" aria-hidden="true" role="img"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M11 15h2v2h-2zm0-8h2v6h-2zm.99-5C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
+    <h3 style="margin-top: 1.5rem;">Ocorreu um erro inesperado</h3>
+    <p style="color: #888; margin-top: 0.5rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+        Desculpe pelo inconveniente. Nossa equipe foi notificada e estamos trabalhando para resolver o problema.
+    </p>
+    <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;"><button type="button" class="mud-button-root mud-button mud-button-filled mud-button-filled-primary mud-button-filled-size-medium mud-ripple" __internal_stopPropagation_onclick><span class="mud-button-label">
+            Tentar novamente
+        </span></button>
+        <a type="button" href="/" class="mud-button-root mud-button mud-button-outlined mud-button-outlined-secondary mud-button-outlined-size-medium mud-ripple"><span class="mud-button-label">
+            Voltar para o início
+        </span></a></div></div></main>
+    <footer class="tp-footer"><div class="tp-footer-container"><div class="tp-footer-section tp-footer-brand"><div class="tp-footer-logo"><div class="tp-footer-logo-icon"><svg viewBox="0 0 24 24" role="img" aria-label="Logotipo TicketPrime" width="20" height="20"><path d="M20 12V22H4V12"></path>
+                        <path d="M22 7H2v5h20V7z"></path>
+                        <path d="M12 22V7"></path>
+                        <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                        <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg></div>
+                <span class="tp-footer-logo-name">TicketPrime</span></div>
+            <p class="tp-footer-desc">Sua plataforma de ingressos online — compre ingressos com segurança para os melhores eventos, shows e espetáculos.</p></div>
+
+        <div class="tp-footer-section"><h4 class="tp-footer-title">Links</h4>
+            <nav class="tp-footer-nav" aria-label="Links do rodapé"><a href="/vitrine">Eventos disponíveis</a>
+                <a href="/termos">Termos de Uso</a>
+                <a href="/privacidade">Política de Privacidade</a></nav></div>
+
+        <div class="tp-footer-section"><h4 class="tp-footer-title">Contato</h4>
+            <div class="tp-footer-contact"><span>suporte@ticketprime.com.br</span>
+                <span>dpo@ticketprime.com.br</span></div></div></div>
+
+    <div class="tp-footer-bottom"><p>&#xA9; 2026 TicketPrime Tecnologia Ltda. Todos os direitos reservados.</p></div></footer></div>
+
+<style>
+    .api-health-banner {
+        background: #FEF3C7;
+        border-bottom: 1px solid #F59E0B;
+        padding: 0.5rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: #92400E;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    .api-health-banner-content {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+    }
+
+    .api-health-banner-retry {
+        background: #F59E0B;
+        color: white;
+        border: none;
+        padding: 0.15rem 0.6rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+        transition: background 0.2s;
+    }
+
+    .api-health-banner-retry:hover {
+        background: #D97706;
+    }
+
+    .api-health-banner-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #92400E;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+
+    .api-health-banner-close:hover {
+        opacity: 1;
+    }
+
+    @keyframes slideDown {
+        from { transform: translateY(-100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+</style>
+
+
+<div class="mud-popover-provider"></div>
+<div id="mud-snackbar-container" class="mud-snackbar-location-top-right"></div>
+
+
+<div id="blazor-error-ui" data-nosnippet b-1y35pydj30>
+    Ocorreu um erro inesperado.
+    <a href="." class="reload" b-1y35pydj30>Recarregar</a>
+    <span class="dismiss" b-1y35pydj30>🗙</span></div>
+        <blazor-focus-on-navigate selector="h1"></blazor-focus-on-navigate>
+    
+    <script src="js/crypto.js"></script>
+    
+    <script src="js/session.js"></script>
+    
+    <script src="js/theme.js"></script>
+    
+    <script src="js/mercadopago.js"></script>
+    
+    <script src="js/qr-scanner.js"></script>
+    
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script></body></html>

@@ -58,10 +58,26 @@ public class User
     public DateTime? ResetTokenExpiracao { get; set; }
 
     // ── Public Slug (opaque identifier) ──────────────────────────────
+    /// <summary>Data/hora de criação do registro (UTC).</summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Data/hora da última atualização (UTC).</summary>
+    public DateTime? UpdatedAt { get; set; }
+
     /// <summary>
     /// Slug público único (opaco) usado em URLs públicas no lugar do CPF.
     /// Gerado automaticamente no cadastro. Ex.: "a1b2c3d4e5f6".
     /// Nunca expõe o CPF do usuário.
     /// </summary>
     public string? Slug { get; set; }
+
+    // ── Perfil do Organizador ─────────────────────────────────────────
+    /// <summary>Biografia/Descrição curta do organizador.</summary>
+    public string? Bio { get; set; }
+
+    /// <summary>URL da foto de perfil do organizador (armazenada via IStorageService).</summary>
+    public string? FotoUrl { get; set; }
+
+    /// <summary>URL da imagem de banner/capa do organizador (armazenada via IStorageService).</summary>
+    public string? BannerUrl { get; set; }
 }

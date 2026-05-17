@@ -140,6 +140,9 @@ public class PublicController : ControllerBase
         {
             slug = usuario.Slug,
             nome = usuario.Nome,
+            bio = usuario.Bio,
+            fotoUrl = usuario.FotoUrl,
+            bannerUrl = usuario.BannerUrl,
             eventosPublicados = eventosDoOrganizador
         });
     }

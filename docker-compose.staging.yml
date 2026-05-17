@@ -1,0 +1,58 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#  docker-compose.staging.yml — Ambiente de Staging
+#  ─────────────────────────────────────────────────────────────────────────────
+#  Uso:
+#    docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+#
+#  Diferenças do production:
+#    - Swagger habilitado (ASPNETCORE_ENVIRONMENT=Staging)
+#    - Sem certbot (auto-assinado para testes)
+#    - Portas expostas para debugging
+#    - Sem restrição de recursos (deploy.resources removido)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── SQL Server ──────────────────────────────────────────────────────────────
+  sqlserver:
+    ports:
+      - "1433:1433"  # Exposto para conexão externa (SSMS, debugging)
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    ports:
+      - "6379:6379"  # Exposto para debugging
+
+  # ── API ──────────────────────────────────────────────────────────────────────
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      Logging__LogLevel__Default: "Debug"
+      Logging__LogLevel__Microsoft: "Warning"
+    ports:
+      - "5164:8080"   # API exposta sem proxy
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+    ports:
+      - "5194:8080"   # Frontend exposto sem proxy
+
+  # ── MinIO ────────────────────────────────────────────────────────────────────
+  minio:
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Console (login: admin / MINIO_ROOT_PASSWORD)
+
+  # ── Backup ───────────────────────────────────────────────────────────────────
+  backup:
+    profiles: ["backup", "staging"]
+
+  # ── MinIO Init ───────────────────────────────────────────────────────────────
+  minio-init:
+    profiles: ["setup", "staging"]
+
+  # ── Certbot ──────────────────────────────────────────────────────────────────
+  certbot:
+    profiles: ["production", "staging"]

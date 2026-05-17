@@ -8,7 +8,7 @@ public interface IEventoRepository
     Task<int> AdicionarAsync(TicketEvent evento);
     Task<PaginatedResult<TicketEvent>> ObterTodosAsync(int pagina = 1, int tamanhoPagina = 20);
     Task<IEnumerable<TicketEvent>> ObterDisponiveisAsync();
-    Task<PaginatedResult<TicketEvent>> BuscarDisponiveisAsync(string? nome, string? genero, DateTime? dataMin, DateTime? dataMax, int pagina = 1, int tamanhoPagina = 20);
+    Task<PaginatedResult<TicketEvent>> BuscarDisponiveisAsync(string? nome, string? genero, DateTime? dataMin, DateTime? dataMax, string? cidade = null, int pagina = 1, int tamanhoPagina = 20);
     Task<TicketEvent?> ObterPorIdAsync(int id);
     Task<bool> DiminuirCapacidadeAsync(int eventoId);
     Task AumentarCapacidadeAsync(int eventoId);

@@ -50,12 +50,10 @@ public class HealthController : ControllerBase
         // ── Verificação do banco de dados ────────────────────────────────
         try
         {
-            using var conn = dbFactory.CreateConnection();
-            conn.Open();
+            using var conn = dbFactory.CreateConnection(); // Já retorna conectado
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT 1";
             cmd.ExecuteScalar();
-            conn.Close();
             dbStatus = "conectado";
         }
         catch (Exception ex)

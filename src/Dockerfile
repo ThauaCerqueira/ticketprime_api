@@ -22,11 +22,16 @@ COPY --from=build /publish .
 #   Use migrations versionadas (DbUp/Flyway) para produção.
 # ═══════════════════════════════════════════════════════════════════
 
+# Executa como usuário não-root para reduzir superfície de ataque
+RUN useradd --system --create-home --shell /sbin/nologin appuser
+
+# Instala curl para healthcheck (como root, depois volta para appuser)
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+USER appuser
+
 # .NET 8+ escuta na porta 8080 por padrão em containers
 EXPOSE 8080
-
-# Executa como usuário não-root para reduzir superfície de ataque
-RUN adduser --disabled-password --gecos "" appuser
-USER appuser
 
 ENTRYPOINT ["dotnet", "src.dll"]

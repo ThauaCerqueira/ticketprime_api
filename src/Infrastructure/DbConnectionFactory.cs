@@ -52,11 +52,13 @@ public class DbConnectionFactory
 
         public TimeoutConnectionDecorator(SqlConnection inner) => _inner = inner;
 
+#pragma warning disable CS8767 // Nullability mismatch: IDbConnection.ConnectionString não é anulável
         public string ConnectionString
         {
             get => _inner.ConnectionString;
-            set => _inner.ConnectionString = value!;
+            set => _inner.ConnectionString = value ?? string.Empty;
         }
+#pragma warning restore CS8767
 
         public int ConnectionTimeout => _inner.ConnectionTimeout;
         public string Database => _inner.Database;

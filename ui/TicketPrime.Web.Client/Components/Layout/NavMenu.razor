@@ -446,6 +446,12 @@
                             </svg>
                             Favoritos
                         </button>
+                        <button class="navbar-dropdown-item" @onclick='() => Navegar("/fila-espera")'>
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true" focusable="false">
+                                <path d="M12 2v20M2 12h20"/>
+                            </svg>
+                            Fila de Espera
+                        </button>
                     }
 
                     @if (Session.EhAdmin)

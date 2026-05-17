@@ -41,6 +41,12 @@ public class Coupon
     /// </summary>
     public bool PrimeiroAcesso { get; set; }
 
+    /// <summary>Data/hora de criação do registro (UTC).</summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Data/hora da última atualização (UTC).</summary>
+    public DateTime? UpdatedAt { get; set; }
+
     public bool EstaValido()
     {
         if (DataExpiracao.HasValue && DateTime.UtcNow > DataExpiracao.Value)

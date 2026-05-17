@@ -357,7 +357,7 @@ public class ReservationService
         // Descriptografa ChavePix para todos os resultados PIX pendentes
         foreach (var r in reservas.Where(r => !string.IsNullOrEmpty(r.ChavePix)))
         {
-            r.ChavePix = _pixCryptoService.Decrypt(r.ChavePix);
+            r.ChavePix = _pixCryptoService.Decrypt(r.ChavePix!);
         }
         return reservas;
     }
@@ -367,7 +367,7 @@ public class ReservationService
         var detalhe = await _reservaRepository.ObterDetalhadaPorIdAsync(reservaId, usuarioCpf);
         if (detalhe != null && !string.IsNullOrEmpty(detalhe.ChavePix))
         {
-            detalhe.ChavePix = _pixCryptoService.Decrypt(detalhe.ChavePix);
+            detalhe.ChavePix = _pixCryptoService.Decrypt(detalhe.ChavePix!);
         }
         return detalhe;
     }

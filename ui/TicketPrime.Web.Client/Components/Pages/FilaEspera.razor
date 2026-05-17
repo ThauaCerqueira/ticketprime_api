@@ -1,0 +1,195 @@
+@page "/fila-espera"
+@using System.Net.Http.Json
+@using TicketPrime.Web.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject TicketPrime.Web.Client.Services.SessionService Session
+
+<PageTitle>Fila de Espera - TicketPrime</PageTitle>
+
+<div class="dash-wrapper">
+    <div class="dash-header">
+        <div>
+            <h2>🕐 Minha Fila de Espera</h2>
+            <p>Acompanhe sua posição nos eventos esgotados</p>
+        </div>
+    </div>
+
+    @if (carregando)
+    {
+        <div style="text-align:center;padding:3rem;color:var(--tp-text-muted);">
+            <div style="width:36px;height:36px;border:3px solid var(--tp-border);border-top-color:var(--tp-primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1rem;"></div>
+            Carregando filas de espera...
+        </div>
+    }
+    else if (filas == null || filas.Count == 0)
+    {
+        <div style="text-align:center;padding:3rem;background:var(--tp-bg-card);border-radius:16px;border:1.5px solid var(--tp-border-card);max-width:500px;margin:0 auto;">
+            <div style="font-size:3rem;margin-bottom:0.5rem;">🎟️</div>
+            <h3>Nenhuma fila de espera</h3>
+            <p style="color:var(--tp-text-muted);font-size:0.9rem;margin-bottom:1.5rem;">
+                Você não está em nenhuma fila de espera. Quando um evento estiver esgotado,
+                você pode entrar na fila para ser notificado se abrir uma vaga.
+            </p>
+            <button class="login-btn" @onclick='() => Navigation.NavigateTo("/vitrine")' style="font-size:0.9rem;padding:0.6rem 1.5rem;">
+                Ver eventos disponíveis
+            </button>
+        </div>
+    }
+    else
+    {
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+            @foreach (var fila in filas)
+            {
+                <div class="dash-card">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;">
+                        <div style="flex:1;">
+                            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem;">
+                                <span style="font-size:1.5rem;">🎫</span>
+                                <div>
+                                    <h4 style="margin:0;font-size:1rem;">@fila.EventoNome</h4>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;color:var(--tp-text-muted);">
+                                <span>📅 @fila.DataEntrada.ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                        </div>
+
+                        @* Posição na fila *@
+                        <div style="text-align:center;min-width:100px;">
+                            <div style="font-size:2rem;font-weight:800;color:var(--tp-primary);line-height:1;">
+                                @fila.Posicao°
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--tp-text-muted);">
+                                de @fila.TotalNaFila
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Barra de progresso visual *@
+                    @if (fila.TotalNaFila > 0)
+                    {
+                        var progresso = Math.Max(0, fila.TotalNaFila - fila.Posicao) / (double)fila.TotalNaFila * 100;
+                        <div style="margin-top:0.8rem;height:6px;background:var(--tp-border);border-radius:3px;overflow:hidden;">
+                            <div style="height:100%;width:@(progresso)% ;background:var(--tp-primary);border-radius:3px;transition:width 0.5s;"></div>
+                        </div>
+                        <div style="margin-top:0.4rem;font-size:0.75rem;color:var(--tp-text-light);display:flex;justify-content:space-between;">
+                            <span>@(fila.TotalNaFila - fila.Posicao) pessoa@((fila.TotalNaFila - fila.Posicao) != 1 ? "s" : "") na sua frente</span>
+                        </div>
+                    }
+
+                    <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+                        <button class="login-btn" @onclick='() => IrParaEvento(fila.EventoId)' style="font-size:0.82rem;padding:0.4rem 1rem;background:var(--tp-primary);">
+                            Ver evento
+                        </button>
+                        <button class="login-btn" @onclick='() => SairDaFila(fila.EventoId)' disabled="@saindo" style="font-size:0.82rem;padding:0.4rem 1rem;background:#DC2626;">
+                            @(saindo ? "Saindo..." : "✕ Sair da fila")
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* Legenda *@
+        <div style="margin-top:1.5rem;padding:1rem;background:var(--tp-bg-card);border-radius:12px;border:1.5px solid var(--tp-border-card);font-size:0.82rem;color:var(--tp-text-muted);line-height:1.6;">
+            <strong>🔄 Atualização automática:</strong> Sua posição na fila é atualizada automaticamente.
+            Quando uma vaga for liberada, você receberá uma notificação por e-mail e terá um prazo para comprar o ingresso.
+        </div>
+
+        <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--tp-text-light);text-align:center;">
+            @if (!string.IsNullOrEmpty(ultimaAtualizacao))
+            {
+                <span>Última atualização: @ultimaAtualizacao</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<WaitingQueueDto>? filas;
+    private bool carregando = true;
+    private bool saindo;
+    private string ultimaAtualizacao = "";
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.CarregarAsync();
+        if (!Session.EstaLogado)
+        {
+            Navigation.NavigateTo("/login", replace: true);
+            return;
+        }
+        await CarregarFilas();
+        _ = IniciarPollingAsync();
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+
+    private async Task IniciarPollingAsync()
+    {
+        _cts = new CancellationTokenSource();
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+            _timer = timer;
+            while (await timer.WaitForNextTickAsync(_cts.Token))
+            {
+                await CarregarFilas();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Polling cancelado ao sair da página
+        }
+    }
+
+    private async Task CarregarFilas()
+    {
+        try
+        {
+            filas = await Http.GetFromJsonAsync<List<WaitingQueueDto>>("api/fila-espera/minhas-filas");
+            ultimaAtualizacao = DateTime.Now.ToString("HH:mm:ss");
+        }
+        catch
+        {
+            // Falha silenciosa no polling
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task SairDaFila(int eventoId)
+    {
+        saindo = true;
+        try
+        {
+            var response = await Http.PostAsync($"api/fila-espera/sair?eventoId={eventoId}", null);
+            if (response.IsSuccessStatusCode)
+            {
+                await CarregarFilas();
+            }
+        }
+        catch
+        {
+            // Falha silenciosa
+        }
+        finally
+        {
+            saindo = false;
+        }
+    }
+
+    private void IrParaEvento(int eventoId)
+    {
+        Navigation.NavigateTo($"/evento/{eventoId}");
+    }
+}

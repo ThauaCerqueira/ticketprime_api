@@ -86,4 +86,10 @@ public class Reservation
     /// ao comprador imediatamente após a compra.
     /// </summary>
     public string? ChavePix { get; set; }
+
+    /// <summary>Data/hora de criação do registro (UTC).</summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Data/hora da última atualização (UTC). Atualizado via trigger.</summary>
+    public DateTime? UpdatedAt { get; set; }
 }

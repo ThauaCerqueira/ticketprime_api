@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Distributed;
 using src.DTOs;
 using src.Infrastructure.IRepository;
+using src.Models;
 using src.Service;
 using System.Text;
 using System.Text.Json;
@@ -21,6 +22,7 @@ public class AdminController : ControllerBase
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly IDistributedCache _cache;
     private readonly AuditLogService _auditLog;
+    private readonly InMemoryEmailStore _emailStore;
 
     private static readonly JsonSerializerOptions _jsonOpts = new()
     {
@@ -33,7 +35,8 @@ public class AdminController : ControllerBase
         ICupomRepository cupomRepo,
         IUsuarioRepository usuarioRepo,
         IDistributedCache cache,
-        AuditLogService auditLog)
+        AuditLogService auditLog,
+        InMemoryEmailStore emailStore)
     {
         _eventoRepo = eventoRepo;
         _reservaRepo = reservaRepo;
@@ -41,6 +44,15 @@ public class AdminController : ControllerBase
         _usuarioRepo = usuarioRepo;
         _cache = cache;
         _auditLog = auditLog;
+        _emailStore = emailStore;
+    }
+
+    /// <summary>
+    /// Obtém a lista de eventos do repositório (extraído para evitar duplicação).
+    /// </summary>
+    private async Task<List<TicketEvent>> ObterTodosEventosAsync()
+    {
+        return (await _eventoRepo.ObterTodosAsync()).Itens.ToList();
     }
 
     /// <summary>
@@ -60,7 +72,7 @@ public class AdminController : ControllerBase
                 return Results.Ok(cached);
         }
 
-        var eventos = (await _eventoRepo.ObterTodosAsync()).Itens.ToList();
+        var eventos = await ObterTodosEventosAsync();
         var cupons  = (await _cupomRepo.ListarAsync()).ToList();
         var usuarios = (await _usuarioRepo.ListarUsuarios()).ToList();
         var receitaTotal = await _reservaRepo.ObterReceitaTotalAsync();
@@ -115,7 +127,7 @@ public class AdminController : ControllerBase
                 return Results.Ok(cached);
         }
 
-        var eventos = (await _eventoRepo.ObterTodosAsync()).Itens.ToList();
+        var eventos = await ObterTodosEventosAsync();
         var cupons  = (await _cupomRepo.ListarAsync()).ToList();
         var usuarios = (await _usuarioRepo.ListarUsuarios()).ToList();
         var receitaTotal = await _reservaRepo.ObterReceitaTotalAsync();
@@ -406,6 +418,55 @@ public class AdminController : ControllerBase
             detalhes: new { endpoint = "eventos/{id}/participantes.csv" });
 
         return Results.File(bytes, "text/csv; charset=utf-8", nomeArquivo);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Painel de E-mails (apenas Development — ConsoleEmailService)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Lista os e-mails enviados em memória (ConsoleEmailService).
+    /// Apenas disponível em desenvolvimento — útil para testar fluxos
+    /// de verificação, compra e cancelamento sem SMTP configurado.
+    /// </summary>
+    [HttpGet("emails")]
+    [Authorize(Roles = "ADMIN")]
+    public IResult ListarEmails()
+    {
+        var emails = _emailStore.GetAll();
+        return Results.Ok(new
+        {
+            total = emails.Count(),
+            mensagem = emails.Any()
+                ? "E-mails enviados pelo ConsoleEmailService (apenas desenvolvimento)."
+                : "Nenhum e-mail enviado ainda. Cadastre um usuário ou compre um ingresso para gerar e-mails.",
+            emails
+        });
+    }
+
+    /// <summary>
+    /// Limpa todos os e-mails armazenados em memória.
+    /// </summary>
+    [HttpDelete("emails")]
+    [Authorize(Roles = "ADMIN")]
+    public IResult LimparEmails()
+    {
+        _emailStore.Clear();
+        return Results.Ok(new { mensagem = "E-mails limpos com sucesso." });
+    }
+
+    /// <summary>
+    /// Obtém o corpo HTML de um e-mail específico pelo ID.
+    /// </summary>
+    [HttpGet("emails/{id}")]
+    [Authorize(Roles = "ADMIN")]
+    public IResult ObterEmail(string id)
+    {
+        var email = _emailStore.GetAll().FirstOrDefault(e => e.Id == id);
+        if (email == null)
+            return Results.NotFound(new { mensagem = "E-mail não encontrado." });
+
+        return Results.Ok(email);
     }
 
     private static string SanitizarCsvCampo(string? campo)
